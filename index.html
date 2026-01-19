@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>El Progreso - Gestión de Flota</title>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Noto+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#facc15", 
+              "primary-dark": "#eab308",
+              "secondary": "#f97316",
+              "secondary-dark": "#ea580c",
+              "brand-dark": "#1c1917", // Stone-900
+              "brand-surface": "#292524", // Stone-800
+              "brand-border": "#44403c", // Stone-700
+              "background-light": "#fafafa",
+              "background-dark": "#0c0a09", // Stone-950
+              "chart-1": "#0ea5e9", 
+              "chart-2": "#10b981", 
+              "chart-3": "#f59e0b", 
+              "chart-4": "#f43f5e", 
+            },
+            fontFamily: {
+              "display": ["Space Grotesk", "sans-serif"],
+              "body": ["Noto Sans", "sans-serif"],
+              "mono": ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "monospace"],
+            },
+          },
+        };
+    </script>
+    <style>
+      body {
+        background-color: #0c0a09;
+        color: #e7e5e4;
+      }
+      ::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+          background: #1c1917; 
+      }
+      ::-webkit-scrollbar-thumb {
+          background: #44403c; 
+          border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+          background: #57534e; 
+      }
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .icon-filled {
+        font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
+    "recharts": "https://esm.sh/recharts@^3.6.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
