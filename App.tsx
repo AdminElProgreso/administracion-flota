@@ -23,7 +23,7 @@ const SidebarLink = ({ to, icon, label, exact = false, collapsed = false }: { to
       }`}
     >
       {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>}
-      <span className={`material-symbols-outlined ${isActive ? 'text-primary' : 'group-hover:text-primary'} transition-colors ${collapsed ? 'text-2xl' : ''}`}> 
+      <span className={`material-symbols-outlined ${isActive ? 'text-primary' : 'group-hover:text-primary'} transition-colors ${collapsed ? 'text-2xl' : ''}`}>
         {icon}
       </span>
       {!collapsed && (
@@ -48,7 +48,8 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
       <aside 
         className={`hidden lg:flex ${isSidebarCollapsed ? 'w-20' : 'w-64'} bg-brand-dark border-r border-brand-border flex-col flex-shrink-0 z-20 transition-all duration-300 ease-in-out`}
       >
-        <div className={`h-[72px] border-b border-brand-border flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between px-6'} transition-all`}> 
+        <div className={`h-[72px] border-b border-brand-border flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between px-6'} transition-all`}>
+          
           {/* Logo Section */}
           <div className="flex items-center gap-3 overflow-hidden">
              <div className="w-10 h-10 relative flex-shrink-0 bg-primary/20 rounded flex items-center justify-center text-primary cursor-pointer" onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}>
@@ -111,23 +112,23 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
         
         {/* Mobile Bottom Nav */}
         <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-brand-dark/95 backdrop-blur-md border-t border-brand-border flex justify-between items-center px-2 pb-safe pt-2 h-[72px]">
-          <Link to="/" className={getMobileLinkClass('/')}> 
+          <Link to="/" className={getMobileLinkClass('/')}>
             <span className="material-symbols-outlined">grid_view</span>
             <span className="text-[10px] font-medium">Dash</span>
           </Link>
-          <Link to="/fleet" className={getMobileLinkClass('/fleet')}> 
+          <Link to="/fleet" className={getMobileLinkClass('/fleet')}>
             <span className="material-symbols-outlined">directions_car</span>
             <span className="text-[10px] font-medium">Flota</span>
           </Link>
-          <Link to="/maintenance" className={getMobileLinkClass('/maintenance')}> 
+          <Link to="/maintenance" className={getMobileLinkClass('/maintenance')}>
             <span className="material-symbols-outlined">build</span>
             <span className="text-[10px] font-medium">Taller</span>
           </Link>
-           <Link to="/calendar" className={getMobileLinkClass('/calendar')}> 
+           <Link to="/calendar" className={getMobileLinkClass('/calendar')}>
             <span className="material-symbols-outlined">calendar_month</span>
             <span className="text-[10px] font-medium">Agenda</span>
           </Link>
-          <Link to="/team" className={getMobileLinkClass('/team')}> 
+          <Link to="/team" className={getMobileLinkClass('/team')}>
             <span className="material-symbols-outlined">groups</span>
             <span className="text-[10px] font-medium">Equipo</span>
           </Link>
