@@ -2,14 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../supabase';
 
-const urgentAlerts = [
-  { id: 1, type: 'Vencimiento', subtype: 'Seguro', vehicle: 'Toyota Hilux (AB-123-CD)', days: -2, status: 'expired' },
-  { id: 2, type: 'Vencimiento', subtype: 'VTV', vehicle: 'Mercedes Sprinter (JK-992-PL)', days: 5, status: 'warning' },
-  { id: 3, type: 'Vencimiento', subtype: 'Patente', vehicle: 'Scania R450 (ZZ-111-XX)', days: 12, status: 'info' },
-];
-
-const StatCard = ({ title, value, subtext, icon, colorClass, borderClass, onClick }: any) => (
-  <div className={`bg-brand-surface border ${borderClass} rounded-xl p-5 relative overflow-hidden group cursor-pointer transition-all hover:scale-[1.02]`} onClick={onClick}>
+const StatCard = ({ title, value, subtext, icon, colorClass, borderClass }: any) => (
+  <div className={`bg-brand-surface border ${borderClass} rounded-xl p-5 relative overflow-hidden group transition-all hover:scale-[1.02]`}>
     <div className={`absolute right-0 top-0 w-20 h-20 bg-gradient-to-br ${colorClass} to-transparent rounded-bl-full -mr-4 -mt-4 opacity-10`}></div>
     <div className="flex justify-between items-start mb-2">
       <div className={`p-2 rounded-lg bg-brand-dark border border-brand-border ${colorClass.replace('from-', 'text-')}`}>
@@ -22,139 +16,118 @@ const StatCard = ({ title, value, subtext, icon, colorClass, borderClass, onClic
   </div>
 );
 
-const QuickAction = ({ to, icon, label, color }: any) => (
-  <Link to={to} className="flex flex-col items-center justify-center p-4 bg-brand-surface border border-brand-border rounded-xl hover:bg-stone-800 transition-colors active:scale-95 group">
-    <div className={`w-12 h-12 rounded-full ${color} flex items-center justify-center mb-2 group-hover:scale-110 transition-transform`}>
-      <span className="material-symbols-outlined text-xl text-white">{icon}</span>
-    </div>
-    <span className="text-xs font-bold text-stone-300 uppercase tracking-wide text-center">{label}</span>
-  </Link>
-);
-
 const Dashboard = () => {
+  const [stats, setStats] = useState({ total: 0, inWorkshop: 0, alerts: 0 });
+  const [loading, setLoading] = useState(true);
   const [showPasswordAlert, setShowPasswordAlert] = useState(false);
 
   useEffect(() => {
-    const checkUserStatus = async () => {
+    const fetchDashboardData = async () => {
+      setLoading(true);
+
+      // 1. Verificar si el usuario configuró su contraseña
       const { data: { user } } = await supabase.auth.getUser();
-      // Si el usuario no tiene la marca 'password_set', mostramos el aviso
       if (user && !user.user_metadata?.password_set) {
         setShowPasswordAlert(true);
       }
+
+      // 2. Obtener estadísticas de la flota
+      const { data: fleet, error } = await supabase.from('vehiculos').select('status, vtv_expiration, insurance_expiration');
+
+      if (fleet) {
+        const total = fleet.length;
+        const workshop = fleet.filter(v => v.status === 'En Taller').length;
+
+        // Contar vencimientos próximos (menos de 15 días)
+        const today = new Date();
+        const fifteenDaysOut = new Date();
+        fifteenDaysOut.setDate(today.getDate() + 15);
+
+        const critical = fleet.filter(v => {
+          const vtv = v.vtv_expiration ? new Date(v.vtv_expiration) : null;
+          const ins = v.insurance_expiration ? new Date(v.insurance_expiration) : null;
+          return (vtv && vtv < fifteenDaysOut) || (ins && ins < fifteenDaysOut);
+        }).length;
+
+        setStats({ total, inWorkshop: workshop, alerts: critical });
+      }
+      setLoading(false);
     };
-    checkUserStatus();
+
+    fetchDashboardData();
   }, []);
 
+  if (loading) return <div className="h-screen flex items-center justify-center bg-background-dark"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
+
   return (
-    <div className="p-4 md:p-6 pb-20 md:pb-6">
+    <div className="p-4 md:p-6 pb-20">
       <header className="mb-6">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="material-symbols-outlined text-primary">grid_view</span>
-          <h2 className="text-xl font-bold text-white tracking-tight">Panel de Control</h2>
-        </div>
-        <p className="text-sm text-stone-500">Resumen operativo diario</p>
+        <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+          <span className="material-symbols-outlined text-primary">grid_view</span> Panel de Control
+        </h2>
+        <p className="text-sm text-stone-500 font-medium">Estado real de la flota de El Progreso</p>
       </header>
 
-      {/* AVISO DE CONTRASEÑA PENDIENTE */}
+      {/* Alerta de Seguridad */}
       {showPasswordAlert && (
-        <div className="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 animate-in fade-in slide-in-from-top-4 duration-500">
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-500 flex-shrink-0">
-              <span className="material-symbols-outlined text-2xl">lock_open</span>
-            </div>
-            <div className="flex-1 text-center sm:text-left">
-              <h3 className="text-amber-500 font-bold">Seguridad de la cuenta</h3>
-              <p className="text-stone-400 text-sm mt-0.5">Todavía no has configurado una contraseña propia. Por seguridad, hazlo ahora.</p>
-            </div>
-            <Link
-              to="/settings"
-              className="bg-amber-500 hover:bg-amber-600 text-brand-dark font-bold px-6 py-2 rounded-lg text-sm transition-all shadow-lg shadow-amber-900/20 flex items-center gap-2"
-            >
-              Configurar Contraseña
-              <span className="material-symbols-outlined text-sm">chevron_right</span>
-            </Link>
+        <div className="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 flex flex-col sm:flex-row items-center gap-4 animate-in fade-in">
+          <span className="material-symbols-outlined text-amber-500 text-3xl">lock_open</span>
+          <div className="flex-1 text-center sm:text-left">
+            <h3 className="text-amber-500 font-bold">Seguridad pendiente</h3>
+            <p className="text-stone-400 text-sm">Establecé tu contraseña en Configuración para asegurar tu acceso.</p>
           </div>
+          <Link to="/settings" className="bg-amber-500 text-brand-dark font-bold px-6 py-2 rounded-lg text-sm">Configurar</Link>
         </div>
       )}
 
-      {/* 1. Operational Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard
-          title="Documentación"
-          value="3"
-          subtext="Vencimientos pendientes"
+          title="Vencimientos"
+          value={stats.alerts}
+          subtext="Próximos 15 días"
           icon="notifications_active"
           colorClass="from-rose-500"
-          borderClass="border-rose-500/30"
+          borderClass={stats.alerts > 0 ? "border-rose-500/40" : "border-brand-border"}
         />
         <StatCard
           title="En Taller"
-          value="2"
-          subtext="Unidades no operativas"
+          value={stats.inWorkshop}
+          subtext="Unidades detenidas"
           icon="build"
           colorClass="from-amber-500"
           borderClass="border-brand-border"
         />
         <StatCard
-          title="Gasto Mensual"
-          value="$1.2M"
-          subtext="Acumulado Noviembre"
-          icon="payments"
-          colorClass="from-emerald-500"
-          borderClass="border-brand-border"
-        />
-        <StatCard
-          title="Flota Activa"
-          value="14"
-          subtext="Vehículos en ruta"
+          title="Flota Total"
+          value={stats.total}
+          subtext="Unidades registradas"
           icon="local_shipping"
           colorClass="from-primary"
           borderClass="border-brand-border"
         />
+        <StatCard
+          title="Gastos (Mes)"
+          value="$0"
+          subtext="Pendiente conexión Taller"
+          icon="payments"
+          colorClass="from-emerald-500"
+          borderClass="border-brand-border"
+        />
       </div>
 
-      {/* 2. Mobile Quick Actions */}
-      <h3 className="text-stone-400 text-xs font-bold uppercase tracking-widest mb-3 px-1">Accesos Rápidos</h3>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <QuickAction to="/maintenance" icon="handyman" label="Cargar Mantenim." color="bg-blue-600" />
-        <QuickAction to="/fleet" icon="add_circle" label="Nueva Unidad" color="bg-primary-dark" />
-        <QuickAction to="/calendar" icon="calendar_clock" label="Ver Agenda" color="bg-emerald-600" />
-        <QuickAction to="/team" icon="person_add" label="Personal" color="bg-purple-600" />
-      </div>
-
-      {/* 3. Critical Alerts List */}
-      <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden flex flex-col shadow-lg">
-        <div className="p-4 border-b border-brand-border flex justify-between items-center bg-brand-dark/30">
-          <h3 className="text-white font-bold flex items-center gap-2">
-            <span className="material-symbols-outlined text-rose-500">warning</span>
-            Atención Requerida
-          </h3>
-          <Link to="/calendar" className="text-xs text-primary hover:underline">Ver Calendario</Link>
-        </div>
-        <div className="divide-y divide-brand-border">
-          {urgentAlerts.map((alert) => (
-            <div key={alert.id} className="p-4 flex items-center gap-4 hover:bg-brand-dark/30 transition-colors">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${alert.status === 'expired' ? 'bg-rose-500/10 text-rose-500' :
-                  alert.status === 'warning' ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'
-                }`}>
-                <span className="material-symbols-outlined">
-                  {alert.subtype === 'Seguro' ? 'security' : alert.subtype === 'VTV' ? 'verified' : 'badge'}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white truncate">{alert.type} de {alert.subtype}</p>
-                <p className="text-xs text-stone-400 truncate">{alert.vehicle}</p>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <span className={`text-xs font-bold px-2 py-1 rounded border ${alert.status === 'expired' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
-                    alert.status === 'warning' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'
-                  }`}>
-                  {alert.days < 0 ? `Vencido hace ${Math.abs(alert.days)} días` : `Vence en ${alert.days} días`}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Link to="/maintenance" className="flex flex-col items-center justify-center p-4 bg-brand-surface border border-brand-border rounded-xl hover:bg-stone-800 transition-all group">
+          <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+            <span className="material-symbols-outlined text-white">handyman</span>
+          </div>
+          <span className="text-[10px] font-bold text-stone-300 uppercase">Cargar Taller</span>
+        </Link>
+        <Link to="/fleet" className="flex flex-col items-center justify-center p-4 bg-brand-surface border border-brand-border rounded-xl hover:bg-stone-800 transition-all group">
+          <div className="w-12 h-12 rounded-full bg-primary-dark flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+            <span className="material-symbols-outlined text-white">add_circle</span>
+          </div>
+          <span className="text-[10px] font-bold text-stone-300 uppercase">Nueva Unidad</span>
+        </Link>
       </div>
     </div>
   );
