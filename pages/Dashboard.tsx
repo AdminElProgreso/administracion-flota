@@ -46,7 +46,10 @@ const Dashboard = () => {
       }
 
       // 2. Obtener vehículos para estadísticas y alertas
-      const { data: fleet } = await supabase.from('vehiculos').select('*');
+      const { data: fleet } = await supabase
+        .from('vehiculos')
+        .select('*')
+        .neq('status', 'Baja'); // <--- Filtro para ignorar los vehiculos dados de baja
 
       // 3. Obtener gastos del mes actual
       const today = new Date();

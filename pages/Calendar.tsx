@@ -17,7 +17,8 @@ const Calendar = () => {
       setLoading(true);
       const { data: vehicles, error } = await supabase
          .from('vehiculos')
-         .select('id, model, patente, vtv_expiration, insurance_expiration, patente_expiration');
+         .select('id, model, patente, vtv_expiration, insurance_expiration, patente_expiration')
+         .neq('status', 'Baja'); // <--- Solo traer vehículos que NO estén de baja
 
       if (vehicles) {
          const today = new Date();
