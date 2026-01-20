@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Vehicle } from '../types';
-import { supabase } from '../supabase'; // Conexión real
+import { supabase } from '../supabase';
 
 const Fleet = () => {
-   // 1. Estados para datos reales
    const [vehicles, setVehicles] = useState<Vehicle[]>([]);
    const [loading, setLoading] = useState(true);
    const [isModalOpen, setIsModalOpen] = useState(false);
    const [newVehicleType, setNewVehicleType] = useState<'car' | 'truck' | 'generator'>('car');
 
-   // 2. Función para cargar datos de Supabase
    const fetchVehicles = async () => {
       setLoading(true);
       const { data, error } = await supabase
@@ -21,21 +19,21 @@ const Fleet = () => {
       if (error) {
          console.error('Error:', error);
       } else if (data) {
-         // Mapeamos los datos de la DB (snake_case) al formato de tu App (camelCase)
+         // MAPEADO CORRECTO: BD (Inglés) -> App (camelCase)
          const mapped: Vehicle[] = data.map(v => ({
             id: v.id,
             type: v.tipo,
             patente: v.patente,
-            model: v.modelo,
-            year: v.anio,
-            section: v.seccion,
-            status: v.estado,
-            odometer: v.odometro,
-            manager: v.encargado,
-            assignedDriver: v.chofer,
-            insuranceExpiration: v.vencimiento_seguro,
-            vtvExpiration: v.vencimiento_vtv,
-            patenteExpiration: v.vencimiento_patente,
+            model: v.model, // era modelo
+            year: v.year,   // era anio
+            section: v.section, // era seccion
+            status: v.status,   // era estado
+            odometer: v.odometer, // era odometro
+            manager: v.manager,   // era encargado
+            assignedDriver: v.assigned_driver, // era chofer
+            insuranceExpiration: v.insurance_expiration, // era vencimiento_seguro
+            vtvExpiration: v.vtv_expiration, // era vencimiento_vtv
+            patenteExpiration: v.patente_expiration, // era vencimiento_patente
             alerts: []
          }));
          setVehicles(mapped);
@@ -47,25 +45,25 @@ const Fleet = () => {
       fetchVehicles();
    }, []);
 
-   // 3. Función para guardar (usando FormData para no romper el modal)
    const handleAddVehicle = async (e: React.FormEvent) => {
       e.preventDefault();
       const form = e.target as HTMLFormElement;
       const formData = new FormData(form);
 
+      // OBJETO PARA SUPABASE: Debe coincidir con las columnas de tu DB
       const nuevoVehiculo = {
          tipo: newVehicleType,
          patente: formData.get('patente'),
-         modelo: formData.get('modelo'),
-         anio: parseInt(formData.get('anio') as string) || new Date().getFullYear(),
-         seccion: formData.get('seccion'),
-         encargado: formData.get('encargado'),
-         chofer: formData.get('chofer'),
-         odometro: parseInt(formData.get('odometro') as string) || 0,
-         vencimiento_vtv: formData.get('vtv_date') || null,
-         vencimiento_seguro: formData.get('seguro_date') || null,
-         vencimiento_patente: formData.get('patente_date') || null,
-         estado: 'Activo'
+         model: formData.get('modelo'), // Llave correcta: model
+         year: parseInt(formData.get('anio') as string) || new Date().getFullYear(), // Llave correcta: year
+         section: formData.get('seccion'), // Llave correcta: section
+         manager: formData.get('encargado'), // Llave correcta: manager
+         assigned_driver: formData.get('chofer'), // Llave correcta: assigned_driver
+         odometer: parseInt(formData.get('odometro') as string) || 0, // Llave correcta: odometer
+         vtv_expiration: formData.get('vtv_date') || null, // Llave correcta: vtv_expiration
+         insurance_expiration: formData.get('seguro_date') || null, // Llave correcta: insurance_expiration
+         patente_expiration: formData.get('patente_date') || null, // Llave correcta: patente_expiration
+         status: 'Activo' // Llave correcta: status
       };
 
       const { error } = await supabase.from('vehiculos').insert([nuevoVehiculo]);
