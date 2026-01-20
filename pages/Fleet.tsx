@@ -299,7 +299,8 @@ const Fleet = () => {
                                  <div className="mb-3">
                                     <label className="text-xs text-stone-400 mb-1 block">Sección Operativa <span className="text-red-500">*</span></label>
                                     <select name="seccion" className="w-full bg-brand-surface border-brand-border rounded-lg text-white h-10 px-3 border focus:border-primary focus:ring-0">
-                                       <option>Administración</option><option>Cereales</option><option>Agronomía</option><option>Logística</option><option>Estación de Servicio</option>
+                                       <option>Administración</option><option>Cereales</option><option>Agronomía</option><option>Hacienda</option><option>Estación de Servicio</option>
+                                       <option>Miel</option><option>Veterinaria</option><option>Ferreteria</option><option>Supermercado</option><option>Balanceado</option>
                                     </select>
                                  </div>
                                  <div className="mb-3">
@@ -332,7 +333,7 @@ const Fleet = () => {
                                        </div>
                                     </div>
                                     <div className="bg-brand-dark/30 p-4 rounded-lg border border-brand-border hover:border-white/30">
-                                       <div className="flex items-center gap-2 mb-3"><span className="material-symbols-outlined text-white">badge</span><span className="text-white font-bold text-sm">Patente / Impuestos</span></div>
+                                       <div className="flex items-center gap-2 mb-3"><span className="material-symbols-outlined text-white">badge</span><span className="text-white font-bold text-sm">Patente</span></div>
                                        <label className="text-xs text-stone-500 mb-1 block">Próximo Vencimiento</label>
                                        <input name="patente_date" type="date" className="w-full bg-brand-surface border-brand-border rounded-lg text-white h-10 px-3 focus:border-white focus:ring-0" />
                                     </div>
@@ -344,7 +345,7 @@ const Fleet = () => {
 
                      <div className="p-6 border-t border-brand-border flex justify-end gap-3 bg-brand-surface rounded-b-xl">
                         <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-stone-400 hover:text-white font-bold uppercase">Cancelar</button>
-                        <button type="submit" className="px-8 py-2 bg-primary text-brand-dark rounded-lg font-bold text-sm uppercase shadow-lg shadow-primary/20 hover:bg-primary-dark transition-colors">Guardar en la Nube</button>
+                        <button type="submit" className="px-8 py-2 bg-primary text-brand-dark rounded-lg font-bold text-sm uppercase shadow-lg shadow-primary/20 hover:bg-primary-dark transition-colors">Guardar</button>
                      </div>
                   </form>
                </div>
