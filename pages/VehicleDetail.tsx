@@ -13,19 +13,16 @@ const VehicleDetail = () => {
    const [displayLimit, setDisplayLimit] = useState(10);
    const [hasMore, setHasMore] = useState(false);
 
+   // ESTADOS PARA MODALES
    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+   const [deleteConfirmText, setDeleteConfirmText] = useState('');
    const [docUpdateModal, setDocUpdateModal] = useState<{ isOpen: boolean; type: string; current: string } | null>(null);
 
-   // 1. CARGAR DATOS REALES CON LÍMITE
+   // 1. CARGAR DATOS REALES
    const fetchVehicleData = async () => {
       setLoading(true);
-
-      // Traer datos del vehículo
-      const { data: vData } = await supabase
-         .from('vehiculos')
-         .select('*')
-         .eq('id', id)
-         .single();
+      const { data: vData } = await supabase.from('vehiculos').select('*').eq('id', id).single();
 
       if (vData) {
          setVehicle({
@@ -45,68 +42,63 @@ const VehicleDetail = () => {
             alerts: []
          });
 
-         // Traer historial con límite (+1 para verificar si hay más)
-         const { data: mData } = await supabase
-            .from('mantenimientos')
-            .select('*')
-            .eq('vehicle_id', id)
-            .order('date', { ascending: false })
-            .limit(displayLimit + 1);
+         const { data: mData } = await supabase.from('mantenimientos')
+            .select('*').eq('vehicle_id', id).order('date', { ascending: false }).limit(displayLimit + 1);
 
          if (mData) {
             const more = mData.length > displayLimit;
             setHasMore(more);
             const finalData = more ? mData.slice(0, displayLimit) : mData;
-
             setMaintenanceHistory(finalData.map(m => ({
-               id: m.id,
-               date: m.date,
-               vehicleId: m.vehicle_id,
-               vehicleName: vData.model,
-               type: m.type,
-               description: m.description,
-               provider: m.provider,
-               cost: m.cost,
-               status: m.status
+               id: m.id, date: m.date, vehicleId: m.vehicle_id, vehicleName: vData.model,
+               type: m.type, description: m.description, provider: m.provider, cost: m.cost, status: m.status
             })));
          }
       }
       setLoading(false);
    };
 
-   useEffect(() => {
-      fetchVehicleData();
-   }, [id, displayLimit]);
+   useEffect(() => { fetchVehicleData(); }, [id, displayLimit]);
 
-   // 2. ACTUALIZAR DATOS
+   // 2. ACTUALIZAR DATOS (INCLUYE PATENTE)
    const handleUpdateVehicle = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!vehicle) return;
       const form = e.target as HTMLFormElement;
       const formData = new FormData(form);
 
-      const { error } = await supabase
-         .from('vehiculos')
-         .update({
-            model: formData.get('model'),
-            year: parseInt(formData.get('year') as string),
-            odometer: parseInt(formData.get('odometer') as string),
-            status: formData.get('status'),
-            section: formData.get('section'),
-            manager: formData.get('manager'),
-            assigned_driver: formData.get('assignedDriver')
-         })
-         .eq('id', id);
+      const { error } = await supabase.from('vehiculos').update({
+         patente: formData.get('patente')?.toString().toUpperCase(), // <--- Patente agregada
+         model: formData.get('model'),
+         year: parseInt(formData.get('year') as string),
+         odometer: parseInt(formData.get('odometer') as string),
+         status: formData.get('status'),
+         section: formData.get('section'),
+         manager: formData.get('manager'),
+         assigned_driver: formData.get('assignedDriver')
+      }).eq('id', id);
 
       if (error) alert('Error: ' + error.message);
       else { setIsEditModalOpen(false); fetchVehicleData(); }
    };
 
+   // 3. ELIMINACIÓN EN CASCADA
+   const handleDeleteVehicle = async () => {
+      if (deleteConfirmText !== 'borrar') return;
+
+      // Eliminar mantenimientos relacionados primero
+      await supabase.from('mantenimientos').delete().eq('vehicle_id', id);
+
+      // Eliminar el vehículo
+      const { error } = await supabase.from('vehiculos').delete().eq('id', id);
+
+      if (error) alert('Error al eliminar: ' + error.message);
+      else { window.location.hash = '/fleet'; }
+   };
+
    const handleUpdateDoc = async (newDate: string) => {
       if (!docUpdateModal || !vehicle) return;
-      const columnMap: { [key: string]: string } = {
-         'Seguro': 'insurance_expiration', 'VTV': 'vtv_expiration', 'Patente': 'patente_expiration'
-      };
+      const columnMap: { [key: string]: string } = { 'Seguro': 'insurance_expiration', 'VTV': 'vtv_expiration', 'Patente': 'patente_expiration' };
       const { error } = await supabase.from('vehiculos').update({ [columnMap[docUpdateModal.type]]: newDate }).eq('id', id);
       if (error) alert('Error: ' + error.message);
       else { setDocUpdateModal(null); fetchVehicleData(); }
@@ -118,10 +110,8 @@ const VehicleDetail = () => {
    const isGenerator = vehicle.type === 'generator';
    const getIconByType = (type: string) => {
       switch (type) {
-         case 'car': return 'directions_car';
-         case 'truck': return 'local_shipping';
-         case 'generator': return 'electric_bolt';
-         default: return 'directions_car';
+         case 'car': return 'directions_car'; case 'truck': return 'local_shipping';
+         case 'generator': return 'electric_bolt'; default: return 'directions_car';
       }
    };
 
@@ -155,7 +145,6 @@ const VehicleDetail = () => {
 
    return (
       <div className="p-6 max-w-7xl mx-auto">
-         {/* Breadcrumbs */}
          <nav className="flex items-center gap-2 text-sm mb-6">
             <Link to="/fleet" className="text-stone-500 hover:text-white">Flota</Link>
             <span className="material-symbols-outlined text-stone-600 text-xs">chevron_right</span>
@@ -164,7 +153,6 @@ const VehicleDetail = () => {
             <span className="text-primary font-medium">{vehicle.patente?.toUpperCase() || vehicle.model}</span>
          </nav>
 
-         {/* Identity Header */}
          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
             <div className="lg:col-span-8 bg-brand-surface border border-brand-border rounded-xl p-6 flex flex-col md:flex-row gap-6 items-center md:items-start">
                <div className="w-full md:w-auto flex flex-col items-center">
@@ -198,7 +186,6 @@ const VehicleDetail = () => {
             </div>
          </div>
 
-         {/* Documentation */}
          {!isGenerator && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                <ExpirationCard title="Seguro Automotor" date={vehicle.insuranceExpiration} icon="security" type="Seguro" colorClass="bg-emerald-500/10" borderClass="border-emerald-500/20" textClass="text-emerald-500" />
@@ -207,14 +194,12 @@ const VehicleDetail = () => {
             </div>
          )}
 
-         {/* HISTORIAL TÉCNICO RESPONSIVO CON SCROLL Y PAGINACIÓN */}
+         {/* HISTORIAL TÉCNICO */}
          <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden flex flex-col shadow-lg">
             <div className="p-4 border-b border-brand-border bg-brand-dark/30 flex justify-between items-center">
                <h2 className="text-white font-bold flex items-center gap-2"><span className="material-symbols-outlined text-stone-400">build</span> Historial Técnico</h2>
             </div>
-
             <div className="max-h-[500px] overflow-y-auto">
-               {/* VISTA DESKTOP (TABLA) - Se oculta en móviles */}
                <div className="hidden md:block">
                   <table className="w-full text-left text-sm border-separate border-spacing-0">
                      <thead className="bg-brand-dark text-xs uppercase font-medium text-stone-500 sticky top-0 z-10">
@@ -232,9 +217,7 @@ const VehicleDetail = () => {
                            maintenanceHistory.map((log) => (
                               <tr key={log.id} className="hover:bg-brand-dark/30 transition-colors">
                                  <td className="px-6 py-4 font-mono text-stone-400 whitespace-nowrap">{new Date(log.date).toLocaleDateString()}</td>
-                                 <td className="px-6 py-4">
-                                    <span className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase border ${log.type === 'Mantenimiento' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>{log.type}</span>
-                                 </td>
+                                 <td className="px-6 py-4"><span className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase border ${log.type === 'Mantenimiento' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>{log.type}</span></td>
                                  <td className="px-6 py-4 font-medium text-white">{log.description}</td>
                                  <td className="px-6 py-4 text-right font-mono font-bold text-white whitespace-nowrap">${log.cost.toLocaleString()}</td>
                               </tr>
@@ -243,44 +226,28 @@ const VehicleDetail = () => {
                      </tbody>
                   </table>
                </div>
-
-               {/* VISTA MOBILE (TARJETAS) - Solo visible en pantallas pequeñas */}
                <div className="md:hidden divide-y divide-brand-border">
                   {maintenanceHistory.length === 0 ? (
                      <div className="px-6 py-8 text-center text-stone-500 italic">Sin registros técnicos.</div>
                   ) : (
                      maintenanceHistory.map((log) => (
                         <div key={log.id} className="p-4 space-y-3 bg-brand-dark/10">
-                           <div className="flex justify-between items-start">
-                              <span className="text-xs font-mono text-stone-500">{new Date(log.date).toLocaleDateString()}</span>
-                              <span className="text-sm font-mono font-bold text-white">${log.cost.toLocaleString()}</span>
-                           </div>
-                           <div>
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${log.type === 'Mantenimiento' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>
-                                 {log.type}
-                              </span>
-                           </div>
+                           <div className="flex justify-between items-start"><span className="text-xs font-mono text-stone-500">{new Date(log.date).toLocaleDateString()}</span><span className="text-sm font-mono font-bold text-white">${log.cost.toLocaleString()}</span></div>
+                           <div><span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${log.type === 'Mantenimiento' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>{log.type}</span></div>
                            <p className="text-sm text-stone-300 leading-relaxed">{log.description}</p>
                         </div>
                      ))
                   )}
                </div>
-
-               {/* BOTÓN CARGAR MÁS (Compartido por ambas vistas) */}
                {hasMore && (
                   <div className="p-4 bg-brand-dark/20 flex justify-center border-t border-brand-border">
-                     <button onClick={() => setDisplayLimit(prev => prev + 10)} className="text-primary text-xs font-bold uppercase hover:bg-primary/10 px-6 py-2.5 rounded-lg transition-all flex items-center gap-2 border border-primary/20">
-                        <span className="material-symbols-outlined text-sm">expand_more</span> Cargar registros anteriores
-                     </button>
+                     <button onClick={() => setDisplayLimit(prev => prev + 10)} className="text-primary text-xs font-bold uppercase hover:bg-primary/10 px-6 py-2.5 rounded-lg transition-all flex items-center gap-2 border border-primary/20"><span className="material-symbols-outlined text-sm">expand_more</span> Cargar anteriores</button>
                   </div>
-               )}
-               {maintenanceHistory.length > 0 && !hasMore && (
-                  <div className="p-4 text-center border-t border-brand-border"><p className="text-[10px] text-stone-600 uppercase font-bold tracking-widest">Fin del historial</p></div>
                )}
             </div>
          </div>
 
-         {/* EDIT MODAL */}
+         {/* EDIT MODAL CON BORRADO INTEGRADO */}
          {isEditModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setIsEditModalOpen(false)}>
                <div className="bg-brand-surface w-full max-w-2xl rounded-xl border border-brand-border shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -290,18 +257,50 @@ const VehicleDetail = () => {
                   </div>
                   <form onSubmit={handleUpdateVehicle} className="p-6 space-y-6">
                      <div className="grid grid-cols-2 gap-4">
-                        <div className="col-span-2 md:col-span-1"><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Modelo</label><input name="model" type="text" defaultValue={vehicle.model} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none" /></div>
+                        <div className="col-span-1"><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Patente</label><input name="patente" type="text" defaultValue={vehicle.patente} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none font-mono uppercase" /></div>
+                        <div className="col-span-1"><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Modelo</label><input name="model" type="text" defaultValue={vehicle.model} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none" /></div>
                         <div className="col-span-1"><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Año</label><input name="year" type="number" defaultValue={vehicle.year} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none" /></div>
-                        <div className="col-span-1"><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">{isGenerator ? 'Horas' : 'Odómetro (Km)'}</label><input name="odometer" type="number" defaultValue={vehicle.odometer} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none" /></div>
-                        <div className="col-span-1"><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Estado</label><select name="status" defaultValue={vehicle.status} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none"><option>Activo</option><option>En Taller</option><option>Baja</option></select></div>
+                        <div className="col-span-1"><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">{isGenerator ? 'Horas' : 'Odómetro'}</label><input name="odometer" type="number" defaultValue={vehicle.odometer} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none" /></div>
                      </div>
                      <div className="border-t border-brand-border pt-4 grid grid-cols-2 gap-4">
+                        <div><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Estado</label><select name="status" defaultValue={vehicle.status} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none"><option>Activo</option><option>En Taller</option><option>Baja</option></select></div>
                         <div><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Sección</label><select name="section" defaultValue={vehicle.section} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none"><option>Administración</option><option>Cereales</option><option>Agronomía</option><option>Logística</option><option>Hacienda</option><option>Estación de Servicio</option></select></div>
                         <div><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Encargado</label><input name="manager" type="text" defaultValue={vehicle.manager} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none" /></div>
-                        {!isGenerator && <div className="col-span-2"><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Chofer Asignado</label><input name="assignedDriver" type="text" defaultValue={vehicle.assignedDriver} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none" /></div>}
+                        {!isGenerator && <div><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Chofer</label><input name="assignedDriver" type="text" defaultValue={vehicle.assignedDriver} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none" /></div>}
                      </div>
-                     <div className="flex justify-end pt-2"><button type="submit" className="bg-primary text-brand-dark font-bold px-8 py-2 rounded-lg text-sm">Guardar Cambios</button></div>
+                     <div className="flex justify-between items-center pt-2">
+                        <button type="button" onClick={() => setIsDeleteModalOpen(true)} className="text-red-500 text-xs font-bold uppercase flex items-center gap-1 hover:underline"><span className="material-symbols-outlined text-sm">delete</span> Eliminar Vehículo</button>
+                        <button type="submit" className="bg-primary text-brand-dark font-bold px-8 py-2 rounded-lg text-sm transition-all hover:bg-primary-dark">Guardar Cambios</button>
+                     </div>
                   </form>
+               </div>
+            </div>
+         )}
+
+         {/* MODAL DE CONFIRMACIÓN DE BORRADO */}
+         {isDeleteModalOpen && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+               <div className="bg-brand-surface w-full max-w-sm rounded-xl border border-brand-border shadow-2xl p-6 text-center">
+                  <span className="material-symbols-outlined text-red-500 text-5xl mb-4">warning</span>
+                  <h3 className="text-white font-bold text-xl mb-2">¿Eliminar esta unidad?</h3>
+                  <p className="text-stone-400 text-sm mb-6 leading-relaxed">Esta acción borrará permanentemente el vehículo y todos sus mantenimientos. Para confirmar, escribe <b>borrar</b> debajo.</p>
+
+                  <input
+                     type="text"
+                     value={deleteConfirmText}
+                     onChange={(e) => setDeleteConfirmText(e.target.value)}
+                     placeholder='Escribe "borrar"'
+                     className="w-full bg-brand-dark border border-brand-border rounded-lg h-12 px-4 text-white text-center mb-6 focus:ring-1 focus:ring-red-500 outline-none"
+                  />
+
+                  <div className="flex gap-3">
+                     <button onClick={() => { setIsDeleteModalOpen(false); setDeleteConfirmText(''); }} className="flex-1 py-3 text-stone-500 font-bold text-xs uppercase">Cancelar</button>
+                     <button
+                        disabled={deleteConfirmText !== 'borrar'}
+                        onClick={handleDeleteVehicle}
+                        className="flex-1 bg-red-600 disabled:opacity-30 text-white py-3 rounded-lg font-bold text-xs uppercase transition-all"
+                     >Confirmar</button>
+                  </div>
                </div>
             </div>
          )}
@@ -315,7 +314,7 @@ const VehicleDetail = () => {
                      <button onClick={() => setDocUpdateModal(null)} className="text-stone-400 hover:text-white"><span className="material-symbols-outlined">close</span></button>
                   </div>
                   <div className="p-6">
-                     <label className="text-xs font-bold text-stone-500 uppercase mb-2 block">Nueva Fecha de Vencimiento</label>
+                     <label className="text-xs font-bold text-stone-500 uppercase mb-2 block">Nueva Fecha</label>
                      <input type="date" id="docDate" className="w-full bg-brand-dark border-brand-border rounded-lg h-12 px-3 text-white mb-6 focus:ring-1 focus:ring-primary outline-none" />
                      <button onClick={() => { const val = (document.getElementById('docDate') as HTMLInputElement).value; if (val) handleUpdateDoc(val); }} className="w-full bg-emerald-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2"><span className="material-symbols-outlined">update</span> Confirmar</button>
                   </div>
