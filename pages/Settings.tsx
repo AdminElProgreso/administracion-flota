@@ -1,44 +1,44 @@
 import React, { useState } from 'react';
 
 
-// Agrega este estado al principio del componente Settings
-const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
-
-React.useEffect(() => {
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        setDeferredPrompt(e);
-    });
-}, []);
-
-const handleInstallClick = () => {
-    if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then((choiceResult: any) => {
-            if (choiceResult.outcome === 'accepted') {
-                setDeferredPrompt(null);
-            }
-        });
-    }
-};
-
-// ... luego en el renderizado, dentro de {activeTab === 'general' && (...
-// Agrega este botón justo antes de los inputs:
-
-{
-    deferredPrompt && (
-        <button
-            onClick={handleInstallClick}
-            className="w-full mb-6 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2 animate-pulse"
-        >
-            <span className="material-symbols-outlined">download</span>
-            Instalar Aplicación en el Celular
-        </button>
-    )
-}
-
 const Settings = () => {
     const [activeTab, setActiveTab] = useState<'general' | 'alerts' | 'notifications' | 'security' | 'data'>('general');
+
+    // Agrega este estado al principio del componente Settings
+    const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
+
+    React.useEffect(() => {
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+        });
+    }, []);
+
+    const handleInstallClick = () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult: any) => {
+                if (choiceResult.outcome === 'accepted') {
+                    setDeferredPrompt(null);
+                }
+            });
+        }
+    };
+
+    // ... luego en el renderizado, dentro de {activeTab === 'general' && (...
+    // Agrega este botón justo antes de los inputs:
+
+    {
+        deferredPrompt && (
+            <button
+                onClick={handleInstallClick}
+                className="w-full mb-6 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2 animate-pulse"
+            >
+                <span className="material-symbols-outlined">download</span>
+                Instalar Aplicación en el Celular
+            </button>
+        )
+    }
 
     // Settings States
     const [notificationState, setNotificationState] = useState({
