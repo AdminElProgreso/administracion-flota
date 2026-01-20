@@ -1,19 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, useLocation, Link, Navigate } from 'react-router-dom';
-import { supabase } from './supabase'; // Importamos la conexión
-import Login from './pages/Login'; // Importamos la nueva pantalla
+import { supabase } from './supabase';
+import Login from './pages/Login';
 
 // Páginas
 import Dashboard from './pages/Dashboard';
 import Fleet from './pages/Fleet';
 import Maintenance from './pages/Maintenance';
 import Calendar from './pages/Calendar';
-import Team from './pages/Team';
 import VehicleDetail from './pages/VehicleDetail';
 import Settings from './pages/Settings';
-
-// --- COMPONENTES AUXILIARES (SidebarLink, Layout) ---
-// (Mantenemos los mismos componentes visuales que ya tenías, solo cambiamos la lógica principal al final)
 
 const SidebarLink = ({ to, icon, label, exact = false, collapsed = false }: any) => {
   const location = useLocation();
@@ -24,8 +20,8 @@ const SidebarLink = ({ to, icon, label, exact = false, collapsed = false }: any)
       to={to}
       title={collapsed ? label : ''}
       className={`flex items-center ${collapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 rounded-lg transition-all group relative overflow-hidden ${isActive
-          ? 'bg-brand-surface border border-brand-border text-white'
-          : 'hover:bg-brand-surface/50 text-stone-400 hover:text-primary'
+        ? 'bg-brand-surface border border-brand-border text-white'
+        : 'hover:bg-brand-surface/50 text-stone-400 hover:text-primary'
         }`}
     >
       {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>}
@@ -54,7 +50,6 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background-dark text-stone-200 font-display">
-      {/* Sidebar (Desktop) */}
       <aside className={`hidden lg:flex ${isSidebarCollapsed ? 'w-20' : 'w-64'} bg-brand-dark border-r border-brand-border flex-col flex-shrink-0 z-20 transition-all duration-300 ease-in-out`}>
         <div className={`h-[72px] border-b border-brand-border flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between px-6'} transition-all`}>
           <div className="flex items-center gap-3 overflow-hidden">
@@ -84,7 +79,6 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
           <SidebarLink to="/fleet" icon="directions_car" label="Flota" collapsed={isSidebarCollapsed} />
           <SidebarLink to="/maintenance" icon="build" label="Mantenimientos" collapsed={isSidebarCollapsed} />
           <SidebarLink to="/calendar" icon="calendar_month" label="Calendario" collapsed={isSidebarCollapsed} />
-          <SidebarLink to="/team" icon="groups" label="Equipo" collapsed={isSidebarCollapsed} />
 
           <div className="mt-auto pt-6 border-t border-brand-border">
             <SidebarLink to="/settings" icon="settings" label="Configuración" collapsed={isSidebarCollapsed} />
@@ -100,7 +94,6 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
         </nav>
       </aside>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
         <header className="lg:hidden h-16 border-b border-brand-border bg-brand-dark flex items-center justify-between px-4 z-30">
           <div className="flex items-center gap-2">
@@ -117,31 +110,27 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
           </div>
         </main>
 
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-brand-dark/95 backdrop-blur-md border-t border-brand-border flex justify-between items-center px-2 pb-safe pt-2 h-[72px]">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-brand-dark/95 backdrop-blur-md border-t border-brand-border flex justify-between items-center px-6 pb-safe pt-2 h-[72px]">
           <Link to="/" className={getMobileLinkClass('/')}><span className="material-symbols-outlined">grid_view</span><span className="text-[10px] font-medium">Dash</span></Link>
           <Link to="/fleet" className={getMobileLinkClass('/fleet')}><span className="material-symbols-outlined">directions_car</span><span className="text-[10px] font-medium">Flota</span></Link>
           <Link to="/maintenance" className={getMobileLinkClass('/maintenance')}><span className="material-symbols-outlined">build</span><span className="text-[10px] font-medium">Taller</span></Link>
           <Link to="/calendar" className={getMobileLinkClass('/calendar')}><span className="material-symbols-outlined">calendar_month</span><span className="text-[10px] font-medium">Agenda</span></Link>
-          <Link to="/team" className={getMobileLinkClass('/team')}><span className="material-symbols-outlined">groups</span><span className="text-[10px] font-medium">Equipo</span></Link>
         </nav>
       </div>
     </div>
   );
 };
 
-// --- COMPONENTE PRINCIPAL CON LÓGICA DE SEGURIDAD ---
 export default function App() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Verificar sesión al inicio
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
     });
 
-    // 2. Escuchar cambios (Login/Logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setLoading(false);
@@ -164,22 +153,18 @@ export default function App() {
   return (
     <HashRouter>
       <Routes>
-        {/* Si no hay sesión, mostramos Login */}
         {!session ? (
           <Route path="*" element={<Login />} />
         ) : (
-          /* Si hay sesión, mostramos la App protegida */
           <Route path="/" element={<Layout><Dashboard /></Layout>} />
         )}
 
-        {/* Rutas protegidas adicionales (Solo accesibles si hay sesión) */}
         {session && (
           <>
             <Route path="/fleet" element={<Layout><Fleet /></Layout>} />
             <Route path="/fleet/:id" element={<Layout><VehicleDetail /></Layout>} />
             <Route path="/maintenance" element={<Layout><Maintenance /></Layout>} />
             <Route path="/calendar" element={<Layout><Calendar /></Layout>} />
-            <Route path="/team" element={<Layout><Team /></Layout>} />
             <Route path="/settings" element={<Layout><Settings /></Layout>} />
           </>
         )}

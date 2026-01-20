@@ -46,16 +46,12 @@ const Dashboard = () => {
 
       if (fleet) {
         const today = new Date();
-        const thirtyDaysOut = new Date();
-        thirtyDaysOut.setDate(today.getDate() + 30);
-
         const realAlerts: any[] = [];
         let workshopCount = 0;
 
         fleet.forEach(v => {
           if (v.status === 'En Taller') workshopCount++;
 
-          // Lógica de Alertas Reales para la lista
           const checkDoc = (dateStr: string, type: string) => {
             if (!dateStr) return;
             const expiry = new Date(dateStr);
@@ -107,7 +103,6 @@ const Dashboard = () => {
         <p className="text-sm text-stone-500 font-medium">Estado real de la flota de El Progreso</p>
       </header>
 
-      {/* Alerta de Seguridad */}
       {showPasswordAlert && (
         <div className="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 flex flex-col sm:flex-row items-center gap-4 animate-in fade-in">
           <span className="material-symbols-outlined text-amber-500 text-3xl">lock_open</span>
@@ -119,7 +114,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* 1. Stat Cards (Uso de stats reales de Supabase) */}
+      {/* 1. Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
         <StatCard
           title="Documentación"
@@ -132,7 +127,7 @@ const Dashboard = () => {
         <StatCard
           title="En Taller"
           value={stats.inWorkshop}
-          subtext="Unidades no operativas"
+          subtext="Unidades detenidas"
           icon="build"
           colorClass="from-amber-500"
           borderClass="border-brand-border"
@@ -155,23 +150,22 @@ const Dashboard = () => {
         />
       </div>
 
-      {/* 2. Accesos Rápidos (Restaurados los 4 originales) */}
+      {/* 2. Accesos Rápidos - Ahora con 3 items */}
       <h3 className="text-stone-400 text-xs font-bold uppercase tracking-widest mb-3 px-1">Accesos Rápidos</h3>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         <QuickAction to="/maintenance" icon="handyman" label="Cargar Mantenim." color="bg-blue-600" />
         <QuickAction to="/fleet" icon="add_circle" label="Nueva Unidad" color="bg-primary-dark" />
         <QuickAction to="/calendar" icon="calendar_clock" label="Ver Agenda" color="bg-emerald-600" />
-        <QuickAction to="/team" icon="person_add" label="Personal" color="bg-purple-600" />
       </div>
 
-      {/* 3. Lista de Atención Requerida (Restaurada y con datos reales) */}
+      {/* 3. Critical Alerts List */}
       <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden flex flex-col shadow-lg">
         <div className="p-4 border-b border-brand-border flex justify-between items-center bg-brand-dark/30">
           <h3 className="text-white font-bold flex items-center gap-2">
             <span className="material-symbols-outlined text-rose-500">warning</span>
             Atención Requerida
           </h3>
-          <Link to="/calendar" className="text-xs text-primary hover:underline">Ver Calendario</Link>
+          <Link to="/calendar" className="text-xs text-primary hover:underline">Ver Agenda</Link>
         </div>
         <div className="divide-y divide-brand-border">
           {urgentAlerts.length === 0 ? (
