@@ -178,9 +178,13 @@ const VehicleDetail = () => {
             </div>
             <div className="lg:col-span-4 flex flex-col gap-4">
                <div className="flex-1 bg-brand-surface border border-brand-border rounded-xl p-6 flex flex-col justify-center items-center text-center relative overflow-hidden">
-                  <div className={`absolute inset-0 opacity-5 ${vehicle.status === 'Activo' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
+                  <div className={`absolute inset-0 opacity-5 ${vehicle.status === 'Activo' ? 'bg-emerald-500' :
+                        vehicle.status === 'Baja' ? 'bg-rose-500' : 'bg-amber-500'
+                     }`}></div>
                   <h3 className="text-stone-400 text-xs font-bold uppercase tracking-widest mb-2">Estado Actual</h3>
-                  <span className={`text-2xl font-bold mb-1 ${vehicle.status === 'Activo' ? 'text-emerald-500' : 'text-amber-500'}`}>{vehicle.status}</span>
+                  <span className={`text-2xl font-bold mb-1 ${vehicle.status === 'Activo' ? 'text-emerald-500' :
+                        vehicle.status === 'Baja' ? 'text-rose-500' : 'text-amber-500'
+                     }`}>{vehicle.status}</span>
                </div>
                <button onClick={() => setIsEditModalOpen(true)} className="w-full bg-primary hover:bg-primary-dark text-brand-dark font-bold py-3 rounded-lg text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/20"><span className="material-symbols-outlined">edit_document</span> Editar Datos</button>
             </div>
