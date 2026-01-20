@@ -66,7 +66,7 @@ const Dashboard = () => {
                 id: `${v.id}-${type}`,
                 type: 'Vencimiento',
                 subtype: type,
-                vehicle: `${v.model} (${v.patente || 'S/P'})`,
+                vehicle: `${v.model} (${v.patente ? v.patente.toUpperCase() : 'S/P'})`,
                 days: diffDays,
                 status: diffDays < 0 ? 'expired' : (diffDays < 7 ? 'warning' : 'info')
               });
@@ -183,7 +183,7 @@ const Dashboard = () => {
             urgentAlerts.map((alert) => (
               <div key={alert.id} className="p-4 flex items-center gap-4 hover:bg-brand-dark/30 transition-colors">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${alert.status === 'expired' ? 'bg-rose-500/10 text-rose-500' :
-                    alert.status === 'warning' ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'
+                  alert.status === 'warning' ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'
                   }`}>
                   <span className="material-symbols-outlined">
                     {alert.subtype === 'Seguro' ? 'security' : alert.subtype === 'VTV' ? 'verified' : 'badge'}
@@ -195,7 +195,7 @@ const Dashboard = () => {
                 </div>
                 <div className="text-right flex-shrink-0">
                   <span className={`text-xs font-bold px-2 py-1 rounded border ${alert.status === 'expired' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
-                      alert.status === 'warning' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                    alert.status === 'warning' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'
                     }`}>
                     {alert.days < 0 ? `Vencido hace ${Math.abs(alert.days)} días` : `Vence en ${alert.days} días`}
                   </span>

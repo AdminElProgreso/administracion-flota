@@ -53,12 +53,12 @@ const Fleet = () => {
       // OBJETO PARA SUPABASE: Debe coincidir con las columnas de tu DB
       const nuevoVehiculo = {
          tipo: newVehicleType,
-         patente: formData.get('patente'),
-         model: formData.get('modelo'), // Llave correcta: model
+         patente: formData.get('patente')?.toString().toUpperCase(),
+         model: formData.get('modelo')?.toString().toUpperCase(), // Llave correcta: model
          year: parseInt(formData.get('anio') as string) || new Date().getFullYear(), // Llave correcta: year
          section: formData.get('seccion'), // Llave correcta: section
-         manager: formData.get('encargado'), // Llave correcta: manager
-         assigned_driver: formData.get('chofer'), // Llave correcta: assigned_driver
+         manager: formData.get('encargado')?.toString().toUpperCase(), // Llave correcta: manager
+         assigned_driver: formData.get('chofer')?.toString().toUpperCase(), // Llave correcta: assigned_driver
          odometer: parseInt(formData.get('odometro') as string) || 0, // Llave correcta: odometer
          vtv_expiration: formData.get('vtv_date') || null, // Llave correcta: vtv_expiration
          insurance_expiration: formData.get('seguro_date') || null, // Llave correcta: insurance_expiration
