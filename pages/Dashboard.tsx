@@ -26,10 +26,14 @@ const QuickAction = ({ to, icon, label, color }: any) => (
 );
 
 const Dashboard = () => {
-  const [stats, setStats] = useState({ total: 0, inWorkshop: 0, alertsCount: 0 });
+  const [stats, setStats] = useState({ total: 0, inWorkshop: 0, alertsCount: 0, monthlyExpenses: 0 });
   const [urgentAlerts, setUrgentAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showPasswordAlert, setShowPasswordAlert] = useState(false);
+
+  // Obtener nombre del mes actual en español
+  const currentMonthName = new Date().toLocaleString('es-ES', { month: 'long' });
+  const capitalizedMonth = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -41,11 +45,24 @@ const Dashboard = () => {
         setShowPasswordAlert(true);
       }
 
-      // 2. Obtener vehículos para estadísticas y alertas reales
+      // 2. Obtener vehículos para estadísticas y alertas
       const { data: fleet } = await supabase.from('vehiculos').select('*');
 
+      // 3. Obtener gastos del mes actual
+      const today = new Date();
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
+      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59).toISOString();
+
+      const { data: expensesData } = await supabase
+        .from('mantenimientos')
+        .select('cost')
+        .gte('date', firstDay)
+        .lte('date', lastDay);
+
+      const totalMonthlyExpenses = expensesData?.reduce((acc, curr) => acc + (curr.cost || 0), 0) || 0;
+
       if (fleet) {
-        const today = new Date();
+        const checkToday = new Date();
         const realAlerts: any[] = [];
         let workshopCount = 0;
 
@@ -55,7 +72,7 @@ const Dashboard = () => {
           const checkDoc = (dateStr: string, type: string) => {
             if (!dateStr) return;
             const expiry = new Date(dateStr);
-            const diffDays = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            const diffDays = Math.ceil((expiry.getTime() - checkToday.getTime()) / (1000 * 60 * 60 * 24));
 
             if (diffDays <= 30) {
               realAlerts.push({
@@ -78,7 +95,8 @@ const Dashboard = () => {
         setStats({
           total: fleet.length,
           inWorkshop: workshopCount,
-          alertsCount: realAlerts.length
+          alertsCount: realAlerts.length,
+          monthlyExpenses: totalMonthlyExpenses
         });
       }
       setLoading(false);
@@ -134,8 +152,8 @@ const Dashboard = () => {
         />
         <StatCard
           title="Gasto Mensual"
-          value="$0"
-          subtext="Conexión Taller pendiente"
+          value={new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(stats.monthlyExpenses)}
+          subtext={`Acumulado ${capitalizedMonth}`}
           icon="payments"
           colorClass="from-emerald-500"
           borderClass="border-brand-border"
@@ -150,7 +168,7 @@ const Dashboard = () => {
         />
       </div>
 
-      {/* 2. Accesos Rápidos - Ahora con 3 items */}
+      {/* 2. Accesos Rápidos */}
       <h3 className="text-stone-400 text-xs font-bold uppercase tracking-widest mb-3 px-1">Accesos Rápidos</h3>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         <QuickAction to="/maintenance" icon="handyman" label="Cargar Mantenim." color="bg-blue-600" />
