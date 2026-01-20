@@ -11,13 +11,15 @@ const VehicleDetail = () => {
 
    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
    const [docUpdateModal, setDocUpdateModal] = useState<{ isOpen: boolean; type: string; current: string } | null>(null);
+   const [displayLimit, setDisplayLimit] = useState(10);
+   const [hasMore, setHasMore] = useState(false);
 
    // 1. CARGAR DATOS REALES DEL VEHÍCULO Y SU HISTORIAL
    const fetchVehicleData = async () => {
       setLoading(true);
 
-      // Traer datos del vehículo específico
-      const { data: vData, error: vError } = await supabase
+      // 1. Datos del vehículo
+      const { data: vData } = await supabase
          .from('vehiculos')
          .select('*')
          .eq('id', id)
@@ -41,15 +43,22 @@ const VehicleDetail = () => {
             alerts: []
          });
 
-         // Traer historial de mantenimientos de este vehículo
+         // 2. Historial con LÍMITE (Traemos el límite + 1 para saber si hay más)
          const { data: mData } = await supabase
             .from('mantenimientos')
             .select('*')
             .eq('vehicle_id', id)
-            .order('date', { ascending: false });
+            .order('date', { ascending: false })
+            .limit(displayLimit + 1);
 
          if (mData) {
-            setMaintenanceHistory(mData.map(m => ({
+            const more = mData.length > displayLimit;
+            setHasMore(more);
+
+            // Si hay más, quitamos el extra que usamos para la verificación
+            const finalData = more ? mData.slice(0, displayLimit) : mData;
+
+            setMaintenanceHistory(finalData.map(m => ({
                id: m.id,
                date: m.date,
                vehicleId: m.vehicle_id,
@@ -65,9 +74,10 @@ const VehicleDetail = () => {
       setLoading(false);
    };
 
+   // Re-ejecutar cuando cambie el límite
    useEffect(() => {
       fetchVehicleData();
-   }, [id]);
+   }, [id, displayLimit]);
 
    // 2. ACTUALIZAR DATOS GENERALES
    const handleUpdateVehicle = async (e: React.FormEvent) => {
