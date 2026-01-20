@@ -194,7 +194,7 @@ const VehicleDetail = () => {
                   <h3 className="text-stone-400 text-xs font-bold uppercase tracking-widest mb-2">Estado Actual</h3>
                   <span className={`text-2xl font-bold mb-1 ${vehicle.status === 'Activo' ? 'text-emerald-500' : 'text-amber-500'}`}>{vehicle.status}</span>
                </div>
-               <button onClick={() => setIsEditModalOpen(true)} className="w-full bg-primary hover:bg-primary-dark text-brand-dark font-bold py-3 rounded-lg text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/10"><span className="material-symbols-outlined">edit_document</span> Editar Datos</button>
+               <button onClick={() => setIsEditModalOpen(true)} className="w-full bg-primary hover:bg-primary-dark text-brand-dark font-bold py-3 rounded-lg text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/20"><span className="material-symbols-outlined">edit_document</span> Editar Datos</button>
             </div>
          </div>
 
@@ -207,44 +207,69 @@ const VehicleDetail = () => {
             </div>
          )}
 
-         {/* HISTORIAL TÉCNICO CON SCROLL Y PAGINACIÓN */}
+         {/* HISTORIAL TÉCNICO RESPONSIVO CON SCROLL Y PAGINACIÓN */}
          <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden flex flex-col shadow-lg">
             <div className="p-4 border-b border-brand-border bg-brand-dark/30 flex justify-between items-center">
                <h2 className="text-white font-bold flex items-center gap-2"><span className="material-symbols-outlined text-stone-400">build</span> Historial Técnico</h2>
             </div>
 
-            <div className="overflow-x-auto max-h-[450px] overflow-y-auto">
-               <table className="w-full text-left text-sm border-separate border-spacing-0">
-                  <thead className="bg-brand-dark text-xs uppercase font-medium text-stone-500 sticky top-0 z-10">
-                     <tr>
-                        <th className="px-6 py-4 bg-brand-dark border-b border-brand-border">Fecha</th>
-                        <th className="px-6 py-4 bg-brand-dark border-b border-brand-border">Categoría</th>
-                        <th className="px-6 py-4 bg-brand-dark border-b border-brand-border">Descripción</th>
-                        <th className="px-6 py-4 bg-brand-dark border-b border-brand-border text-right">Costo</th>
-                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-brand-border text-stone-300">
-                     {maintenanceHistory.length === 0 ? (
-                        <tr><td colSpan={4} className="px-6 py-8 text-center text-stone-500 italic">Sin registros técnicos.</td></tr>
-                     ) : (
-                        maintenanceHistory.map((log) => (
-                           <tr key={log.id} className="hover:bg-brand-dark/30 transition-colors">
-                              <td className="px-6 py-4 font-mono text-stone-400 whitespace-nowrap">{new Date(log.date).toLocaleDateString()}</td>
-                              <td className="px-6 py-4">
-                                 <span className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase border ${log.type === 'Mantenimiento' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>{log.type}</span>
-                              </td>
-                              <td className="px-6 py-4 font-medium text-white">{log.description}</td>
-                              <td className="px-6 py-4 text-right font-mono font-bold text-white whitespace-nowrap">${log.cost.toLocaleString()}</td>
-                           </tr>
-                        ))
-                     )}
-                  </tbody>
-               </table>
+            <div className="max-h-[500px] overflow-y-auto">
+               {/* VISTA DESKTOP (TABLA) - Se oculta en móviles */}
+               <div className="hidden md:block">
+                  <table className="w-full text-left text-sm border-separate border-spacing-0">
+                     <thead className="bg-brand-dark text-xs uppercase font-medium text-stone-500 sticky top-0 z-10">
+                        <tr>
+                           <th className="px-6 py-4 bg-brand-dark border-b border-brand-border">Fecha</th>
+                           <th className="px-6 py-4 bg-brand-dark border-b border-brand-border">Categoría</th>
+                           <th className="px-6 py-4 bg-brand-dark border-b border-brand-border">Descripción</th>
+                           <th className="px-6 py-4 bg-brand-dark border-b border-brand-border text-right">Costo</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-brand-border text-stone-300">
+                        {maintenanceHistory.length === 0 ? (
+                           <tr><td colSpan={4} className="px-6 py-8 text-center text-stone-500 italic">Sin registros técnicos.</td></tr>
+                        ) : (
+                           maintenanceHistory.map((log) => (
+                              <tr key={log.id} className="hover:bg-brand-dark/30 transition-colors">
+                                 <td className="px-6 py-4 font-mono text-stone-400 whitespace-nowrap">{new Date(log.date).toLocaleDateString()}</td>
+                                 <td className="px-6 py-4">
+                                    <span className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase border ${log.type === 'Mantenimiento' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>{log.type}</span>
+                                 </td>
+                                 <td className="px-6 py-4 font-medium text-white">{log.description}</td>
+                                 <td className="px-6 py-4 text-right font-mono font-bold text-white whitespace-nowrap">${log.cost.toLocaleString()}</td>
+                              </tr>
+                           ))
+                        )}
+                     </tbody>
+                  </table>
+               </div>
 
-               {/* BOTÓN CARGAR MÁS */}
+               {/* VISTA MOBILE (TARJETAS) - Solo visible en pantallas pequeñas */}
+               <div className="md:hidden divide-y divide-brand-border">
+                  {maintenanceHistory.length === 0 ? (
+                     <div className="px-6 py-8 text-center text-stone-500 italic">Sin registros técnicos.</div>
+                  ) : (
+                     maintenanceHistory.map((log) => (
+                        <div key={log.id} className="p-4 space-y-3 bg-brand-dark/10">
+                           <div className="flex justify-between items-start">
+                              <span className="text-xs font-mono text-stone-500">{new Date(log.date).toLocaleDateString()}</span>
+                              <span className="text-sm font-mono font-bold text-white">${log.cost.toLocaleString()}</span>
+                           </div>
+                           <div>
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${log.type === 'Mantenimiento' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>
+                                 {log.type}
+                              </span>
+                           </div>
+                           <p className="text-sm text-stone-300 leading-relaxed">{log.description}</p>
+                        </div>
+                     ))
+                  )}
+               </div>
+
+               {/* BOTÓN CARGAR MÁS (Compartido por ambas vistas) */}
                {hasMore && (
-                  <div className="p-4 bg-brand-dark/10 flex justify-center border-t border-brand-border">
-                     <button onClick={() => setDisplayLimit(prev => prev + 10)} className="text-primary text-xs font-bold uppercase hover:bg-primary/10 px-4 py-2 rounded-lg transition-all flex items-center gap-2 border border-primary/20">
+                  <div className="p-4 bg-brand-dark/20 flex justify-center border-t border-brand-border">
+                     <button onClick={() => setDisplayLimit(prev => prev + 10)} className="text-primary text-xs font-bold uppercase hover:bg-primary/10 px-6 py-2.5 rounded-lg transition-all flex items-center gap-2 border border-primary/20">
                         <span className="material-symbols-outlined text-sm">expand_more</span> Cargar registros anteriores
                      </button>
                   </div>
@@ -284,7 +309,7 @@ const VehicleDetail = () => {
          {/* RENEW MODAL */}
          {docUpdateModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setDocUpdateModal(null)}>
-               <div className="bg-brand-surface w-full max-w-sm rounded-xl border border-brand-border shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+               <div className="bg-brand-surface w-full max-sm rounded-xl border border-brand-border shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
                   <div className="flex items-center justify-between px-6 py-4 border-b border-brand-border bg-brand-dark/50">
                      <h3 className="text-white font-bold text-lg">Renovar {docUpdateModal.type}</h3>
                      <button onClick={() => setDocUpdateModal(null)} className="text-stone-400 hover:text-white"><span className="material-symbols-outlined">close</span></button>
