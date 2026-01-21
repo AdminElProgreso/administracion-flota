@@ -10,22 +10,23 @@ const formatLocalDate = (dateStr: string) => {
   return date.toLocaleDateString();
 };
 
-const StatCard = ({ title, value, subtext, icon, colorClass, borderClass, onClick }: any) => (
+const StatCard = ({ title, value, subtext, icon, colorClass, borderClass, onClick, customValueClass = "" }: any) => (
   <div className={`bg-brand-surface border ${borderClass} rounded-xl p-5 relative overflow-hidden group cursor-pointer transition-all hover:scale-[1.02]`} onClick={onClick}>
     <div className={`absolute right-0 top-0 w-20 h-20 bg-gradient-to-br ${colorClass} to-transparent rounded-bl-full -mr-4 -mt-4 opacity-10`}></div>
     <div className="flex justify-between items-start mb-2">
       <div className={`p-2 rounded-lg bg-brand-dark border border-brand-border ${colorClass.replace('from-', 'text-')}`}>
         <span className="material-symbols-outlined">{icon}</span>
       </div>
-      <span className="text-3xl font-bold text-white tracking-tight">{value}</span>
+      {/* Se añadió customValueClass para controlar el tamaño en mobile y evitar cortes */}
+      <span className={`font-bold text-white tracking-tight ${customValueClass || "text-3xl"}`}>{value}</span>
     </div>
     <h3 className="text-stone-400 text-xs font-bold uppercase tracking-widest">{title}</h3>
     <p className="text-[10px] text-stone-500 mt-1">{subtext}</p>
   </div>
 );
 
-const QuickAction = ({ to, icon, label, color }: any) => (
-  <Link to={to} className="flex flex-col items-center justify-center p-4 bg-brand-surface border border-brand-border rounded-xl hover:bg-stone-800 transition-colors active:scale-95 group">
+const QuickAction = ({ to, icon, label, color, className = "" }: any) => (
+  <Link to={to} className={`flex flex-col items-center justify-center p-4 bg-brand-surface border border-brand-border rounded-xl hover:bg-stone-800 transition-colors active:scale-95 group ${className}`}>
     <div className={`w-12 h-12 rounded-full ${color} flex items-center justify-center mb-2 group-hover:scale-110 transition-transform`}>
       <span className="material-symbols-outlined text-xl text-white">{icon}</span>
     </div>
@@ -221,19 +222,29 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Stat Cards */}
+      {/* Stat Cards - Se ajustó el tamaño de fuente para evitar cortes en móviles */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
         <StatCard title="Documentación" value={stats.alertsCount} subtext="Pendientes o turnos" icon="notifications_active" colorClass="from-rose-500" borderClass={stats.alertsCount > 0 ? "border-rose-500/30" : "border-brand-border"} />
         <StatCard title="En Taller" value={stats.inWorkshop} subtext="Unidades detenidas" icon="build" colorClass="from-amber-500" borderClass="border-brand-border" />
-        <StatCard title="Gasto Mensual" value={new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(stats.monthlyExpenses)} subtext={`Acumulado ${capitalizedMonth}`} icon="payments" colorClass="from-emerald-500" borderClass="border-brand-border" />
+        <StatCard
+          title="Gasto Mensual"
+          value={new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(stats.monthlyExpenses)}
+          subtext={`Acumulado ${capitalizedMonth}`}
+          icon="payments"
+          colorClass="from-emerald-500"
+          borderClass="border-brand-border"
+          customValueClass="text-xl sm:text-3xl" // Reducción de fuente en mobile
+        />
         <StatCard title="Flota Total" value={stats.total} subtext="Vehículos operativos" icon="local_shipping" colorClass="from-primary" borderClass="border-brand-border" />
       </div>
 
       <h3 className="text-stone-400 text-xs font-bold uppercase tracking-widest mb-3 px-1">Accesos Rápidos</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+      {/* Diseño Mobile 2x1 corregido: 2 columnas en mobile, 3 en desktop */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         <QuickAction to="/maintenance" icon="handyman" label="Cargar Mantenim." color="bg-blue-600" />
         <QuickAction to="/fleet" icon="add_circle" label="Nueva Unidad" color="bg-primary-dark" />
-        <QuickAction to="/calendar" icon="calendar_clock" label="Ver Agenda" color="bg-emerald-600" />
+        {/* El botón de agenda ocupa 2 columnas abajo en mobile */}
+        <QuickAction to="/calendar" icon="calendar_clock" label="Ver Agenda" color="bg-emerald-600" className="col-span-2 sm:col-span-1" />
       </div>
 
       {/* Critical Alerts List */}
