@@ -12,14 +12,11 @@ const Maintenance = () => {
       isOpen: false, data: null, mode: 'create'
    });
 
-   // ESTADOS PARA PAGINACIÓN
    const [displayLimit, setDisplayLimit] = useState(10);
    const [hasMore, setHasMore] = useState(false);
 
    const fetchData = async () => {
       setLoading(true);
-
-      // Consultamos con el límite actual + 1 para saber si hay más registros
       const { data: mData } = await supabase
          .from('mantenimientos')
          .select('*, vehiculos(model, patente)')
@@ -29,11 +26,8 @@ const Maintenance = () => {
       const { data: vData } = await supabase.from('vehiculos').select('id, model, patente');
 
       if (mData) {
-         // Comprobar si hay más registros disponibles
          const more = mData.length > displayLimit;
          setHasMore(more);
-
-         // Si hay más, quitamos el extra usado para la verificación
          const finalData = more ? mData.slice(0, displayLimit) : mData;
 
          const mappedLogs: MaintenanceLog[] = finalData.map(m => ({
@@ -55,7 +49,7 @@ const Maintenance = () => {
 
    useEffect(() => {
       fetchData();
-   }, [displayLimit]); // Recargar cuando se aumente el límite
+   }, [displayLimit]);
 
    const handleSave = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -181,26 +175,16 @@ const Maintenance = () => {
             </table>
          </div>
 
-         {/* BOTÓN CARGAR MÁS (Se muestra en ambas vistas) */}
+         {/* BOTÓN CARGAR MÁS */}
          {hasMore && (
             <div className="mt-6 flex justify-center">
-               <button
-                  onClick={() => setDisplayLimit(prev => prev + 10)}
-                  className="px-6 py-2.5 bg-brand-surface border border-brand-border rounded-lg text-primary text-xs font-bold uppercase hover:bg-brand-dark transition-all flex items-center gap-2 shadow-lg"
-               >
-                  <span className="material-symbols-outlined text-sm">expand_more</span>
-                  Cargar registros anteriores
+               <button onClick={() => setDisplayLimit(prev => prev + 10)} className="px-6 py-2.5 bg-brand-surface border border-brand-border rounded-lg text-primary text-xs font-bold uppercase hover:bg-brand-dark transition-all flex items-center gap-2 shadow-lg">
+                  <span className="material-symbols-outlined text-sm">expand_more</span> Cargar registros anteriores
                </button>
             </div>
          )}
 
-         {logs.length > 0 && !hasMore && (
-            <div className="mt-8 text-center">
-               <p className="text-[10px] text-stone-600 uppercase font-bold tracking-widest opacity-50">Fin del historial técnico</p>
-            </div>
-         )}
-
-         {/* MODALS (Mantenidos igual) */}
+         {/* VIEW DETAIL MODAL */}
          {viewModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setViewModal(null)}>
                <div className="bg-brand-surface w-full max-w-lg rounded-xl border border-brand-border shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
@@ -223,26 +207,81 @@ const Maintenance = () => {
             </div>
          )}
 
+         {/* --- MODAL EDITAR / CREAR RESTAURADO (DISEÑO PROFESIONAL) --- */}
          {editModal.isOpen && editModal.data && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setEditModal({ ...editModal, isOpen: false })}>
-               <form onSubmit={handleSave} className="bg-brand-surface w-full max-w-2xl rounded-xl border border-brand-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
-                  <div className="flex justify-between px-6 py-4 border-b border-brand-border bg-brand-dark/50">
+               <div className="bg-brand-surface w-full max-w-2xl rounded-xl border border-brand-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-brand-border bg-brand-dark/50 flex-shrink-0">
                      <h3 className="text-white font-bold text-lg">{editModal.mode === 'create' ? 'Nuevo Registro' : 'Editar Registro'}</h3>
-                     <button type="button" onClick={() => setEditModal({ ...editModal, isOpen: false })} className="text-stone-400 hover:text-white"><span className="material-symbols-outlined">close</span></button>
+                     <button onClick={() => setEditModal({ ...editModal, isOpen: false })} className="text-stone-400 hover:text-white"><span className="material-symbols-outlined">close</span></button>
                   </div>
-                  <div className="p-6 space-y-6 overflow-y-auto">
-                     <div className="grid grid-cols-2 gap-4">
-                        <div><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Fecha</label><input name="date" type="date" required defaultValue={editModal.data.date} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white" /></div>
-                        <div><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Vehículo</label><select name="vehicleId" required defaultValue={editModal.data.vehicleId} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white">{vehicles.map(v => <option key={v.id} value={v.id}>{v.model} ({v.patente?.toUpperCase() || 'S/P'})</option>)}</select></div>
+
+                  <form onSubmit={handleSave} className="flex flex-col overflow-hidden">
+                     <div className="p-6 space-y-6 overflow-y-auto">
+                        {/* Top Row */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                           <div>
+                              <label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Tipo de Trabajo</label>
+                              <div className={`px-3 py-2 rounded-lg border flex items-center gap-2 ${editModal.data.type === 'Mantenimiento'
+                                    ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+                                    : 'bg-orange-500/10 border-orange-500/30 text-orange-400'
+                                 }`}>
+                                 <span className="material-symbols-outlined text-lg">{editModal.data.type === 'Mantenimiento' ? 'build' : 'car_crash'}</span>
+                                 <span className="font-bold text-sm">{editModal.data.type}</span>
+                              </div>
+                           </div>
+                           <div>
+                              <label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Fecha</label>
+                              <input name="date" type="date" required defaultValue={editModal.data.date} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none" />
+                           </div>
+                        </div>
+
+                        {/* Vehicle Selection */}
+                        <div>
+                           <label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Vehículo Afectado</label>
+                           <select name="vehicleId" required defaultValue={editModal.data.vehicleId} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none">
+                              <option value="">Seleccione un vehículo...</option>
+                              {vehicles.map(v => (
+                                 <option key={v.id} value={v.id}>{v.model} ({v.patente?.toUpperCase() || 'S/P'})</option>
+                              ))}
+                           </select>
+                        </div>
+
+                        {/* Description */}
+                        <div>
+                           <label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Descripción Detallada</label>
+                           <textarea
+                              name="description"
+                              required
+                              defaultValue={editModal.data.description}
+                              rows={3}
+                              className="w-full bg-brand-dark border-brand-border rounded-lg p-3 text-white focus:ring-1 focus:ring-primary resize-none outline-none"
+                              placeholder="Describa el trabajo realizado, repuestos utilizados, etc."
+                           ></textarea>
+                        </div>
+
+                        {/* Provider & Cost */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                           <div>
+                              <label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Proveedor / Taller</label>
+                              <input name="provider" type="text" required defaultValue={editModal.data.provider} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none" placeholder="Ej. Taller Central" />
+                           </div>
+                           <div>
+                              <label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Costo ($)</label>
+                              <input name="cost" type="number" step="0.01" required defaultValue={editModal.data.cost} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none" placeholder="0.00" />
+                           </div>
+                        </div>
                      </div>
-                     <div><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Descripción</label><textarea name="description" required defaultValue={editModal.data.description} rows={3} className="w-full bg-brand-dark border-brand-border rounded-lg p-3 text-white resize-none"></textarea></div>
-                     <div className="grid grid-cols-2 gap-4">
-                        <div><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Lugar</label><input name="provider" type="text" required defaultValue={editModal.data.provider} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white" /></div>
-                        <div><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Costo ($)</label><input name="cost" type="number" step="0.01" required defaultValue={editModal.data.cost} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white" /></div>
+
+                     {/* Actions */}
+                     <div className="p-6 pt-0 flex justify-end gap-3 flex-shrink-0">
+                        <button type="button" onClick={() => setEditModal({ ...editModal, isOpen: false })} className="px-4 py-2 text-stone-400 hover:text-white text-sm font-bold uppercase transition-colors">Cancelar</button>
+                        <button type="submit" className="px-6 py-2 bg-primary hover:bg-primary-dark text-brand-dark font-bold rounded-lg text-sm shadow-lg shadow-primary/20 transition-colors">
+                           {editModal.mode === 'create' ? 'Registrar Trabajo' : 'Guardar Cambios'}
+                        </button>
                      </div>
-                  </div>
-                  <div className="p-6 pt-0 flex justify-end gap-3"><button type="button" onClick={() => setEditModal({ ...editModal, isOpen: false })} className="px-4 py-2 text-stone-400 font-bold uppercase text-sm">Cancelar</button><button type="submit" className="px-6 py-2 bg-primary text-brand-dark font-bold rounded-lg text-sm shadow-lg">Guardar</button></div>
-               </form>
+                  </form>
+               </div>
             </div>
          )}
       </div>
