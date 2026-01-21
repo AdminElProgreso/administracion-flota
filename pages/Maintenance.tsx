@@ -12,17 +12,31 @@ const Maintenance = () => {
       isOpen: false, data: null, mode: 'create'
    });
 
+   // ESTADOS PARA PAGINACIÓN
+   const [displayLimit, setDisplayLimit] = useState(10);
+   const [hasMore, setHasMore] = useState(false);
+
    const fetchData = async () => {
       setLoading(true);
+
+      // Consultamos con el límite actual + 1 para saber si hay más registros
       const { data: mData } = await supabase
          .from('mantenimientos')
          .select('*, vehiculos(model, patente)')
-         .order('date', { ascending: false });
+         .order('date', { ascending: false })
+         .limit(displayLimit + 1);
 
       const { data: vData } = await supabase.from('vehiculos').select('id, model, patente');
 
       if (mData) {
-         const mappedLogs: MaintenanceLog[] = mData.map(m => ({
+         // Comprobar si hay más registros disponibles
+         const more = mData.length > displayLimit;
+         setHasMore(more);
+
+         // Si hay más, quitamos el extra usado para la verificación
+         const finalData = more ? mData.slice(0, displayLimit) : mData;
+
+         const mappedLogs: MaintenanceLog[] = finalData.map(m => ({
             id: m.id,
             date: m.date,
             vehicleId: m.vehicle_id,
@@ -39,7 +53,9 @@ const Maintenance = () => {
       setLoading(false);
    };
 
-   useEffect(() => { fetchData(); }, []);
+   useEffect(() => {
+      fetchData();
+   }, [displayLimit]); // Recargar cuando se aumente el límite
 
    const handleSave = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -78,7 +94,7 @@ const Maintenance = () => {
       });
    };
 
-   if (loading) return <div className="h-screen flex items-center justify-center bg-background-dark"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
+   if (loading && logs.length === 0) return <div className="h-screen flex items-center justify-center bg-background-dark"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
 
    return (
       <div className="p-4 md:p-6 relative min-h-screen pb-20 md:pb-6">
@@ -88,9 +104,6 @@ const Maintenance = () => {
                <p className="text-sm text-stone-500">Historial de Mantenimientos y Reparaciones de flota.</p>
             </div>
             <div className="flex gap-2 relative w-full sm:w-auto">
-               <button className="flex-1 sm:flex-none justify-center px-4 py-2 text-xs font-medium rounded-md bg-brand-surface border border-brand-border text-white hover:bg-stone-700 flex items-center transition-colors">
-                  <span className="material-symbols-outlined text-[18px]">filter_list</span> Filtrar
-               </button>
                <div className="relative flex-1 sm:flex-none">
                   <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="w-full justify-center px-4 py-2 text-xs font-medium rounded-md bg-primary hover:bg-primary-dark text-brand-dark font-bold flex items-center gap-1 shadow-lg transition-colors">
                      <span className="material-symbols-outlined text-[18px]">add</span> Cargar Trabajo
@@ -126,7 +139,6 @@ const Maintenance = () => {
                      </div>
                      <div className="text-right">
                         <span className="block text-lg font-mono font-bold text-white">${row.cost.toLocaleString()}</span>
-                        {/* CORRECCIÓN FECHA LOCAL */}
                         <span className="text-xs text-stone-500">{new Date(row.date + 'T00:00:00').toLocaleDateString()}</span>
                      </div>
                   </div>
@@ -153,7 +165,6 @@ const Maintenance = () => {
                <tbody className="divide-y divide-brand-border">
                   {logs.map((row) => (
                      <tr key={row.id} className="hover:bg-brand-dark/30 transition-colors">
-                        {/* CORRECCIÓN FECHA LOCAL */}
                         <td className="px-6 py-4 text-sm text-white font-mono">{new Date(row.date + 'T00:00:00').toLocaleDateString()}</td>
                         <td className="px-6 py-4"><span className="font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded text-xs border border-primary/20">{row.vehicleName}</span></td>
                         <td className="px-6 py-4"><span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase border ${row.type === 'Mantenimiento' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>{row.type}</span></td>
@@ -170,7 +181,26 @@ const Maintenance = () => {
             </table>
          </div>
 
-         {/* VIEW DETAIL MODAL */}
+         {/* BOTÓN CARGAR MÁS (Se muestra en ambas vistas) */}
+         {hasMore && (
+            <div className="mt-6 flex justify-center">
+               <button
+                  onClick={() => setDisplayLimit(prev => prev + 10)}
+                  className="px-6 py-2.5 bg-brand-surface border border-brand-border rounded-lg text-primary text-xs font-bold uppercase hover:bg-brand-dark transition-all flex items-center gap-2 shadow-lg"
+               >
+                  <span className="material-symbols-outlined text-sm">expand_more</span>
+                  Cargar registros anteriores
+               </button>
+            </div>
+         )}
+
+         {logs.length > 0 && !hasMore && (
+            <div className="mt-8 text-center">
+               <p className="text-[10px] text-stone-600 uppercase font-bold tracking-widest opacity-50">Fin del historial técnico</p>
+            </div>
+         )}
+
+         {/* MODALS (Mantenidos igual) */}
          {viewModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setViewModal(null)}>
                <div className="bg-brand-surface w-full max-w-lg rounded-xl border border-brand-border shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
@@ -193,7 +223,6 @@ const Maintenance = () => {
             </div>
          )}
 
-         {/* EDIT / CREATE MODAL */}
          {editModal.isOpen && editModal.data && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setEditModal({ ...editModal, isOpen: false })}>
                <form onSubmit={handleSave} className="bg-brand-surface w-full max-w-2xl rounded-xl border border-brand-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
