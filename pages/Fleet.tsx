@@ -248,7 +248,7 @@ const Fleet = () => {
                      <th className="px-6 py-4 font-semibold">Identificación</th>
                      <th className="px-6 py-4 font-semibold">Sección y Encargado</th>
                      <th className="px-6 py-4 font-semibold">Documentación</th>
-                     <th className="px-6 py-4 font-semibold">Uso Actual</th>
+                     <th className="px-6 py-4 font-semibold">HORAS/KM</th>
                      <th className="px-6 py-4 font-semibold">Estado</th>
                      <th className="px-6 py-4 font-semibold text-right">Acciones</th>
                   </tr>
@@ -315,7 +315,7 @@ const Fleet = () => {
                               <h4 className="text-primary font-bold text-xs uppercase border-b border-brand-border pb-2">Datos y Responsables</h4>
                               <div className="grid grid-cols-2 gap-3">
                                  {newVehicleType !== 'generator' && <div className="col-span-1"><label className="text-xs text-stone-500 mb-1 block">Patente</label><input name="patente" className="w-full bg-brand-dark border-brand-border rounded h-10 px-3 text-white uppercase font-mono" placeholder="AA000BB" /></div>}
-                                 <div className={newVehicleType === 'generator' ? 'col-span-2' : 'col-span-1'}><label className="text-xs text-stone-500 mb-1 block">Uso Actual</label><input name="odometro" type="number" className="w-full bg-brand-dark border-brand-border rounded h-10 px-3 text-white" /></div>
+                                 <div className={newVehicleType === 'generator' ? 'col-span-2' : 'col-span-1'}><label className="text-xs text-stone-500 mb-1 block">HORAS/KM</label><input name="odometro" type="number" className="w-full bg-brand-dark border-brand-border rounded h-10 px-3 text-white" /></div>
                                  <div className="col-span-1"><label className="text-xs text-stone-500 mb-1 block">Modelo</label><input name="modelo" required className="w-full bg-brand-dark border-brand-border rounded h-10 px-3 text-white" /></div>
                                  <div className="col-span-1"><label className="text-xs text-stone-500 mb-1 block">Año</label><input name="anio" type="number" className="w-full bg-brand-dark border-brand-border rounded h-10 px-3 text-white" /></div>
                               </div>
