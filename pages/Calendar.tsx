@@ -26,17 +26,17 @@ const Calendar = () => {
             // Lógica para Vencimientos
             const checkExpiry = (dateStr: string, type: 'Seguro' | 'VTV' | 'Patente') => {
                if (!dateStr) return;
-               // CORRECCIÓN: Forzar medianoche local para evitar desvío de zona horaria
-               const d = new Date(dateStr + 'T00:00:00');
-
-               if (d.getMonth() === currentDate.getMonth() && d.getFullYear() === currentDate.getFullYear()) {
+               const d = new Date(dateStr);
+               if (d.getUTCMonth() === currentDate.getMonth() && d.getUTCFullYear() === currentDate.getFullYear()) {
                   let status = 'Próximo';
-                  if (d.getTime() < today.getTime()) status = 'Vencido';
-                  else if (d.getTime() === today.getTime()) status = 'Vence Hoy';
+                  const compareDate = new Date(dateStr);
+                  compareDate.setHours(0, 0, 0, 0);
+                  if (compareDate.getTime() < today.getTime()) status = 'Vencido';
+                  else if (compareDate.getTime() === today.getTime()) status = 'Vence Hoy';
 
                   realEvents.push({
                      id: `${v.id}-exp-${type}`,
-                     day: d.getDate(),
+                     day: d.getUTCDate(),
                      type,
                      vehicle: v.model,
                      plate: v.patente ? v.patente.toUpperCase() : 'S/P',
@@ -50,12 +50,11 @@ const Calendar = () => {
             // Lógica para Turnos (Color Azul)
             const checkAppt = (dateStr: string, type: string) => {
                if (!dateStr) return;
-               const d = new Date(dateStr + 'T00:00:00');
-
-               if (d.getMonth() === currentDate.getMonth() && d.getFullYear() === currentDate.getFullYear()) {
+               const d = new Date(dateStr);
+               if (d.getUTCMonth() === currentDate.getMonth() && d.getUTCFullYear() === currentDate.getFullYear()) {
                   realEvents.push({
                      id: `${v.id}-appt-${type}`,
-                     day: d.getDate(),
+                     day: d.getUTCDate(),
                      type: `Turno ${type}`,
                      vehicle: v.model,
                      plate: v.patente ? v.patente.toUpperCase() : 'S/P',
@@ -136,8 +135,8 @@ const Calendar = () => {
                            <div className="mt-7 space-y-1">
                               {isCurrentMonth && dayEvents.map((evt) => (
                                  <button key={evt.id} onClick={() => setSelectedEvent(evt)} className={`w-full text-left px-2 py-1 rounded border text-[10px] font-bold truncate flex items-center gap-1 ${evt.color === 'rose' ? 'bg-rose-500/10 border-rose-500/30 text-rose-500' :
-                                       evt.color === 'blue' ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' :
-                                          evt.color === 'amber' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
+                                    evt.color === 'blue' ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' :
+                                       evt.color === 'amber' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
                                     }`}>
                                     <span className="truncate">{evt.type} • {evt.plate}</span>
                                  </button>
@@ -176,8 +175,8 @@ const Calendar = () => {
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedEvent(null)}>
                <div className="bg-brand-surface border border-brand-border rounded-xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
                   <div className={`h-2 w-full ${selectedEvent.color === 'rose' ? 'bg-rose-500' :
-                        selectedEvent.color === 'blue' ? 'bg-blue-500' :
-                           selectedEvent.color === 'amber' ? 'bg-amber-500' : 'bg-emerald-500'
+                     selectedEvent.color === 'blue' ? 'bg-blue-500' :
+                        selectedEvent.color === 'amber' ? 'bg-amber-500' : 'bg-emerald-500'
                      }`}></div>
                   <div className="p-6">
                      <h3 className="text-xl font-bold text-white mb-2">{selectedEvent.type}</h3>
