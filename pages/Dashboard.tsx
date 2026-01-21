@@ -5,7 +5,6 @@ import { supabase } from '../supabase';
 // Función auxiliar para corregir el desfase de fecha UTC
 const formatLocalDate = (dateStr: string) => {
   if (!dateStr) return '';
-  // Separamos los componentes para evitar que el navegador aplique zona horaria
   const [year, month, day] = dateStr.split('-').map(Number);
   const date = new Date(year, month - 1, day);
   return date.toLocaleDateString();
@@ -41,92 +40,137 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showPasswordAlert, setShowPasswordAlert] = useState(false);
 
+  // ESTADO PARA EL MODAL DE RENOVACIÓN RÁPIDA
+  const [renewalModal, setRenewalModal] = useState<{
+    isOpen: boolean;
+    vehicle: any;
+    type: string;
+    currentExpiry: string
+  } | null>(null);
+
   const currentMonthName = new Date().toLocaleString('es-ES', { month: 'long' });
   const capitalizedMonth = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
 
+  const fetchDashboardData = async () => {
+    setLoading(true);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && !user.user_metadata?.password_set) {
+      setShowPasswordAlert(true);
+    }
+
+    const { data: fleet } = await supabase.from('vehiculos').select('*').neq('status', 'Baja');
+
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+
+    const { data: expensesData } = await supabase.from('mantenimientos')
+      .select('cost')
+      .gte('date', firstDay)
+      .lte('date', lastDay);
+
+    const totalMonthlyExpenses = expensesData?.reduce((acc, curr) => acc + (curr.cost || 0), 0) || 0;
+
+    if (fleet) {
+      const todayLocal = new Date();
+      const offset = todayLocal.getTimezoneOffset();
+      const todayStr = new Date(todayLocal.getTime() - (offset * 60 * 1000)).toISOString().split('T')[0];
+
+      const realAlerts: any[] = [];
+      const apptsForToday: any[] = [];
+      let workshopCount = 0;
+
+      fleet.forEach(v => {
+        if (v.status === 'En Taller') workshopCount++;
+
+        // Detectar turnos para hoy
+        const checkAppt = (apptStr: string, expiryStr: string, type: string) => {
+          if (apptStr === todayStr) {
+            apptsForToday.push({
+              id: v.id,
+              vehicle: v.model,
+              plate: v.patente,
+              type,
+              currentExpiry: expiryStr,
+              fullData: v
+            });
+          }
+        };
+
+        checkAppt(v.vtv_appointment, v.vtv_expiration, 'VTV');
+        checkAppt(v.insurance_appointment, v.insurance_expiration, 'Seguro');
+        checkAppt(v.patente_appointment, v.patente_expiration, 'Patente');
+
+        const checkDoc = (dateStr: string, apptStr: string, type: string) => {
+          if (!dateStr && !apptStr) return;
+          let diffDays = 999;
+          if (dateStr) {
+            const expiry = new Date(dateStr + 'T00:00:00');
+            diffDays = Math.ceil((expiry.getTime() - todayLocal.getTime()) / (1000 * 60 * 60 * 24));
+          }
+
+          if (diffDays <= 30 || apptStr) {
+            realAlerts.push({
+              id: `${v.id}-${type}`,
+              type: 'Vencimiento',
+              subtype: type,
+              vehicle: `${v.model} (${v.patente ? v.patente.toUpperCase() : 'S/P'})`,
+              days: diffDays,
+              hasAppointment: !!apptStr,
+              status: apptStr ? 'appointment' : (diffDays < 0 ? 'expired' : (diffDays <= 15 ? 'warning' : 'info'))
+            });
+          }
+        };
+
+        checkDoc(v.vtv_expiration, v.vtv_appointment, 'VTV');
+        checkDoc(v.insurance_expiration, v.insurance_appointment, 'Seguro');
+        checkDoc(v.patente_expiration, v.patente_appointment, 'Patente');
+      });
+
+      setTodayAppts(apptsForToday);
+      setUrgentAlerts(realAlerts.sort((a, b) => a.days - b.days).slice(0, 5));
+      setStats({
+        total: fleet.length,
+        inWorkshop: workshopCount,
+        alertsCount: realAlerts.length,
+        monthlyExpenses: totalMonthlyExpenses
+      });
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      setLoading(true);
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user && !user.user_metadata?.password_set) {
-        setShowPasswordAlert(true);
-      }
-
-      // 1. Obtener flota activa
-      const { data: fleet } = await supabase.from('vehiculos').select('*').neq('status', 'Baja');
-
-      // 2. Obtener gastos del mes (Corregido rango local)
-      const now = new Date();
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-
-      const { data: expensesData } = await supabase.from('mantenimientos')
-        .select('cost')
-        .gte('date', firstDay)
-        .lte('date', lastDay);
-
-      const totalMonthlyExpenses = expensesData?.reduce((acc, curr) => acc + (curr.cost || 0), 0) || 0;
-
-      if (fleet) {
-        // Obtener fecha de hoy en formato YYYY-MM-DD local
-        const todayLocal = new Date();
-        const offset = todayLocal.getTimezoneOffset();
-        const todayStr = new Date(todayLocal.getTime() - (offset * 60 * 1000)).toISOString().split('T')[0];
-
-        const realAlerts: any[] = [];
-        const apptsForToday: any[] = [];
-        let workshopCount = 0;
-
-        fleet.forEach(v => {
-          if (v.status === 'En Taller') workshopCount++;
-
-          // Revisar turnos para hoy (Corregido)
-          if (v.vtv_appointment === todayStr) apptsForToday.push({ id: v.id, vehicle: v.model, plate: v.patente, type: 'VTV' });
-          if (v.insurance_appointment === todayStr) apptsForToday.push({ id: v.id, vehicle: v.model, plate: v.patente, type: 'Seguro' });
-          if (v.patente_appointment === todayStr) apptsForToday.push({ id: v.id, vehicle: v.model, plate: v.patente, type: 'Patente' });
-
-          const checkDoc = (dateStr: string, apptStr: string, type: string) => {
-            if (!dateStr && !apptStr) return;
-
-            let diffDays = 999;
-            if (dateStr) {
-              const expiry = new Date(dateStr + 'T00:00:00'); // Forzar medianoche local
-              diffDays = Math.ceil((expiry.getTime() - todayLocal.getTime()) / (1000 * 60 * 60 * 24));
-            }
-
-            if (diffDays <= 30 || apptStr) {
-              realAlerts.push({
-                id: `${v.id}-${type}`,
-                type: 'Vencimiento',
-                subtype: type,
-                vehicle: `${v.model} (${v.patente ? v.patente.toUpperCase() : 'S/P'})`,
-                days: diffDays,
-                hasAppointment: !!apptStr,
-                status: apptStr ? 'appointment' : (diffDays < 0 ? 'expired' : (diffDays <= 15 ? 'warning' : 'info'))
-              });
-            }
-          };
-
-          checkDoc(v.vtv_expiration, v.vtv_appointment, 'VTV');
-          checkDoc(v.insurance_expiration, v.insurance_appointment, 'Seguro');
-          checkDoc(v.patente_expiration, v.patente_appointment, 'Patente');
-        });
-
-        setTodayAppts(apptsForToday);
-        setUrgentAlerts(realAlerts.sort((a, b) => a.days - b.days).slice(0, 5));
-        setStats({
-          total: fleet.length,
-          inWorkshop: workshopCount,
-          alertsCount: realAlerts.length,
-          monthlyExpenses: totalMonthlyExpenses
-        });
-      }
-      setLoading(false);
-    };
-
     fetchDashboardData();
   }, []);
+
+  // LÓGICA PARA ACTUALIZAR VENCIMIENTO Y BORRAR TURNO
+  const handleConfirmRenewal = async (newDate: string) => {
+    if (!renewalModal || !newDate) return;
+
+    const columnMap: any = {
+      'VTV': { exp: 'vtv_expiration', appt: 'vtv_appointment' },
+      'Seguro': { exp: 'insurance_expiration', appt: 'insurance_appointment' },
+      'Patente': { exp: 'patente_expiration', appt: 'patente_appointment' }
+    };
+
+    const fields = columnMap[renewalModal.type];
+
+    const { error } = await supabase
+      .from('vehiculos')
+      .update({
+        [fields.exp]: newDate,
+        [fields.appt]: null // Elimina el turno automáticamente
+      })
+      .eq('id', renewalModal.vehicle.id);
+
+    if (error) {
+      alert("Error al actualizar: " + error.message);
+    } else {
+      setRenewalModal(null);
+      fetchDashboardData();
+    }
+  };
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-background-dark"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
 
@@ -140,7 +184,7 @@ const Dashboard = () => {
         <p className="text-sm text-stone-500 font-medium">Estado real de la flota de El Progreso</p>
       </header>
 
-      {/* Notificación de Turnos para Hoy (ATALJO RÁPIDO) */}
+      {/* Notificación de Turnos para Hoy con Acción de Modal */}
       {todayAppts.length > 0 && (
         <div className="mb-6 space-y-3">
           {todayAppts.map((appt, idx) => (
@@ -154,13 +198,13 @@ const Dashboard = () => {
                   {appt.vehicle} ({appt.plate?.toUpperCase()}) tiene un turno para renovar {appt.type} el día de hoy.
                 </p>
               </div>
-              <Link
-                to={`/fleet/${appt.id}`}
+              <button
+                onClick={() => setRenewalModal({ isOpen: true, vehicle: appt.fullData, type: appt.type, currentExpiry: appt.currentExpiry })}
                 className="bg-blue-500 hover:bg-blue-600 text-white font-bold px-6 py-2 rounded-lg text-sm transition-colors shadow-lg shadow-blue-900/20 flex items-center gap-2"
               >
                 <span className="material-symbols-outlined text-sm">edit_calendar</span>
                 Renovar Ahora
-              </Link>
+              </button>
             </div>
           ))}
         </div>
@@ -205,8 +249,8 @@ const Dashboard = () => {
             urgentAlerts.map((alert) => (
               <div key={alert.id} className="p-4 flex items-center gap-4 hover:bg-brand-dark/30 transition-colors">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${alert.status === 'appointment' ? 'bg-blue-500/10 text-blue-400' :
-                    alert.status === 'expired' ? 'bg-rose-500/10 text-rose-500' :
-                      alert.status === 'warning' ? 'bg-amber-500/10 text-amber-500' : 'bg-stone-800 text-stone-500'
+                  alert.status === 'expired' ? 'bg-rose-500/10 text-rose-500' :
+                    alert.status === 'warning' ? 'bg-amber-500/10 text-amber-500' : 'bg-stone-800 text-stone-500'
                   }`}>
                   <span className="material-symbols-outlined">{alert.subtype === 'Seguro' ? 'security' : alert.subtype === 'VTV' ? 'verified' : 'badge'}</span>
                 </div>
@@ -216,8 +260,8 @@ const Dashboard = () => {
                 </div>
                 <div className="text-right flex-shrink-0">
                   <span className={`text-xs font-bold px-2 py-1 rounded border ${alert.status === 'appointment' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                      alert.status === 'expired' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
-                        alert.status === 'warning' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                    alert.status === 'expired' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                      alert.status === 'warning' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
                     }`}>
                     {alert.status === 'appointment' ? 'EN PROCESO' : (alert.days < 0 ? `Vencido` : `Faltan ${alert.days} días`)}
                   </span>
@@ -227,6 +271,71 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      {/* MODAL DE RENOVACIÓN DESDE DASHBOARD (DISEÑO CALENDARIO) */}
+      {renewalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setRenewalModal(null)}>
+          <div className="bg-brand-surface border border-brand-border rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="h-2 w-full bg-blue-500"></div>
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center border border-blue-500/20">
+                    <span className="material-symbols-outlined text-2xl">autorenew</span>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white leading-tight">Renovar {renewalModal.type}</h3>
+                    <p className="text-stone-400 text-sm">Gestión de turno hoy</p>
+                  </div>
+                </div>
+                <button onClick={() => setRenewalModal(null)} className="text-stone-400 hover:text-white"><span className="material-symbols-outlined">close</span></button>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                <div className="bg-brand-dark rounded-lg p-4 border border-brand-border">
+                  <div className="flex justify-between mb-3">
+                    <div>
+                      <p className="text-[10px] text-stone-500 uppercase font-bold mb-1">Unidad</p>
+                      <p className="text-white font-bold text-sm">{renewalModal.vehicle.model}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-stone-500 uppercase font-bold mb-1">Patente</p>
+                      <p className="text-primary font-mono text-xs bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded">{renewalModal.vehicle.patente?.toUpperCase() || 'S/P'}</p>
+                    </div>
+                  </div>
+                  <div className="h-px bg-brand-border my-2"></div>
+                  <div>
+                    <p className="text-[10px] text-stone-500 uppercase font-bold mb-1">Vencimiento Actual (Lectura)</p>
+                    <p className="text-stone-400 text-sm font-mono">{formatLocalDate(renewalModal.currentExpiry) || 'Sin fecha'}</p>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-lg bg-stone-900/50 border border-brand-border/50">
+                  <label className="text-[10px] text-stone-500 uppercase font-bold mb-2 block">Nueva Fecha de Vencimiento</label>
+                  <input
+                    type="date"
+                    id="newExpiryDate"
+                    className="w-full bg-brand-dark border border-brand-border rounded-lg h-12 px-3 text-white focus:ring-1 focus:ring-primary outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    const input = document.getElementById('newExpiryDate') as HTMLInputElement;
+                    handleConfirmRenewal(input.value);
+                  }}
+                  className="flex-1 bg-primary hover:bg-primary-dark text-brand-dark font-bold py-3 rounded-lg text-sm transition-colors shadow-lg shadow-primary/10"
+                >
+                  Confirmar Renovación
+                </button>
+                <button onClick={() => setRenewalModal(null)} className="px-4 py-3 border border-brand-border text-stone-300 text-sm rounded-lg">Cerrar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
