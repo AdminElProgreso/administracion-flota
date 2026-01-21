@@ -40,7 +40,7 @@ const Calendar = () => {
                      vehicle: v.model,
                      plate: v.patente ? v.patente.toUpperCase() : 'S/P',
                      status,
-                     color: type === 'Seguro' ? 'rose' : (type === 'VTV' ? 'amber' : 'blue'),
+                     color: type === 'Seguro' ? 'rose' : (type === 'VTV' ? 'amber' : 'emerald'),
                      description: `Vencimiento de ${type} registrado en la ficha del activo.`
                   });
                }
@@ -120,8 +120,8 @@ const Calendar = () => {
                   <button onClick={() => setFilterType('VTV')} className={`px-4 py-2 text-xs font-bold rounded-md transition-all flex items-center gap-2 ${filterType === 'VTV' ? 'bg-amber-500/20 text-amber-400' : 'text-stone-500'}`}>
                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> VTV
                   </button>
-                  <button onClick={() => setFilterType('Patente')} className={`px-4 py-2 text-xs font-bold rounded-md transition-all flex items-center gap-2 ${filterType === 'Patente' ? 'bg-blue-500/20 text-blue-400' : 'text-stone-500'}`}>
-                     <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> Patente
+                  <button onClick={() => setFilterType('Patente')} className={`px-4 py-2 text-xs font-bold rounded-md transition-all flex items-center gap-2 ${filterType === 'Patente' ? 'bg-emerald-500/20 text-emerald-400' : 'text-stone-500'}`}>
+                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Patente
                   </button>
                </div>
                <div className="flex p-1 bg-brand-surface border border-brand-border rounded-lg">
@@ -147,8 +147,8 @@ const Calendar = () => {
                            <div className="mt-7 space-y-1.5">
                               {isCurrentMonth && dayEvents.map((evt) => (
                                  <button key={evt.id} onClick={() => setSelectedEvent(evt)} className={`w-full text-left px-2 py-1.5 rounded border text-[10px] font-bold truncate flex items-center gap-1.5 transition-transform hover:scale-[1.02] ${evt.color === 'rose' ? 'bg-rose-500/10 border-rose-500/30 text-rose-500' :
-                                       evt.color === 'blue' ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' :
-                                          evt.color === 'amber' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
+                                    evt.color === 'blue' ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' :
+                                       evt.color === 'amber' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
                                     }`}>
                                     <span className="material-symbols-outlined text-[14px] flex-shrink-0">{evt.type.includes('Seguro') ? 'security' : evt.type.includes('VTV') ? 'verified' : 'badge'}</span>
                                     <span className="truncate">{evt.type} • {evt.plate}</span>
@@ -189,8 +189,8 @@ const Calendar = () => {
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedEvent(null)}>
                <div className="bg-brand-surface border border-brand-border rounded-xl shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
                   <div className={`h-2 w-full ${selectedEvent.color === 'rose' ? 'bg-rose-500' :
-                        selectedEvent.color === 'blue' ? 'bg-blue-500' :
-                           selectedEvent.color === 'amber' ? 'bg-amber-500' : 'bg-emerald-500'
+                     selectedEvent.color === 'blue' ? 'bg-blue-500' :
+                        selectedEvent.color === 'amber' ? 'bg-amber-500' : 'bg-emerald-500'
                      }`}></div>
                   <div className="p-6">
                      <div className="flex justify-between items-start mb-6">
