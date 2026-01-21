@@ -6,41 +6,30 @@ import { supabase } from '../supabase';
 const VehicleDetail = () => {
    const { id } = useParams();
    const [loading, setLoading] = useState(true);
-   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
+   const [vehicle, setVehicle] = useState<any>(null); // Usamos any para incluir las nuevas columnas de turnos
    const [maintenanceHistory, setMaintenanceHistory] = useState<MaintenanceLog[]>([]);
 
-   // ESTADOS PARA PAGINACIÓN
    const [displayLimit, setDisplayLimit] = useState(10);
    const [hasMore, setHasMore] = useState(false);
 
-   // ESTADOS PARA MODALES
    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
    const [deleteConfirmText, setDeleteConfirmText] = useState('');
-   const [docUpdateModal, setDocUpdateModal] = useState<{ isOpen: boolean; type: string; current: string } | null>(null);
 
-   // 1. CARGAR DATOS REALES
+   // MODAL DE RENOVACIÓN / TURNO
+   const [docUpdateModal, setDocUpdateModal] = useState<{
+      isOpen: boolean;
+      type: 'Seguro' | 'VTV' | 'Patente';
+      currentDoc: string;
+      currentAppt: string
+   } | null>(null);
+
    const fetchVehicleData = async () => {
       setLoading(true);
       const { data: vData } = await supabase.from('vehiculos').select('*').eq('id', id).single();
 
       if (vData) {
-         setVehicle({
-            id: vData.id,
-            type: vData.tipo,
-            patente: vData.patente,
-            model: vData.model,
-            year: vData.year,
-            section: vData.section,
-            status: vData.status,
-            odometer: vData.odometer,
-            manager: vData.manager,
-            assignedDriver: vData.assigned_driver,
-            insuranceExpiration: vData.insurance_expiration,
-            vtvExpiration: vData.vtv_expiration,
-            patenteExpiration: vData.patente_expiration,
-            alerts: []
-         });
+         setVehicle(vData); // Guardamos todo el objeto incluyendo turnos
 
          const { data: mData } = await supabase.from('mantenimientos')
             .select('*').eq('vehicle_id', id).order('date', { ascending: false }).limit(displayLimit + 1);
@@ -60,15 +49,13 @@ const VehicleDetail = () => {
 
    useEffect(() => { fetchVehicleData(); }, [id, displayLimit]);
 
-   // 2. ACTUALIZAR DATOS (INCLUYE PATENTE)
    const handleUpdateVehicle = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!vehicle) return;
       const form = e.target as HTMLFormElement;
       const formData = new FormData(form);
 
       const { error } = await supabase.from('vehiculos').update({
-         patente: formData.get('patente')?.toString().toUpperCase(), // <--- Patente agregada
+         patente: formData.get('patente')?.toString().toUpperCase(),
          model: formData.get('model'),
          year: parseInt(formData.get('year') as string),
          odometer: parseInt(formData.get('odometer') as string),
@@ -82,24 +69,31 @@ const VehicleDetail = () => {
       else { setIsEditModalOpen(false); fetchVehicleData(); }
    };
 
-   // 3. ELIMINACIÓN EN CASCADA
    const handleDeleteVehicle = async () => {
       if (deleteConfirmText !== 'borrar') return;
-
-      // Eliminar mantenimientos relacionados primero
       await supabase.from('mantenimientos').delete().eq('vehicle_id', id);
-
-      // Eliminar el vehículo
       const { error } = await supabase.from('vehiculos').delete().eq('id', id);
-
-      if (error) alert('Error al eliminar: ' + error.message);
+      if (error) alert('Error: ' + error.message);
       else { window.location.hash = '/fleet'; }
    };
 
-   const handleUpdateDoc = async (newDate: string) => {
-      if (!docUpdateModal || !vehicle) return;
-      const columnMap: { [key: string]: string } = { 'Seguro': 'insurance_expiration', 'VTV': 'vtv_expiration', 'Patente': 'patente_expiration' };
-      const { error } = await supabase.from('vehiculos').update({ [columnMap[docUpdateModal.type]]: newDate }).eq('id', id);
+   // GUARDAR RENOVACIÓN O TURNO
+   const handleUpdateDoc = async (newDocDate: string, newApptDate: string) => {
+      if (!docUpdateModal) return;
+
+      const columnMap = {
+         'Seguro': { doc: 'insurance_expiration', appt: 'insurance_appointment' },
+         'VTV': { doc: 'vtv_expiration', appt: 'vtv_appointment' },
+         'Patente': { doc: 'patente_expiration', appt: 'patente_appointment' }
+      };
+
+      const fields = columnMap[docUpdateModal.type];
+
+      const { error } = await supabase.from('vehiculos').update({
+         [fields.doc]: newDocDate || null,
+         [fields.appt]: newApptDate || null
+      }).eq('id', id);
+
       if (error) alert('Error: ' + error.message);
       else { setDocUpdateModal(null); fetchVehicleData(); }
    };
@@ -107,38 +101,55 @@ const VehicleDetail = () => {
    if (loading) return <div className="h-screen flex items-center justify-center bg-background-dark"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
    if (!vehicle) return <div className="p-6 text-white text-center">Vehículo no encontrado.</div>;
 
-   const isGenerator = vehicle.type === 'generator';
-   const getIconByType = (type: string) => {
-      switch (type) {
-         case 'car': return 'directions_car'; case 'truck': return 'local_shipping';
-         case 'generator': return 'electric_bolt'; default: return 'directions_car';
-      }
-   };
+   const ExpirationCard = ({ title, date, appointment, icon, type }: any) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-   const ExpirationCard = ({ title, date, icon, colorClass, borderClass, textClass, type }: any) => {
-      if (!date) return (
-         <button onClick={() => setDocUpdateModal({ isOpen: true, type, current: '' })} className="w-full text-left bg-brand-surface border border-dashed border-stone-700 rounded-lg p-4 flex items-center justify-between opacity-50 hover:opacity-100 transition-all">
-            <div className="text-xs text-stone-500 uppercase font-bold tracking-wider">Cargar {title}</div>
-            <span className="material-symbols-outlined">add_circle</span>
-         </button>
-      );
-      const daysLeft = Math.ceil((new Date(date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-      const isExpired = daysLeft < 0;
+      const expiry = date ? new Date(date) : null;
+      const appt = appointment ? new Date(appointment) : null;
+
+      let colorClass = "text-emerald-500";
+      let borderClass = "border-emerald-500/20";
+      let bgClass = "bg-emerald-500/10";
+      let statusText = "Al día";
+
+      if (appt) {
+         colorClass = "text-blue-400";
+         borderClass = "border-blue-400/50";
+         bgClass = "bg-blue-400/10";
+         statusText = `Turno: ${appt.toLocaleDateString()}`;
+      } else if (expiry) {
+         const diffDays = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+         if (diffDays < 0) {
+            colorClass = "text-rose-500";
+            borderClass = "border-rose-500/50";
+            bgClass = "bg-rose-500/10";
+            statusText = "Vencido";
+         } else if (diffDays <= 15) {
+            colorClass = "text-amber-500";
+            borderClass = "border-amber-500/50";
+            bgClass = "bg-amber-500/10";
+            statusText = "Vence pronto";
+         }
+      }
+
       return (
-         <button onClick={() => setDocUpdateModal({ isOpen: true, type, current: date })} className={`w-full text-left bg-brand-surface border ${borderClass} rounded-lg p-4 flex items-center justify-between relative overflow-hidden group hover:bg-brand-dark/30 transition-all`}>
-            <div className={`absolute right-0 top-0 p-4 opacity-10 ${textClass}`}><span className="material-symbols-outlined text-6xl">{icon}</span></div>
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20 backdrop-blur-[1px]">
-               <div className="bg-brand-surface border border-brand-border px-4 py-2 rounded-full shadow-xl flex items-center gap-2">
-                  <span className="material-symbols-outlined text-white text-sm">edit_calendar</span>
-                  <span className="text-xs font-bold text-white uppercase">Renovar</span>
-               </div>
-            </div>
+         <button
+            onClick={() => setDocUpdateModal({
+               isOpen: true,
+               type,
+               currentDoc: date || '',
+               currentAppt: appointment || ''
+            })}
+            className={`w-full text-left bg-brand-surface border ${borderClass} rounded-lg p-4 flex items-center justify-between relative overflow-hidden group hover:bg-brand-dark/30 transition-all`}
+         >
+            <div className={`absolute right-0 top-0 p-4 opacity-10 ${colorClass}`}><span className="material-symbols-outlined text-6xl">{icon}</span></div>
             <div className="relative z-10">
                <p className="text-xs text-stone-400 uppercase font-bold tracking-wider mb-1">{title}</p>
-               <p className={`text-lg font-mono font-bold ${textClass}`}>{new Date(date).toLocaleDateString()}</p>
-               <p className={`text-[10px] mt-1 font-medium ${isExpired ? 'text-rose-500' : 'text-stone-500'}`}>{isExpired ? `Vencido hace ${Math.abs(daysLeft)} días` : `Vence en ${daysLeft} días`}</p>
+               <p className={`text-lg font-mono font-bold ${colorClass}`}>{expiry ? expiry.toLocaleDateString() : 'Sin fecha'}</p>
+               <p className={`text-[10px] mt-1 font-bold uppercase ${colorClass}`}>{statusText}</p>
             </div>
-            <div className={`h-10 w-10 rounded-full flex items-center justify-center ${colorClass} ${textClass}`}><span className="material-symbols-outlined">{icon}</span></div>
+            <div className={`h-10 w-10 rounded-full flex items-center justify-center ${bgClass} ${colorClass}`}><span className="material-symbols-outlined">{icon}</span></div>
          </button>
       );
    };
@@ -156,102 +167,81 @@ const VehicleDetail = () => {
          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
             <div className="lg:col-span-8 bg-brand-surface border border-brand-border rounded-xl p-6 flex flex-col md:flex-row gap-6 items-center md:items-start">
                <div className="w-full md:w-auto flex flex-col items-center">
-                  <div className="w-32 h-32 rounded-lg bg-stone-900 border border-brand-border flex items-center justify-center text-stone-600 mb-3"><span className="material-symbols-outlined text-6xl">{getIconByType(vehicle.type)}</span></div>
+                  <div className="w-32 h-32 rounded-lg bg-stone-900 border border-brand-border flex items-center justify-center text-stone-600 mb-3">
+                     <span className="material-symbols-outlined text-6xl">{vehicle.tipo === 'car' ? 'directions_car' : vehicle.tipo === 'truck' ? 'local_shipping' : 'electric_bolt'}</span>
+                  </div>
                   {vehicle.patente && <div className="px-3 py-1 bg-primary text-brand-dark font-mono font-bold text-lg rounded">{vehicle.patente.toUpperCase()}</div>}
                </div>
                <div className="flex-1 w-full text-center md:text-left">
-                  <div className="mb-6">
-                     <h1 className="text-3xl font-bold text-white mb-1">{vehicle.model}</h1>
-                     <p className="text-stone-400">{vehicle.year} • {vehicle.odometer.toLocaleString()} {isGenerator ? 'Hrs' : 'km'}</p>
-                  </div>
+                  <h1 className="text-3xl font-bold text-white mb-1">{vehicle.model}</h1>
+                  <p className="text-stone-400 mb-6">{vehicle.year} • {vehicle.odometer?.toLocaleString()} {vehicle.tipo === 'generator' ? 'Hrs' : 'km'}</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                      <div className="bg-brand-dark/50 p-3 rounded border border-brand-border flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-stone-800 flex items-center justify-center text-stone-400"><span className="material-symbols-outlined">badge</span></div>
-                        <div><p className="text-[10px] uppercase text-stone-500 font-bold">Encargado de Sección</p><p className="text-white font-medium">{vehicle.manager}</p></div>
+                        <span className="material-symbols-outlined text-stone-500">badge</span>
+                        <div><p className="text-[10px] uppercase text-stone-500 font-bold">Encargado</p><p className="text-white font-medium">{vehicle.manager}</p></div>
                      </div>
-                     {!isGenerator && <div className="bg-brand-dark/50 p-3 rounded border border-brand-border flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-stone-800 flex items-center justify-center text-stone-400"><span className="material-symbols-outlined">sports_motorsports</span></div>
-                        <div><p className="text-[10px] uppercase text-stone-500 font-bold">Chofer Asignado</p><p className="text-white font-medium">{vehicle.assignedDriver || 'Sin asignar'}</p></div>
-                     </div>}
+                     <div className="bg-brand-dark/50 p-3 rounded border border-brand-border flex items-center gap-3">
+                        <span className="material-symbols-outlined text-stone-500">person</span>
+                        <div><p className="text-[10px] uppercase text-stone-500 font-bold">Chofer</p><p className="text-white font-medium">{vehicle.assigned_driver || 'N/A'}</p></div>
+                     </div>
                   </div>
                </div>
             </div>
             <div className="lg:col-span-4 flex flex-col gap-4">
                <div className="flex-1 bg-brand-surface border border-brand-border rounded-xl p-6 flex flex-col justify-center items-center text-center relative overflow-hidden">
-                  <div className={`absolute inset-0 opacity-5 ${vehicle.status === 'Activo' ? 'bg-emerald-500' :
-                        vehicle.status === 'Baja' ? 'bg-rose-500' : 'bg-amber-500'
-                     }`}></div>
-                  <h3 className="text-stone-400 text-xs font-bold uppercase tracking-widest mb-2">Estado Actual</h3>
-                  <span className={`text-2xl font-bold mb-1 ${vehicle.status === 'Activo' ? 'text-emerald-500' :
-                        vehicle.status === 'Baja' ? 'text-rose-500' : 'text-amber-500'
-                     }`}>{vehicle.status}</span>
+                  <div className={`absolute inset-0 opacity-5 ${vehicle.status === 'Activo' ? 'bg-emerald-500' : vehicle.status === 'Baja' ? 'bg-rose-500' : 'bg-amber-500'}`}></div>
+                  <h3 className="text-stone-400 text-xs font-bold uppercase tracking-widest mb-2">Estado</h3>
+                  <span className={`text-2xl font-bold ${vehicle.status === 'Activo' ? 'text-emerald-500' : vehicle.status === 'Baja' ? 'text-rose-500' : 'text-amber-500'}`}>{vehicle.status}</span>
                </div>
-               <button onClick={() => setIsEditModalOpen(true)} className="w-full bg-primary hover:bg-primary-dark text-brand-dark font-bold py-3 rounded-lg text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/20"><span className="material-symbols-outlined">edit_document</span> Editar Datos</button>
+               <button onClick={() => setIsEditModalOpen(true)} className="w-full bg-primary hover:bg-primary-dark text-brand-dark font-bold py-3 rounded-lg text-sm flex items-center justify-center gap-2 transition-all"><span className="material-symbols-outlined">edit_document</span> Editar Datos</button>
             </div>
          </div>
 
-         {!isGenerator && (
+         {vehicle.tipo !== 'generator' && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-               <ExpirationCard title="Seguro Automotor" date={vehicle.insuranceExpiration} icon="security" type="Seguro" colorClass="bg-emerald-500/10" borderClass="border-emerald-500/20" textClass="text-emerald-500" />
-               <ExpirationCard title="VTV / Técnica" date={vehicle.vtvExpiration} icon="verified" type="VTV" colorClass="bg-amber-500/10" borderClass="border-amber-500/50" textClass="text-amber-500" />
-               <ExpirationCard title="Patente" date={vehicle.patenteExpiration} icon="badge" type="Patente" colorClass="bg-emerald-500/10" borderClass="border-emerald-500/20" textClass="text-emerald-500" />
+               <ExpirationCard title="Seguro Automotor" date={vehicle.insurance_expiration} appointment={vehicle.insurance_appointment} icon="security" type="Seguro" />
+               <ExpirationCard title="VTV / Técnica" date={vehicle.vtv_expiration} appointment={vehicle.vtv_appointment} icon="verified" type="VTV" />
+               <ExpirationCard title="Patente" date={vehicle.patente_expiration} appointment={vehicle.patente_appointment} icon="badge" type="Patente" />
             </div>
          )}
 
          {/* HISTORIAL TÉCNICO */}
-         <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden flex flex-col shadow-lg">
+         <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden shadow-lg">
             <div className="p-4 border-b border-brand-border bg-brand-dark/30 flex justify-between items-center">
                <h2 className="text-white font-bold flex items-center gap-2"><span className="material-symbols-outlined text-stone-400">build</span> Historial Técnico</h2>
             </div>
             <div className="max-h-[500px] overflow-y-auto">
                <div className="hidden md:block">
                   <table className="w-full text-left text-sm border-separate border-spacing-0">
-                     <thead className="bg-brand-dark text-xs uppercase font-medium text-stone-500 sticky top-0 z-10">
+                     <thead className="bg-brand-dark text-xs uppercase font-medium text-stone-500 sticky top-0">
                         <tr>
-                           <th className="px-6 py-4 bg-brand-dark border-b border-brand-border">Fecha</th>
-                           <th className="px-6 py-4 bg-brand-dark border-b border-brand-border">Categoría</th>
-                           <th className="px-6 py-4 bg-brand-dark border-b border-brand-border">Descripción</th>
-                           <th className="px-6 py-4 bg-brand-dark border-b border-brand-border text-right">Costo</th>
+                           <th className="px-6 py-4 border-b border-brand-border">Fecha</th>
+                           <th className="px-6 py-4 border-b border-brand-border">Categoría</th>
+                           <th className="px-6 py-4 border-b border-brand-border">Descripción</th>
+                           <th className="px-6 py-4 border-b border-brand-border text-right">Costo</th>
                         </tr>
                      </thead>
                      <tbody className="divide-y divide-brand-border text-stone-300">
-                        {maintenanceHistory.length === 0 ? (
-                           <tr><td colSpan={4} className="px-6 py-8 text-center text-stone-500 italic">Sin registros técnicos.</td></tr>
-                        ) : (
-                           maintenanceHistory.map((log) => (
-                              <tr key={log.id} className="hover:bg-brand-dark/30 transition-colors">
-                                 <td className="px-6 py-4 font-mono text-stone-400 whitespace-nowrap">{new Date(log.date).toLocaleDateString()}</td>
-                                 <td className="px-6 py-4"><span className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase border ${log.type === 'Mantenimiento' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>{log.type}</span></td>
-                                 <td className="px-6 py-4 font-medium text-white">{log.description}</td>
-                                 <td className="px-6 py-4 text-right font-mono font-bold text-white whitespace-nowrap">${log.cost.toLocaleString()}</td>
-                              </tr>
-                           ))
-                        )}
+                        {maintenanceHistory.map((log) => (
+                           <tr key={log.id} className="hover:bg-brand-dark/30 transition-colors">
+                              <td className="px-6 py-4 font-mono text-stone-400 whitespace-nowrap">{new Date(log.date).toLocaleDateString()}</td>
+                              <td className="px-6 py-4"><span className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase border ${log.type === 'Mantenimiento' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>{log.type}</span></td>
+                              <td className="px-6 py-4 font-medium text-white">{log.description}</td>
+                              <td className="px-6 py-4 text-right font-mono font-bold text-white whitespace-nowrap">${log.cost.toLocaleString()}</td>
+                           </tr>
+                        ))}
                      </tbody>
                   </table>
                </div>
-               <div className="md:hidden divide-y divide-brand-border">
-                  {maintenanceHistory.length === 0 ? (
-                     <div className="px-6 py-8 text-center text-stone-500 italic">Sin registros técnicos.</div>
-                  ) : (
-                     maintenanceHistory.map((log) => (
-                        <div key={log.id} className="p-4 space-y-3 bg-brand-dark/10">
-                           <div className="flex justify-between items-start"><span className="text-xs font-mono text-stone-500">{new Date(log.date).toLocaleDateString()}</span><span className="text-sm font-mono font-bold text-white">${log.cost.toLocaleString()}</span></div>
-                           <div><span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${log.type === 'Mantenimiento' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>{log.type}</span></div>
-                           <p className="text-sm text-stone-300 leading-relaxed">{log.description}</p>
-                        </div>
-                     ))
-                  )}
-               </div>
                {hasMore && (
-                  <div className="p-4 bg-brand-dark/20 flex justify-center border-t border-brand-border">
-                     <button onClick={() => setDisplayLimit(prev => prev + 10)} className="text-primary text-xs font-bold uppercase hover:bg-primary/10 px-6 py-2.5 rounded-lg transition-all flex items-center gap-2 border border-primary/20"><span className="material-symbols-outlined text-sm">expand_more</span> Cargar anteriores</button>
+                  <div className="p-4 flex justify-center border-t border-brand-border">
+                     <button onClick={() => setDisplayLimit(prev => prev + 10)} className="text-primary text-xs font-bold uppercase hover:bg-primary/10 px-6 py-2.5 rounded-lg border border-primary/20">Cargar anteriores</button>
                   </div>
                )}
             </div>
          </div>
 
-         {/* EDIT MODAL CON BORRADO INTEGRADO */}
+         {/* MODAL EDITAR DATOS */}
          {isEditModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setIsEditModalOpen(false)}>
                <div className="bg-brand-surface w-full max-w-2xl rounded-xl border border-brand-border shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -261,66 +251,62 @@ const VehicleDetail = () => {
                   </div>
                   <form onSubmit={handleUpdateVehicle} className="p-6 space-y-6">
                      <div className="grid grid-cols-2 gap-4">
-                        <div className="col-span-1"><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Patente</label><input name="patente" type="text" defaultValue={vehicle.patente} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none font-mono uppercase" /></div>
-                        <div className="col-span-1"><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Modelo</label><input name="model" type="text" defaultValue={vehicle.model} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none" /></div>
-                        <div className="col-span-1"><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Año</label><input name="year" type="number" defaultValue={vehicle.year} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none" /></div>
-                        <div className="col-span-1"><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">{isGenerator ? 'Horas' : 'Odómetro'}</label><input name="odometer" type="number" defaultValue={vehicle.odometer} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none" /></div>
+                        <div><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Patente</label><input name="patente" type="text" defaultValue={vehicle.patente} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white font-mono uppercase" /></div>
+                        <div><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Modelo</label><input name="model" type="text" defaultValue={vehicle.model} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white" /></div>
+                        <div><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Año</label><input name="year" type="number" defaultValue={vehicle.year} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white" /></div>
+                        <div><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Estado</label><select name="status" defaultValue={vehicle.status} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white"><option>Activo</option><option>En Taller</option><option>Baja</option></select></div>
                      </div>
-                     <div className="border-t border-brand-border pt-4 grid grid-cols-2 gap-4">
-                        <div><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Estado</label><select name="status" defaultValue={vehicle.status} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none"><option>Activo</option><option>En Taller</option><option>Baja</option></select></div>
-                        <div><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Sección</label><select name="section" defaultValue={vehicle.section} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none"><option>Administración</option><option>Cereales</option><option>Agronomía</option><option>Logística</option><option>Hacienda</option><option>Estación de Servicio</option></select></div>
-                        <div><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Encargado</label><input name="manager" type="text" defaultValue={vehicle.manager} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none" /></div>
-                        {!isGenerator && <div><label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Chofer</label><input name="assignedDriver" type="text" defaultValue={vehicle.assignedDriver} className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none" /></div>}
-                     </div>
-                     <div className="flex justify-between items-center pt-2">
-                        <button type="button" onClick={() => setIsDeleteModalOpen(true)} className="text-red-500 text-xs font-bold uppercase flex items-center gap-1 hover:underline"><span className="material-symbols-outlined text-sm">delete</span> Eliminar Vehículo</button>
-                        <button type="submit" className="bg-primary text-brand-dark font-bold px-8 py-2 rounded-lg text-sm transition-all hover:bg-primary-dark">Guardar Cambios</button>
+                     <div className="flex justify-between items-center border-t border-brand-border pt-4">
+                        <button type="button" onClick={() => setIsDeleteModalOpen(true)} className="text-red-500 text-xs font-bold uppercase flex items-center gap-1 hover:underline"><span className="material-symbols-outlined text-sm">delete</span> Eliminar Unidad</button>
+                        <button type="submit" className="bg-primary text-brand-dark font-bold px-8 py-2 rounded-lg text-sm">Guardar Cambios</button>
                      </div>
                   </form>
                </div>
             </div>
          )}
 
-         {/* MODAL DE CONFIRMACIÓN DE BORRADO */}
+         {/* MODAL DE ELIMINACIÓN */}
          {isDeleteModalOpen && (
             <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
                <div className="bg-brand-surface w-full max-w-sm rounded-xl border border-brand-border shadow-2xl p-6 text-center">
-                  <span className="material-symbols-outlined text-red-500 text-5xl mb-4">warning</span>
-                  <h3 className="text-white font-bold text-xl mb-2">¿Eliminar esta unidad?</h3>
-                  <p className="text-stone-400 text-sm mb-6 leading-relaxed">Esta acción borrará permanentemente el vehículo y todos sus mantenimientos. Para confirmar, escribe <b>borrar</b> debajo.</p>
-
-                  <input
-                     type="text"
-                     value={deleteConfirmText}
-                     onChange={(e) => setDeleteConfirmText(e.target.value)}
-                     placeholder='Escribe "borrar"'
-                     className="w-full bg-brand-dark border border-brand-border rounded-lg h-12 px-4 text-white text-center mb-6 focus:ring-1 focus:ring-red-500 outline-none"
-                  />
-
+                  <h3 className="text-white font-bold text-xl mb-4">¿Eliminar esta unidad?</h3>
+                  <input type="text" value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)} placeholder='Escribe "borrar"' className="w-full bg-brand-dark border border-brand-border rounded-lg h-12 px-4 text-white text-center mb-6" />
                   <div className="flex gap-3">
-                     <button onClick={() => { setIsDeleteModalOpen(false); setDeleteConfirmText(''); }} className="flex-1 py-3 text-stone-500 font-bold text-xs uppercase">Cancelar</button>
-                     <button
-                        disabled={deleteConfirmText !== 'borrar'}
-                        onClick={handleDeleteVehicle}
-                        className="flex-1 bg-red-600 disabled:opacity-30 text-white py-3 rounded-lg font-bold text-xs uppercase transition-all"
-                     >Confirmar</button>
+                     <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 text-stone-500 font-bold text-xs uppercase">Cancelar</button>
+                     <button disabled={deleteConfirmText !== 'borrar'} onClick={handleDeleteVehicle} className="flex-1 bg-red-600 disabled:opacity-30 text-white rounded-lg font-bold text-xs uppercase">Confirmar</button>
                   </div>
                </div>
             </div>
          )}
 
-         {/* RENEW MODAL */}
+         {/* MODAL DE RENOVACIÓN Y TURNOS */}
          {docUpdateModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setDocUpdateModal(null)}>
-               <div className="bg-brand-surface w-full max-sm rounded-xl border border-brand-border shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+               <div className="bg-brand-surface w-full max-w-md rounded-xl border border-brand-border shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
                   <div className="flex items-center justify-between px-6 py-4 border-b border-brand-border bg-brand-dark/50">
-                     <h3 className="text-white font-bold text-lg">Renovar {docUpdateModal.type}</h3>
+                     <h3 className="text-white font-bold text-lg">Gestionar {docUpdateModal.type}</h3>
                      <button onClick={() => setDocUpdateModal(null)} className="text-stone-400 hover:text-white"><span className="material-symbols-outlined">close</span></button>
                   </div>
-                  <div className="p-6">
-                     <label className="text-xs font-bold text-stone-500 uppercase mb-2 block">Nueva Fecha</label>
-                     <input type="date" id="docDate" className="w-full bg-brand-dark border-brand-border rounded-lg h-12 px-3 text-white mb-6 focus:ring-1 focus:ring-primary outline-none" />
-                     <button onClick={() => { const val = (document.getElementById('docDate') as HTMLInputElement).value; if (val) handleUpdateDoc(val); }} className="w-full bg-emerald-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2"><span className="material-symbols-outlined">update</span> Confirmar</button>
+                  <div className="p-6 space-y-6">
+                     <div>
+                        <label className="text-xs font-bold text-blue-400 uppercase mb-2 block tracking-widest">¿Tienes un turno?</label>
+                        <input type="date" id="apptDate" defaultValue={docUpdateModal.currentAppt} className="w-full bg-brand-dark border border-blue-400/30 rounded-lg h-12 px-3 text-white focus:ring-1 focus:ring-blue-400" />
+                        <p className="text-[10px] text-stone-500 mt-1">La tarjeta cambiará a color azul para indicar que el proceso está iniciado.</p>
+                     </div>
+                     <div className="h-px bg-brand-border"></div>
+                     <div>
+                        <label className="text-xs font-bold text-stone-500 uppercase mb-2 block tracking-widest">Nueva fecha de vencimiento</label>
+                        <input type="date" id="docDate" defaultValue={docUpdateModal.currentDoc} className="w-full bg-brand-dark border-brand-border rounded-lg h-12 px-3 text-white focus:ring-1 focus:ring-primary" />
+                        <p className="text-[10px] text-stone-500 mt-1">Usa esto solo si ya renovaste el documento.</p>
+                     </div>
+                     <button
+                        onClick={() => {
+                           const d = (document.getElementById('docDate') as HTMLInputElement).value;
+                           const a = (document.getElementById('apptDate') as HTMLInputElement).value;
+                           handleUpdateDoc(d, a);
+                        }}
+                        className="w-full bg-primary text-brand-dark font-bold py-3 rounded-lg flex items-center justify-center gap-2"
+                     >Actualizar</button>
                   </div>
                </div>
             </div>

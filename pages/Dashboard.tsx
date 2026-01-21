@@ -28,10 +28,10 @@ const QuickAction = ({ to, icon, label, color }: any) => (
 const Dashboard = () => {
   const [stats, setStats] = useState({ total: 0, inWorkshop: 0, alertsCount: 0, monthlyExpenses: 0 });
   const [urgentAlerts, setUrgentAlerts] = useState<any[]>([]);
+  const [todayAppts, setTodayAppts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showPasswordAlert, setShowPasswordAlert] = useState(false);
 
-  // Obtener nombre del mes actual en español
   const currentMonthName = new Date().toLocaleString('es-ES', { month: 'long' });
   const capitalizedMonth = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
 
@@ -39,61 +39,61 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
 
-      // 1. Verificar seguridad
       const { data: { user } } = await supabase.auth.getUser();
       if (user && !user.user_metadata?.password_set) {
         setShowPasswordAlert(true);
       }
 
-      // 2. Obtener vehículos para estadísticas y alertas
-      const { data: fleet } = await supabase
-        .from('vehiculos')
-        .select('*')
-        .neq('status', 'Baja'); // <--- Filtro para ignorar los vehiculos dados de baja
+      // 1. Obtener flota activa
+      const { data: fleet } = await supabase.from('vehiculos').select('*').neq('status', 'Baja');
 
-      // 3. Obtener gastos del mes actual
+      // 2. Obtener gastos del mes
       const today = new Date();
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
       const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59).toISOString();
 
-      const { data: expensesData } = await supabase
-        .from('mantenimientos')
-        .select('cost')
-        .gte('date', firstDay)
-        .lte('date', lastDay);
-
+      const { data: expensesData } = await supabase.from('mantenimientos').select('cost').gte('date', firstDay).lte('date', lastDay);
       const totalMonthlyExpenses = expensesData?.reduce((acc, curr) => acc + (curr.cost || 0), 0) || 0;
 
       if (fleet) {
         const checkToday = new Date();
+        const todayStr = checkToday.toISOString().split('T')[0];
         const realAlerts: any[] = [];
+        const apptsForToday: any[] = [];
         let workshopCount = 0;
 
         fleet.forEach(v => {
           if (v.status === 'En Taller') workshopCount++;
 
-          const checkDoc = (dateStr: string, type: string) => {
+          // Revisar turnos para hoy
+          if (v.vtv_appointment === todayStr) apptsForToday.push({ vehicle: v.model, plate: v.patente, type: 'VTV' });
+          if (v.insurance_appointment === todayStr) apptsForToday.push({ vehicle: v.model, plate: v.patente, type: 'Seguro' });
+          if (v.patente_appointment === todayStr) apptsForToday.push({ vehicle: v.model, plate: v.patente, type: 'Patente' });
+
+          const checkDoc = (dateStr: string, apptStr: string, type: string) => {
             if (!dateStr) return;
             const expiry = new Date(dateStr);
             const diffDays = Math.ceil((expiry.getTime() - checkToday.getTime()) / (1000 * 60 * 60 * 24));
 
-            if (diffDays <= 30) {
+            if (diffDays <= 30 || apptStr) {
               realAlerts.push({
                 id: `${v.id}-${type}`,
                 type: 'Vencimiento',
                 subtype: type,
                 vehicle: `${v.model} (${v.patente ? v.patente.toUpperCase() : 'S/P'})`,
                 days: diffDays,
-                status: diffDays < 0 ? 'expired' : (diffDays < 7 ? 'warning' : 'info')
+                hasAppointment: !!apptStr,
+                status: apptStr ? 'appointment' : (diffDays < 0 ? 'expired' : (diffDays <= 15 ? 'warning' : 'info'))
               });
             }
           };
 
-          checkDoc(v.vtv_expiration, 'VTV');
-          checkDoc(v.insurance_expiration, 'Seguro');
-          checkDoc(v.patente_expiration, 'Patente');
+          checkDoc(v.vtv_expiration, v.vtv_appointment, 'VTV');
+          checkDoc(v.insurance_expiration, v.insurance_appointment, 'Seguro');
+          checkDoc(v.patente_expiration, v.patente_appointment, 'Patente');
         });
 
+        setTodayAppts(apptsForToday);
         setUrgentAlerts(realAlerts.sort((a, b) => a.days - b.days).slice(0, 5));
         setStats({
           total: fleet.length,
@@ -108,11 +108,7 @@ const Dashboard = () => {
     fetchDashboardData();
   }, []);
 
-  if (loading) return (
-    <div className="h-screen flex items-center justify-center bg-background-dark">
-      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-    </div>
-  );
+  if (loading) return <div className="h-screen flex items-center justify-center bg-background-dark"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
 
   return (
     <div className="p-4 md:p-6 pb-20 md:pb-6">
@@ -124,51 +120,39 @@ const Dashboard = () => {
         <p className="text-sm text-stone-500 font-medium">Estado real de la flota de El Progreso</p>
       </header>
 
+      {/* Turnos para Hoy */}
+      {todayAppts.length > 0 && (
+        <div className="mb-6 p-4 rounded-xl border border-blue-500/30 bg-blue-500/5 flex flex-col sm:flex-row items-center gap-4 animate-in slide-in-from-top-4 duration-500">
+          <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
+            <span className="material-symbols-outlined text-3xl">event_upcoming</span>
+          </div>
+          <div className="flex-1 text-center sm:text-left">
+            <h3 className="text-blue-400 font-bold">Turnos de Renovación Hoy</h3>
+            <p className="text-stone-400 text-sm">
+              {todayAppts.map((a, i) => `${a.vehicle} (${a.type})` + (i < todayAppts.length - 1 ? ', ' : ''))}
+            </p>
+          </div>
+          <Link to="/calendar" className="bg-blue-500 hover:bg-blue-600 text-white font-bold px-6 py-2 rounded-lg text-sm transition-colors shadow-lg shadow-blue-900/20">Ver Agenda</Link>
+        </div>
+      )}
+
       {showPasswordAlert && (
-        <div className="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 flex flex-col sm:flex-row items-center gap-4 animate-in fade-in">
+        <div className="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 flex flex-col sm:flex-row items-center gap-4">
           <span className="material-symbols-outlined text-amber-500 text-3xl">lock_open</span>
           <div className="flex-1 text-center sm:text-left">
             <h3 className="text-amber-500 font-bold">Seguridad de la cuenta</h3>
-            <p className="text-stone-400 text-sm">Todavía no configuraste tu contraseña propia. Por seguridad, hacelo ahora.</p>
+            <p className="text-stone-400 text-sm">Configurá tu contraseña propia por seguridad.</p>
           </div>
-          <Link to="/settings" className="bg-amber-500 text-brand-dark font-bold px-6 py-2 rounded-lg text-sm shadow-lg shadow-amber-900/20">Configurar Contraseña</Link>
+          <Link to="/settings" className="bg-amber-500 text-brand-dark font-bold px-6 py-2 rounded-lg text-sm shadow-lg">Configurar</Link>
         </div>
       )}
 
       {/* 1. Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
-        <StatCard
-          title="Documentación"
-          value={stats.alertsCount}
-          subtext="Vencimientos próximos"
-          icon="notifications_active"
-          colorClass="from-rose-500"
-          borderClass={stats.alertsCount > 0 ? "border-rose-500/30" : "border-brand-border"}
-        />
-        <StatCard
-          title="En Taller"
-          value={stats.inWorkshop}
-          subtext="Unidades detenidas"
-          icon="build"
-          colorClass="from-amber-500"
-          borderClass="border-brand-border"
-        />
-        <StatCard
-          title="Gasto Mensual"
-          value={new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(stats.monthlyExpenses)}
-          subtext={`Acumulado ${capitalizedMonth}`}
-          icon="payments"
-          colorClass="from-emerald-500"
-          borderClass="border-brand-border"
-        />
-        <StatCard
-          title="Flota Total"
-          value={stats.total}
-          subtext="Vehículos registrados"
-          icon="local_shipping"
-          colorClass="from-primary"
-          borderClass="border-brand-border"
-        />
+        <StatCard title="Documentación" value={stats.alertsCount} subtext="Pendientes o turnos" icon="notifications_active" colorClass="from-rose-500" borderClass={stats.alertsCount > 0 ? "border-rose-500/30" : "border-brand-border"} />
+        <StatCard title="En Taller" value={stats.inWorkshop} subtext="Unidades detenidas" icon="build" colorClass="from-amber-500" borderClass="border-brand-border" />
+        <StatCard title="Gasto Mensual" value={new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(stats.monthlyExpenses)} subtext={`Acumulado ${capitalizedMonth}`} icon="payments" colorClass="from-emerald-500" borderClass="border-brand-border" />
+        <StatCard title="Flota Total" value={stats.total} subtext="Vehículos operativos" icon="local_shipping" colorClass="from-primary" borderClass="border-brand-border" />
       </div>
 
       {/* 2. Accesos Rápidos */}
@@ -182,37 +166,31 @@ const Dashboard = () => {
       {/* 3. Critical Alerts List */}
       <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden flex flex-col shadow-lg">
         <div className="p-4 border-b border-brand-border flex justify-between items-center bg-brand-dark/30">
-          <h3 className="text-white font-bold flex items-center gap-2">
-            <span className="material-symbols-outlined text-rose-500">warning</span>
-            Atención Requerida
-          </h3>
+          <h3 className="text-white font-bold flex items-center gap-2"><span className="material-symbols-outlined text-rose-500">warning</span>Atención Requerida</h3>
           <Link to="/calendar" className="text-xs text-primary hover:underline">Ver Agenda</Link>
         </div>
         <div className="divide-y divide-brand-border">
           {urgentAlerts.length === 0 ? (
-            <div className="p-8 text-center text-stone-500">
-              <span className="material-symbols-outlined text-4xl mb-2 opacity-50">check_circle</span>
-              <p>Todo en orden en la flota</p>
-            </div>
+            <div className="p-8 text-center text-stone-500"><span className="material-symbols-outlined text-4xl mb-2 opacity-50">check_circle</span><p>Todo en orden</p></div>
           ) : (
             urgentAlerts.map((alert) => (
               <div key={alert.id} className="p-4 flex items-center gap-4 hover:bg-brand-dark/30 transition-colors">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${alert.status === 'expired' ? 'bg-rose-500/10 text-rose-500' :
-                  alert.status === 'warning' ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${alert.status === 'appointment' ? 'bg-blue-500/10 text-blue-400' :
+                    alert.status === 'expired' ? 'bg-rose-500/10 text-rose-500' :
+                      alert.status === 'warning' ? 'bg-amber-500/10 text-amber-500' : 'bg-stone-800 text-stone-500'
                   }`}>
-                  <span className="material-symbols-outlined">
-                    {alert.subtype === 'Seguro' ? 'security' : alert.subtype === 'VTV' ? 'verified' : 'badge'}
-                  </span>
+                  <span className="material-symbols-outlined">{alert.subtype === 'Seguro' ? 'security' : alert.subtype === 'VTV' ? 'verified' : 'badge'}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white truncate">{alert.type} de {alert.subtype}</p>
+                  <p className="text-sm font-bold text-white truncate">{alert.subtype} • {alert.status === 'appointment' ? 'Turno Programado' : alert.type}</p>
                   <p className="text-xs text-stone-400 truncate">{alert.vehicle}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <span className={`text-xs font-bold px-2 py-1 rounded border ${alert.status === 'expired' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
-                    alert.status === 'warning' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                  <span className={`text-xs font-bold px-2 py-1 rounded border ${alert.status === 'appointment' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                      alert.status === 'expired' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                        alert.status === 'warning' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
                     }`}>
-                    {alert.days < 0 ? `Vencido hace ${Math.abs(alert.days)} días` : `Vence en ${alert.days} días`}
+                    {alert.status === 'appointment' ? 'EN PROCESO' : (alert.days < 0 ? `Vencido` : `Faltan ${alert.days} días`)}
                   </span>
                 </div>
               </div>
