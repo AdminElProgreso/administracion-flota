@@ -272,13 +272,31 @@ const VehicleDetail = () => {
 
          {/* MODAL DE ELIMINACIÓN */}
          {isDeleteModalOpen && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-               <div className="bg-brand-surface w-full max-sm rounded-xl border border-brand-border shadow-2xl p-6 text-center">
-                  <h3 className="text-white font-bold text-xl mb-4">¿Eliminar esta unidad?</h3>
-                  <input type="text" value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)} placeholder='Escribe "borrar"' className="w-full bg-brand-dark border border-brand-border rounded-lg h-12 px-4 text-white text-center mb-6" />
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" onClick={() => setIsDeleteModalOpen(false)}>
+               <div className="bg-brand-surface w-full max-w-sm rounded-xl border border-brand-border shadow-2xl p-8 text-center animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                  <div className="w-16 h-16 rounded-full bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto mb-4 border border-rose-500/20">
+                     <span className="material-symbols-outlined text-3xl">warning</span>
+                  </div>
+                  <h3 className="text-white font-bold text-xl mb-2">¿Eliminar esta unidad?</h3>
+                  <p className="text-stone-400 text-sm mb-6 leading-relaxed">
+                     Esta acción borrará permanentemente el vehículo y todo su historial técnico. Para confirmar, escribe <b className="text-stone-200 uppercase">borrar</b> debajo.
+                  </p>
+
+                  <input
+                     type="text"
+                     value={deleteConfirmText}
+                     onChange={(e) => setDeleteConfirmText(e.target.value)}
+                     placeholder='Escribe "borrar"'
+                     className="w-full bg-brand-dark border border-brand-border rounded-lg h-12 px-4 text-white text-center mb-6 focus:ring-1 focus:ring-rose-500 outline-none transition-all"
+                  />
+
                   <div className="flex gap-3">
-                     <button onClick={() => { setIsDeleteModalOpen(false); setDeleteConfirmText(''); }} className="flex-1 text-stone-500 font-bold text-xs uppercase">Cancelar</button>
-                     <button disabled={deleteConfirmText !== 'borrar'} onClick={handleDeleteVehicle} className="flex-1 bg-red-600 disabled:opacity-30 text-white rounded-lg font-bold text-xs uppercase">Confirmar</button>
+                     <button onClick={() => { setIsDeleteModalOpen(false); setDeleteConfirmText(''); }} className="flex-1 py-3 text-stone-500 font-bold text-xs uppercase hover:text-stone-300 transition-colors">Cancelar</button>
+                     <button
+                        disabled={deleteConfirmText !== 'borrar'}
+                        onClick={handleDeleteVehicle}
+                        className="flex-1 bg-rose-600 disabled:opacity-30 text-white rounded-lg font-bold text-xs uppercase transition-all shadow-lg shadow-rose-900/20"
+                     >Confirmar</button>
                   </div>
                </div>
             </div>
