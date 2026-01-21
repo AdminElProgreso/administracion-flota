@@ -2,6 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../supabase';
 
+// Función auxiliar para corregir el desfase de fecha UTC
+const formatLocalDate = (dateStr: string) => {
+  if (!dateStr) return '';
+  // Separamos los componentes para evitar que el navegador aplique zona horaria
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString();
+};
+
 const StatCard = ({ title, value, subtext, icon, colorClass, borderClass, onClick }: any) => (
   <div className={`bg-brand-surface border ${borderClass} rounded-xl p-5 relative overflow-hidden group cursor-pointer transition-all hover:scale-[1.02]`} onClick={onClick}>
     <div className={`absolute right-0 top-0 w-20 h-20 bg-gradient-to-br ${colorClass} to-transparent rounded-bl-full -mr-4 -mt-4 opacity-10`}></div>
@@ -47,17 +56,24 @@ const Dashboard = () => {
       // 1. Obtener flota activa
       const { data: fleet } = await supabase.from('vehiculos').select('*').neq('status', 'Baja');
 
-      // 2. Obtener gastos del mes
-      const today = new Date();
-      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
-      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59).toISOString();
+      // 2. Obtener gastos del mes (Corregido rango local)
+      const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
 
-      const { data: expensesData } = await supabase.from('mantenimientos').select('cost').gte('date', firstDay).lte('date', lastDay);
+      const { data: expensesData } = await supabase.from('mantenimientos')
+        .select('cost')
+        .gte('date', firstDay)
+        .lte('date', lastDay);
+
       const totalMonthlyExpenses = expensesData?.reduce((acc, curr) => acc + (curr.cost || 0), 0) || 0;
 
       if (fleet) {
-        const checkToday = new Date();
-        const todayStr = checkToday.toISOString().split('T')[0];
+        // Obtener fecha de hoy en formato YYYY-MM-DD local
+        const todayLocal = new Date();
+        const offset = todayLocal.getTimezoneOffset();
+        const todayStr = new Date(todayLocal.getTime() - (offset * 60 * 1000)).toISOString().split('T')[0];
+
         const realAlerts: any[] = [];
         const apptsForToday: any[] = [];
         let workshopCount = 0;
@@ -65,15 +81,19 @@ const Dashboard = () => {
         fleet.forEach(v => {
           if (v.status === 'En Taller') workshopCount++;
 
-          // Revisar turnos para hoy
-          if (v.vtv_appointment === todayStr) apptsForToday.push({ vehicle: v.model, plate: v.patente, type: 'VTV' });
-          if (v.insurance_appointment === todayStr) apptsForToday.push({ vehicle: v.model, plate: v.patente, type: 'Seguro' });
-          if (v.patente_appointment === todayStr) apptsForToday.push({ vehicle: v.model, plate: v.patente, type: 'Patente' });
+          // Revisar turnos para hoy (Corregido)
+          if (v.vtv_appointment === todayStr) apptsForToday.push({ id: v.id, vehicle: v.model, plate: v.patente, type: 'VTV' });
+          if (v.insurance_appointment === todayStr) apptsForToday.push({ id: v.id, vehicle: v.model, plate: v.patente, type: 'Seguro' });
+          if (v.patente_appointment === todayStr) apptsForToday.push({ id: v.id, vehicle: v.model, plate: v.patente, type: 'Patente' });
 
           const checkDoc = (dateStr: string, apptStr: string, type: string) => {
-            if (!dateStr) return;
-            const expiry = new Date(dateStr);
-            const diffDays = Math.ceil((expiry.getTime() - checkToday.getTime()) / (1000 * 60 * 60 * 24));
+            if (!dateStr && !apptStr) return;
+
+            let diffDays = 999;
+            if (dateStr) {
+              const expiry = new Date(dateStr + 'T00:00:00'); // Forzar medianoche local
+              diffDays = Math.ceil((expiry.getTime() - todayLocal.getTime()) / (1000 * 60 * 60 * 24));
+            }
 
             if (diffDays <= 30 || apptStr) {
               realAlerts.push({
@@ -120,19 +140,29 @@ const Dashboard = () => {
         <p className="text-sm text-stone-500 font-medium">Estado real de la flota de El Progreso</p>
       </header>
 
-      {/* Turnos para Hoy */}
+      {/* Notificación de Turnos para Hoy (ATALJO RÁPIDO) */}
       {todayAppts.length > 0 && (
-        <div className="mb-6 p-4 rounded-xl border border-blue-500/30 bg-blue-500/5 flex flex-col sm:flex-row items-center gap-4 animate-in slide-in-from-top-4 duration-500">
-          <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-            <span className="material-symbols-outlined text-3xl">event_upcoming</span>
-          </div>
-          <div className="flex-1 text-center sm:text-left">
-            <h3 className="text-blue-400 font-bold">Turnos de Renovación Hoy</h3>
-            <p className="text-stone-400 text-sm">
-              {todayAppts.map((a, i) => `${a.vehicle} (${a.type})` + (i < todayAppts.length - 1 ? ', ' : ''))}
-            </p>
-          </div>
-          <Link to="/calendar" className="bg-blue-500 hover:bg-blue-600 text-white font-bold px-6 py-2 rounded-lg text-sm transition-colors shadow-lg shadow-blue-900/20">Ver Agenda</Link>
+        <div className="mb-6 space-y-3">
+          {todayAppts.map((appt, idx) => (
+            <div key={idx} className="p-4 rounded-xl border border-blue-500/30 bg-blue-500/5 flex flex-col sm:flex-row items-center gap-4 animate-in slide-in-from-top-4 duration-500">
+              <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
+                <span className="material-symbols-outlined text-3xl">notification_important</span>
+              </div>
+              <div className="flex-1 text-center sm:text-left">
+                <h3 className="text-blue-400 font-bold">¡Turno hoy! - {appt.type}</h3>
+                <p className="text-stone-400 text-sm">
+                  {appt.vehicle} ({appt.plate?.toUpperCase()}) tiene un turno para renovar {appt.type} el día de hoy.
+                </p>
+              </div>
+              <Link
+                to={`/fleet/${appt.id}`}
+                className="bg-blue-500 hover:bg-blue-600 text-white font-bold px-6 py-2 rounded-lg text-sm transition-colors shadow-lg shadow-blue-900/20 flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-sm">edit_calendar</span>
+                Renovar Ahora
+              </Link>
+            </div>
+          ))}
         </div>
       )}
 
@@ -147,7 +177,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* 1. Stat Cards */}
+      {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
         <StatCard title="Documentación" value={stats.alertsCount} subtext="Pendientes o turnos" icon="notifications_active" colorClass="from-rose-500" borderClass={stats.alertsCount > 0 ? "border-rose-500/30" : "border-brand-border"} />
         <StatCard title="En Taller" value={stats.inWorkshop} subtext="Unidades detenidas" icon="build" colorClass="from-amber-500" borderClass="border-brand-border" />
@@ -155,7 +185,6 @@ const Dashboard = () => {
         <StatCard title="Flota Total" value={stats.total} subtext="Vehículos operativos" icon="local_shipping" colorClass="from-primary" borderClass="border-brand-border" />
       </div>
 
-      {/* 2. Accesos Rápidos */}
       <h3 className="text-stone-400 text-xs font-bold uppercase tracking-widest mb-3 px-1">Accesos Rápidos</h3>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         <QuickAction to="/maintenance" icon="handyman" label="Cargar Mantenim." color="bg-blue-600" />
@@ -163,7 +192,7 @@ const Dashboard = () => {
         <QuickAction to="/calendar" icon="calendar_clock" label="Ver Agenda" color="bg-emerald-600" />
       </div>
 
-      {/* 3. Critical Alerts List */}
+      {/* Critical Alerts List */}
       <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden flex flex-col shadow-lg">
         <div className="p-4 border-b border-brand-border flex justify-between items-center bg-brand-dark/30">
           <h3 className="text-white font-bold flex items-center gap-2"><span className="material-symbols-outlined text-rose-500">warning</span>Atención Requerida</h3>
@@ -182,7 +211,7 @@ const Dashboard = () => {
                   <span className="material-symbols-outlined">{alert.subtype === 'Seguro' ? 'security' : alert.subtype === 'VTV' ? 'verified' : 'badge'}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white truncate">{alert.subtype} • {alert.status === 'appointment' ? 'Turno Programado' : alert.type}</p>
+                  <p className="text-sm font-bold text-white truncate">{alert.subtype} • {alert.status === 'appointment' ? 'Turno Programado' : (alert.days < 0 ? 'Vencido' : 'Vence pronto')}</p>
                   <p className="text-xs text-stone-400 truncate">{alert.vehicle}</p>
                 </div>
                 <div className="text-right flex-shrink-0">

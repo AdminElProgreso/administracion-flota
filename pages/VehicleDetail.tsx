@@ -6,7 +6,7 @@ import { supabase } from '../supabase';
 const VehicleDetail = () => {
    const { id } = useParams();
    const [loading, setLoading] = useState(true);
-   const [vehicle, setVehicle] = useState<any>(null); // Usamos any para incluir las nuevas columnas de turnos
+   const [vehicle, setVehicle] = useState<any>(null);
    const [maintenanceHistory, setMaintenanceHistory] = useState<MaintenanceLog[]>([]);
 
    const [displayLimit, setDisplayLimit] = useState(10);
@@ -16,7 +16,6 @@ const VehicleDetail = () => {
    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
    const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
-   // MODAL DE RENOVACIÓN / TURNO
    const [docUpdateModal, setDocUpdateModal] = useState<{
       isOpen: boolean;
       type: 'Seguro' | 'VTV' | 'Patente';
@@ -29,7 +28,7 @@ const VehicleDetail = () => {
       const { data: vData } = await supabase.from('vehiculos').select('*').eq('id', id).single();
 
       if (vData) {
-         setVehicle(vData); // Guardamos todo el objeto incluyendo turnos
+         setVehicle(vData);
 
          const { data: mData } = await supabase.from('mantenimientos')
             .select('*').eq('vehicle_id', id).order('date', { ascending: false }).limit(displayLimit + 1);
@@ -73,11 +72,10 @@ const VehicleDetail = () => {
       if (deleteConfirmText !== 'borrar') return;
       await supabase.from('mantenimientos').delete().eq('vehicle_id', id);
       const { error } = await supabase.from('vehiculos').delete().eq('id', id);
-      if (error) alert('Error: ' + error.message);
+      if (error) alert('Error al eliminar: ' + error.message);
       else { window.location.hash = '/fleet'; }
    };
 
-   // GUARDAR RENOVACIÓN O TURNO
    const handleUpdateDoc = async (newDocDate: string, newApptDate: string) => {
       if (!docUpdateModal) return;
 
@@ -105,8 +103,9 @@ const VehicleDetail = () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const expiry = date ? new Date(date) : null;
-      const appt = appointment ? new Date(appointment) : null;
+      // CORRECCIÓN: Forzar medianoche local
+      const expiry = date ? new Date(date + 'T00:00:00') : null;
+      const appt = appointment ? new Date(appointment + 'T00:00:00') : null;
 
       let colorClass = "text-emerald-500";
       let borderClass = "border-emerald-500/20";
@@ -224,7 +223,8 @@ const VehicleDetail = () => {
                      <tbody className="divide-y divide-brand-border text-stone-300">
                         {maintenanceHistory.map((log) => (
                            <tr key={log.id} className="hover:bg-brand-dark/30 transition-colors">
-                              <td className="px-6 py-4 font-mono text-stone-400 whitespace-nowrap">{new Date(log.date).toLocaleDateString()}</td>
+                              {/* CORRECCIÓN: Fecha local en historial */}
+                              <td className="px-6 py-4 font-mono text-stone-400 whitespace-nowrap">{new Date(log.date + 'T00:00:00').toLocaleDateString()}</td>
                               <td className="px-6 py-4"><span className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase border ${log.type === 'Mantenimiento' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>{log.type}</span></td>
                               <td className="px-6 py-4 font-medium text-white">{log.description}</td>
                               <td className="px-6 py-4 text-right font-mono font-bold text-white whitespace-nowrap">${log.cost.toLocaleString()}</td>
@@ -268,11 +268,11 @@ const VehicleDetail = () => {
          {/* MODAL DE ELIMINACIÓN */}
          {isDeleteModalOpen && (
             <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-               <div className="bg-brand-surface w-full max-w-sm rounded-xl border border-brand-border shadow-2xl p-6 text-center">
+               <div className="bg-brand-surface w-full max-sm rounded-xl border border-brand-border shadow-2xl p-6 text-center">
                   <h3 className="text-white font-bold text-xl mb-4">¿Eliminar esta unidad?</h3>
                   <input type="text" value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)} placeholder='Escribe "borrar"' className="w-full bg-brand-dark border border-brand-border rounded-lg h-12 px-4 text-white text-center mb-6" />
                   <div className="flex gap-3">
-                     <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 text-stone-500 font-bold text-xs uppercase">Cancelar</button>
+                     <button onClick={() => { setIsDeleteModalOpen(false); setDeleteConfirmText(''); }} className="flex-1 text-stone-500 font-bold text-xs uppercase">Cancelar</button>
                      <button disabled={deleteConfirmText !== 'borrar'} onClick={handleDeleteVehicle} className="flex-1 bg-red-600 disabled:opacity-30 text-white rounded-lg font-bold text-xs uppercase">Confirmar</button>
                   </div>
                </div>

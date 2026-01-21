@@ -26,17 +26,17 @@ const Calendar = () => {
             // Lógica para Vencimientos
             const checkExpiry = (dateStr: string, type: 'Seguro' | 'VTV' | 'Patente') => {
                if (!dateStr) return;
-               const d = new Date(dateStr);
-               if (d.getUTCMonth() === currentDate.getMonth() && d.getUTCFullYear() === currentDate.getFullYear()) {
+               // CORRECCIÓN: Forzar medianoche local para evitar desvío de zona horaria
+               const d = new Date(dateStr + 'T00:00:00');
+
+               if (d.getMonth() === currentDate.getMonth() && d.getFullYear() === currentDate.getFullYear()) {
                   let status = 'Próximo';
-                  const compareDate = new Date(dateStr);
-                  compareDate.setHours(0, 0, 0, 0);
-                  if (compareDate.getTime() < today.getTime()) status = 'Vencido';
-                  else if (compareDate.getTime() === today.getTime()) status = 'Vence Hoy';
+                  if (d.getTime() < today.getTime()) status = 'Vencido';
+                  else if (d.getTime() === today.getTime()) status = 'Vence Hoy';
 
                   realEvents.push({
                      id: `${v.id}-exp-${type}`,
-                     day: d.getUTCDate(),
+                     day: d.getDate(),
                      type,
                      vehicle: v.model,
                      plate: v.patente ? v.patente.toUpperCase() : 'S/P',
@@ -50,11 +50,12 @@ const Calendar = () => {
             // Lógica para Turnos (Color Azul)
             const checkAppt = (dateStr: string, type: string) => {
                if (!dateStr) return;
-               const d = new Date(dateStr);
-               if (d.getUTCMonth() === currentDate.getMonth() && d.getUTCFullYear() === currentDate.getFullYear()) {
+               const d = new Date(dateStr + 'T00:00:00');
+
+               if (d.getMonth() === currentDate.getMonth() && d.getFullYear() === currentDate.getFullYear()) {
                   realEvents.push({
                      id: `${v.id}-appt-${type}`,
-                     day: d.getUTCDate(),
+                     day: d.getDate(),
                      type: `Turno ${type}`,
                      vehicle: v.model,
                      plate: v.patente ? v.patente.toUpperCase() : 'S/P',
