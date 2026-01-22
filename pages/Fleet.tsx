@@ -1,47 +1,101 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Vehicle } from '../types';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
+import { Vehicle, VehicleRow } from '../types';
 
 const Fleet = () => {
-   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-   const [loading, setLoading] = useState(true);
+   const queryClient = useQueryClient();
    const [isModalOpen, setIsModalOpen] = useState(false);
    const [newVehicleType, setNewVehicleType] = useState<'car' | 'truck' | 'generator' | 'tractor'>('car');
 
    const [statusFilter, setStatusFilter] = useState<'operativos' | 'bajas' | 'todos'>('operativos');
    const [sectionFilter, setSectionFilter] = useState('Todas');
    const [typeFilter, setTypeFilter] = useState('Todos');
-   const [availableSections, setAvailableSections] = useState<string[]>([]);
 
-   const fetchSections = async () => {
-      const { data } = await supabase.from('vehiculos').select('section');
-      if (data) {
-         const uniqueSections = Array.from(new Set(data.map(v => v.section))).filter(Boolean) as string[];
-         setAvailableSections(uniqueSections.sort());
+   // --- Queries ---
+
+   // Fetch Sections (can key off 'vehicles' so it updates when a new vehicle is added with a new section)
+   const { data: availableSections = [] } = useQuery({
+      queryKey: ['sections'],
+      queryFn: async () => {
+         const { data } = await supabase.from('vehiculos').select('section');
+         if (data) {
+            const uniqueSections = Array.from(new Set(data.map(v => v.section))).filter(Boolean) as string[];
+            return uniqueSections.sort();
+         }
+         return [];
       }
-   };
+   });
 
-   const fetchVehicles = async () => {
-      setLoading(true);
-      let query = supabase.from('vehiculos').select('*');
-      if (statusFilter === 'operativos') query = query.neq('status', 'Baja');
-      else if (statusFilter === 'bajas') query = query.eq('status', 'Baja');
-      if (sectionFilter !== 'Todas') query = query.eq('section', sectionFilter);
+   // Fetch All Vehicles (Shared Cache with Dashboard)
+   const { data: rawVehicles, isLoading } = useQuery({
+      queryKey: ['vehicles', 'all'],
+      queryFn: async () => {
+         const { data, error } = await supabase.from('vehiculos').select('*').order('created_at', { ascending: false }).returns<VehicleRow[]>();
+         if (error) throw error;
+         return data;
+      }
+   });
+
+   // --- Derived State (Filtering & Mapping) ---
+
+   const vehicles: Vehicle[] = useMemo(() => {
+      if (!rawVehicles) return [];
+
+      let filtered = rawVehicles;
+
+      // Status Filter
+      if (statusFilter === 'operativos') filtered = filtered.filter(v => v.status !== 'Baja');
+      else if (statusFilter === 'bajas') filtered = filtered.filter(v => v.status === 'Baja');
+
+      // Section Filter
+      if (sectionFilter !== 'Todas') filtered = filtered.filter(v => v.section === sectionFilter);
+
+      // Type Filter
       if (typeFilter !== 'Todos') {
          const typeMap: Record<string, string> = { 'Autos/Camionetas': 'car', 'Camiones': 'truck', 'Generadores': 'generator', 'Tractores': 'tractor' };
-         query = query.eq('tipo', typeMap[typeFilter]);
+         filtered = filtered.filter(v => v.tipo === typeMap[typeFilter]);
       }
-      const { data, error } = await query.order('created_at', { ascending: false });
-      if (data) {
-         setVehicles(data.map(v => ({ id: v.id, type: v.tipo, patente: v.patente, model: v.model, year: v.year, section: v.section, status: v.status, odometer: v.odometer, manager: v.manager, assignedDriver: v.assigned_driver, insuranceExpiration: v.insurance_expiration, vtvExpiration: v.vtv_expiration, patenteExpiration: v.patente_expiration, alerts: [] })));
+
+      // Map to UI Model (Vehicle interface)
+      return filtered.map(v => ({
+         id: v.id,
+         type: v.tipo as any, // Cast to match Vehicle interface strict types if needed, or update interface
+         patente: v.patente || undefined, // handle null
+         model: v.model,
+         year: v.year,
+         section: v.section as any,
+         status: v.status as any,
+         odometer: v.odometer,
+         manager: v.manager || '',
+         assignedDriver: v.assigned_driver || undefined,
+         insuranceExpiration: v.insurance_expiration || undefined,
+         vtvExpiration: v.vtv_expiration || undefined,
+         patenteExpiration: v.patente_expiration || undefined,
+         alerts: []
+      }));
+   }, [rawVehicles, statusFilter, sectionFilter, typeFilter]);
+
+
+   // --- Mutations ---
+
+   const addVehicleMutation = useMutation({
+      mutationFn: async (newVehicle: any) => {
+         const { error } = await supabase.from('vehiculos').insert([newVehicle]);
+         if (error) throw error;
+      },
+      onSuccess: () => {
+         queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+         queryClient.invalidateQueries({ queryKey: ['sections'] }); // New section might have been added
+         setIsModalOpen(false);
+      },
+      onError: (error: any) => {
+         alert('Error: ' + error.message);
       }
-      setLoading(false);
-   };
+   });
 
-   useEffect(() => { fetchSections(); fetchVehicles(); }, [statusFilter, sectionFilter, typeFilter]);
-
-   const handleAddVehicle = async (e: React.FormEvent) => {
+   const handleAddVehicle = (e: React.FormEvent) => {
       e.preventDefault();
       const form = e.target as HTMLFormElement;
       const formData = new FormData(form);
@@ -59,10 +113,11 @@ const Fleet = () => {
          patente_expiration: formData.get('patente_date') || null,
          status: 'Activo'
       };
-      const { error } = await supabase.from('vehiculos').insert([nuevoVehiculo]);
-      if (error) alert('Error: ' + error.message);
-      else { setIsModalOpen(false); fetchVehicles(); fetchSections(); }
+
+      addVehicleMutation.mutate(nuevoVehiculo);
    };
+
+   // --- Helpers ---
 
    const getExpirationStatus = (dateStr?: string) => { if (!dateStr) return 'none'; const d = new Date(dateStr + 'T00:00:00'); const today = new Date(); today.setHours(0, 0, 0, 0); const diffDays = Math.ceil((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)); if (diffDays < 0) return 'expired'; if (diffDays <= 30) return 'warning'; return 'ok'; };
    const getDocColorClass = (status: string) => { switch (status) { case 'expired': return 'bg-rose-500/10 text-rose-500 border-rose-500/20'; case 'warning': return 'bg-amber-500/10 text-amber-500 border-amber-500/20'; case 'ok': return 'bg-emerald-500/10 text-emerald-500/40 border-emerald-500/10'; default: return 'bg-stone-800/30 text-stone-700 border-stone-800/50'; } };
@@ -78,7 +133,7 @@ const Fleet = () => {
       }
    };
 
-   if (loading) return <div className="flex items-center justify-center h-screen bg-background-dark"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
+   if (isLoading) return <div className="flex items-center justify-center h-screen bg-background-dark"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
 
    return (
       <div className="p-4 md:p-6 pb-24 md:pb-6">
@@ -218,7 +273,7 @@ const Fleet = () => {
 
                      <div className="p-6 border-t border-brand-border flex justify-end gap-3 bg-brand-surface rounded-b-xl flex-shrink-0">
                         <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-stone-400 hover:text-white font-bold uppercase">Cancelar</button>
-                        <button type="submit" className="px-8 py-2 bg-primary text-brand-dark rounded-lg font-bold text-sm uppercase shadow-lg shadow-primary/20 hover:bg-primary-dark transition-colors">Guardar Activo</button>
+                        <button type="submit" disabled={addVehicleMutation.isPending} className="px-8 py-2 bg-primary text-brand-dark rounded-lg font-bold text-sm uppercase shadow-lg shadow-primary/20 hover:bg-primary-dark transition-colors">{addVehicleMutation.isPending ? 'Guardando...' : 'Guardar Activo'}</button>
                      </div>
                   </form>
                </div>

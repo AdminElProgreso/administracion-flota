@@ -1,10 +1,10 @@
 export interface Vehicle {
   id: string;
-  type: 'car' | 'truck' | 'generator';
+  type: 'car' | 'truck' | 'generator' | 'tractor';
   patente?: string;
   model: string;
   year: number;
-  section: 'Agronomía' | 'Cereales' | 'Logística' | 'Administración' | 'Veterinaria' | 'Hacienda' | 'Estación de Servicio';
+  section: string;
   status: 'Activo' | 'En Taller' | 'Baja';
   odometer: number;
   manager: string;
