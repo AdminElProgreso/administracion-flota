@@ -1,27 +1,37 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import webpush from 'https://esm.sh/web-push@3.6.7';
+import { createClient } from 'npm:@supabase/supabase-js@2.39.3';
+import webpush from 'npm:web-push@3.6.7';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY')!;
 
-// VAPID keys should be set in your remote Supabase secrets
-// supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=...
-const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')!;
-const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')!;
+const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')?.trim() || "";
+const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')?.trim() || "";
 const subject = 'mailto:admin@elprogreso.com';
 
-webpush.setVapidDetails(subject, vapidPublicKey, vapidPrivateKey);
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+console.log("Check Alerts Function Started");
+console.log("VAPID Pub Length:", vapidPublicKey.length);
+console.log("VAPID Priv Length:", vapidPrivateKey.length);
 
 Deno.serve(async (req) => {
     try {
+        if (!vapidPublicKey || !vapidPrivateKey) {
+            throw new Error("Missing or empty VAPID keys");
+        }
+
+        console.log("Configuring VAPID...");
+        webpush.setVapidDetails(subject, vapidPublicKey, vapidPrivateKey);
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
         // 1. Obtener vehículos
+        console.log("Fetching vehicles...");
         const { data: vehicles, error: vehiclesError } = await supabase
-            .from('vehicles')
+            .from('vehiculos')
             .select('*');
 
-        if (vehiclesError) throw vehiclesError;
+        if (vehiclesError) {
+            console.error("Vehicles Error:", vehiclesError);
+            throw vehiclesError;
+        }
 
         // 2. Identificar Alertas (Usando umbrales por defecto por ahora)
         const alerts: any[] = [];
