@@ -101,7 +101,10 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
             <span className="material-symbols-outlined text-primary">local_shipping</span>
             <span className="font-bold text-white">El Progreso</span>
           </div>
-          <button onClick={handleLogout} className="material-symbols-outlined text-stone-400">logout</button>
+          <div className="flex items-center gap-4">
+            <Link to="/settings" className="material-symbols-outlined text-stone-400 hover:text-white transition-colors">settings</Link>
+            <button onClick={handleLogout} className="material-symbols-outlined text-stone-400 hover:text-red-400 transition-colors">logout</button>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto bg-background-dark relative scroll-smooth p-0 lg:p-0">
