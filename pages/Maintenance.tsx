@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { MaintenanceLog, Vehicle } from '../types';
 import { supabase } from '../supabase';
 
@@ -185,7 +186,7 @@ const Maintenance = () => {
          )}
 
          {/* VIEW DETAIL MODAL */}
-         {viewModal && (
+         {viewModal && createPortal(
             <div className="fixed inset-0 z-[60] flex items-center justify-center md:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setViewModal(null)}>
                <div className="bg-brand-surface w-full h-full md:h-auto max-w-lg md:rounded-xl border-0 md:border border-brand-border shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
                   <div className="bg-brand-dark p-6 border-b border-brand-border flex justify-between">
@@ -204,11 +205,12 @@ const Maintenance = () => {
                      </div>
                   </div>
                </div>
-            </div>
+            </div>,
+            document.body
          )}
 
          {/* --- MODAL EDITAR / CREAR RESTAURADO (DISEÑO PROFESIONAL) --- */}
-         {editModal.isOpen && editModal.data && (
+         {editModal.isOpen && editModal.data && createPortal(
             <div className="fixed inset-0 z-[60] flex items-center justify-center md:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setEditModal({ ...editModal, isOpen: false })}>
                <div className="bg-brand-surface w-full h-full md:h-auto md:max-h-[90vh] max-w-2xl md:rounded-xl border-0 md:border border-brand-border shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
                   <div className="flex items-center justify-between px-6 py-4 border-b border-brand-border bg-brand-dark/50 flex-shrink-0">
@@ -282,7 +284,8 @@ const Maintenance = () => {
                      </div>
                   </form>
                </div>
-            </div>
+            </div>,
+            document.body
          )}
       </div>
    );

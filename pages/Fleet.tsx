@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
@@ -222,7 +223,7 @@ const Fleet = () => {
          </div>
 
          {/* --- MODAL DE ALTA: CORRECCIÓN DE SCROLL PARA MOBILE --- */}
-         {isModalOpen && (
+         {isModalOpen && createPortal(
             <div className="fixed inset-0 z-[60] flex items-center justify-center md:p-4">
                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}></div>
                <div className="relative w-full h-full md:h-auto md:max-h-[90vh] max-w-4xl bg-brand-surface md:rounded-xl border-0 md:border border-brand-border shadow-2xl flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -277,7 +278,8 @@ const Fleet = () => {
                      </div>
                   </form>
                </div>
-            </div>
+            </div>,
+            document.body
          )}
       </div>
    );
