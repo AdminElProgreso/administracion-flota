@@ -14,6 +14,78 @@ const isInStandaloneMode = () =>
 const Settings = () => {
     const [activeTab, setActiveTab] = useState<'general' | 'alerts' | 'notifications' | 'security' | 'data'>('general');
 
+    // --- PUSH NOTIFICATION CONFIG ---
+    // IMPORTANTE: Debes generar tus propias llaves VAPID (Public y Private)
+    // Puedes usar: https://web-push-codelab.glitch.me/
+    const VAPID_PUBLIC_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U';
+
+    const urlBase64ToUint8Array = (base64String: string) => {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    };
+
+    const subscribeUser = async () => {
+        if ('serviceWorker' in navigator) {
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                });
+
+                console.log('User is subscribed:', subscription);
+
+                // GUARDAR SUSCRIPCIÓN EN SUPABASE
+                const session = await supabase.auth.getSession();
+                const user = session.data.session?.user;
+
+                if (user) {
+                    // Aquí deberías tener una tabla 'push_subscriptions' en Supabase
+                    const { error } = await supabase.from('push_subscriptions').upsert({
+                        user_id: user.id,
+                        subscription: subscription,
+                        updated_at: new Date()
+                    });
+
+                    if (error) console.error('Error saving subscription to DB:', error);
+                    else alert('¡Dispositivo registrado para recibir notificaciones!');
+                }
+
+            } catch (error) {
+                console.error('Failed to subscribe the user: ', error);
+                alert('No se pudo activar las notificaciones. Verifica los permisos del navegador.');
+                return false;
+            }
+        }
+        return true;
+    };
+
+    const handlePushToggle = async () => {
+        const newState = !notificationState.masterToggle;
+
+        if (newState) {
+            // Turning ON
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                const success = await subscribeUser();
+                if (success) setNotificationState(prev => ({ ...prev, masterToggle: true }));
+            } else {
+                alert('Necesitamos permiso para mostrar notificaciones.');
+            }
+        } else {
+            // Turning OFF
+            setNotificationState(prev => ({ ...prev, masterToggle: false }));
+            // Opcional: Podrías eliminar la suscripción del servidor aquí
+        }
+    };
+
+
     // --- ESTADOS PARA PWA ---
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
     const [isInstalled, setIsInstalled] = useState(false);
@@ -364,7 +436,7 @@ const Settings = () => {
                                         <Toggle
                                             label="Activar Notificaciones Push"
                                             checked={notificationState.masterToggle}
-                                            onChange={() => setNotificationState(prev => ({ ...prev, masterToggle: !prev.masterToggle }))}
+                                            onChange={handlePushToggle}
                                         />
                                         <p className="text-xs text-stone-500 mt-2 px-1">Al desactivar esta opción, no recibirás ninguna notificación en tu dispositivo.</p>
                                     </div>
