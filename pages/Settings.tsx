@@ -26,15 +26,21 @@ const Settings = () => {
 
     // --- OTROS ESTADOS ---
     const [notificationState, setNotificationState] = useState({
+        masterToggle: true,
         emailInfo: true,
-        emailAlerts: true,
+        emailAlerts: true, // Reused as Insurance Alert for now or generic
+        vtvAlerts: true,
+        patenteAlerts: true,
+        apptAlerts: true,
         pushUrgent: true,
-        weeklyReport: false
+        weeklyReport: false,
     });
 
     const [thresholds, setThresholds] = useState({
         insurance: 15,
         vtv: 30,
+        patente: 10,
+        appointments: 3,
         service: 1000
     });
 
@@ -328,6 +334,24 @@ const Settings = () => {
                                         </div>
                                         <input type="range" min="5" max="90" value={thresholds.vtv} onChange={(e) => setThresholds({ ...thresholds, vtv: parseInt(e.target.value) })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
                                     </div>
+                                    <div>
+                                        <div className="flex justify-between mb-2">
+                                            <label className="text-white font-bold text-sm flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-white">badge</span> Patente / Impuestos
+                                            </label>
+                                            <span className="text-primary font-mono font-bold">{thresholds.patente} días</span>
+                                        </div>
+                                        <input type="range" min="5" max="60" value={thresholds.patente} onChange={(e) => setThresholds({ ...thresholds, patente: parseInt(e.target.value) })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between mb-2">
+                                            <label className="text-white font-bold text-sm flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-purple-500">event</span> Turnos Programados
+                                            </label>
+                                            <span className="text-primary font-mono font-bold">{thresholds.appointments} días</span>
+                                        </div>
+                                        <input type="range" min="1" max="30" value={thresholds.appointments} onChange={(e) => setThresholds({ ...thresholds, appointments: parseInt(e.target.value) })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -335,10 +359,27 @@ const Settings = () => {
                         {/* --- TAB: NOTIFICATIONS --- */}
                         {activeTab === 'notifications' && (
                             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                                <div className="space-y-2 max-w-xl">
-                                    <Toggle label="Resumen semanal de flota" checked={notificationState.weeklyReport} onChange={() => setNotificationState({ ...notificationState, weeklyReport: !notificationState.weeklyReport })} />
-                                    <Toggle label="Alertas de vencimiento" checked={notificationState.emailAlerts} onChange={() => setNotificationState({ ...notificationState, emailAlerts: !notificationState.emailAlerts })} />
-                                    <Toggle label="Alertas críticas (Unidades detenidas)" checked={notificationState.pushUrgent} onChange={() => setNotificationState({ ...notificationState, pushUrgent: !notificationState.pushUrgent })} />
+                                <div className="space-y-6 max-w-xl">
+                                    <div className="bg-brand-dark/30 p-4 rounded-xl border border-brand-border">
+                                        <Toggle
+                                            label="Activar Notificaciones Push"
+                                            checked={notificationState.masterToggle}
+                                            onChange={() => setNotificationState(prev => ({ ...prev, masterToggle: !prev.masterToggle }))}
+                                        />
+                                        <p className="text-xs text-stone-500 mt-2 px-1">Al desactivar esta opción, no recibirás ninguna notificación en tu dispositivo.</p>
+                                    </div>
+
+                                    {notificationState.masterToggle && (
+                                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                                            <h4 className="text-xs font-bold text-stone-500 uppercase tracking-widest mb-3 px-1">Tipos de Alerta</h4>
+                                            <Toggle label="Vencimiento de Seguros" checked={notificationState.emailAlerts} onChange={() => setNotificationState({ ...notificationState, emailAlerts: !notificationState.emailAlerts })} />
+                                            <Toggle label="Vencimiento de VTV" checked={notificationState.vtvAlerts} onChange={() => setNotificationState({ ...notificationState, vtvAlerts: !notificationState.vtvAlerts })} />
+                                            <Toggle label="Vencimiento de Patentes" checked={notificationState.patenteAlerts} onChange={() => setNotificationState({ ...notificationState, patenteAlerts: !notificationState.patenteAlerts })} />
+                                            <Toggle label="Recordatorio de Turnos" checked={notificationState.apptAlerts} onChange={() => setNotificationState({ ...notificationState, apptAlerts: !notificationState.apptAlerts })} />
+                                            <div className="border-t border-brand-border my-2"></div>
+                                            <Toggle label="Resumen Semanal" checked={notificationState.weeklyReport} onChange={() => setNotificationState({ ...notificationState, weeklyReport: !notificationState.weeklyReport })} />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
