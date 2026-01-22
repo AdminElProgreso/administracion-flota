@@ -31,57 +31,89 @@ const Settings = () => {
     };
 
     const subscribeUser = async () => {
-        if ('serviceWorker' in navigator) {
-            try {
-                const registration = await navigator.serviceWorker.ready;
-                const subscription = await registration.pushManager.subscribe({
+        if (!('serviceWorker' in navigator)) {
+            console.error('Service Worker not supported');
+            return false;
+        }
+
+        try {
+            const registration = await navigator.serviceWorker.ready;
+
+            // Verificar si ya existe una suscripción para no duplicar esfuerzo innecesario
+            let subscription = await registration.pushManager.getSubscription();
+
+            if (!subscription) {
+                console.log('Creating new subscription...');
+                subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
                 });
+            }
 
-                console.log('User is subscribed:', subscription);
+            console.log('Subscription object:', JSON.stringify(subscription));
 
-                // GUARDAR SUSCRIPCIÓN EN SUPABASE
-                const session = await supabase.auth.getSession();
-                const user = session.data.session?.user;
+            // GUARDAR SUSCRIPCIÓN EN SUPABASE
+            const { data: { session } } = await supabase.auth.getSession();
+            const user = session?.user;
 
-                if (user) {
-                    // Aquí deberías tener una tabla 'push_subscriptions' en Supabase
-                    const { error } = await supabase.from('push_subscriptions').upsert({
-                        user_id: user.id,
-                        subscription: subscription,
-                        updated_at: new Date()
-                    });
+            // Si no hay usuario, usamos un ID persistente basado en el dispositivo o permitimos nulo si la DB lo deja
+            // Pero lo ideal es que estén logueados.
+            const subscriptionData = {
+                user_id: user?.id || '00000000-0000-0000-0000-000000000000', // ID de sistema si no hay login
+                subscription: subscription,
+                updated_at: new Date()
+            };
 
-                    if (error) console.error('Error saving subscription to DB:', error);
-                    else alert('¡Dispositivo registrado para recibir notificaciones!');
-                }
+            console.log('Sending to Supabase:', subscriptionData);
 
-            } catch (error) {
-                console.error('Failed to subscribe the user: ', error);
-                alert('No se pudo activar las notificaciones. Verifica los permisos del navegador.');
+            const { error } = await supabase
+                .from('push_subscriptions')
+                .upsert(subscriptionData, { onConflict: 'subscription' });
+
+            if (error) {
+                console.error('Supabase Error:', error);
+                alert('Error al guardar en base de datos: ' + error.message);
                 return false;
             }
+
+            alert('¡Dispositivo registrado correctamente!');
+            return true;
+
+        } catch (error: any) {
+            console.error('Failed to subscribe: ', error);
+            if (error.name === 'NotAllowedError') {
+                alert('Permiso denegado. Por favor, habilita las notificaciones en la configuración de la App o del navegador.');
+            } else {
+                alert('Error técnico: ' + error.message);
+            }
+            return false;
         }
-        return true;
     };
 
     const handlePushToggle = async () => {
         const newState = !notificationState.masterToggle;
 
         if (newState) {
-            // Turning ON
+            console.log('Requesting notification permission...');
+            const currentPermission = Notification.permission;
+
+            if (currentPermission === 'denied') {
+                alert('Las notificaciones están bloqueadas en tu navegador. Debes habilitarlas manualmente en la configuración del sitio.');
+                return;
+            }
+
             const permission = await Notification.requestPermission();
             if (permission === 'granted') {
                 const success = await subscribeUser();
-                if (success) setNotificationState(prev => ({ ...prev, masterToggle: true }));
-            } else {
-                alert('Necesitamos permiso para mostrar notificaciones.');
+                if (success) {
+                    setNotificationState(prev => ({ ...prev, masterToggle: true }));
+                    localStorage.setItem('fleet_notifications', JSON.stringify({ ...notificationState, masterToggle: true }));
+                }
             }
         } else {
-            // Turning OFF
             setNotificationState(prev => ({ ...prev, masterToggle: false }));
-            // Opcional: Podrías eliminar la suscripción del servidor aquí
+            localStorage.setItem('fleet_notifications', JSON.stringify({ ...notificationState, masterToggle: false }));
+            alert('Has desactivado las notificaciones en este dispositivo.');
         }
     };
 
