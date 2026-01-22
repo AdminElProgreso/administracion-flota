@@ -186,8 +186,8 @@ const Maintenance = () => {
 
          {/* VIEW DETAIL MODAL */}
          {viewModal && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setViewModal(null)}>
-               <div className="bg-brand-surface w-full max-w-lg rounded-xl border border-brand-border shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="fixed inset-0 z-[60] flex items-center justify-center md:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setViewModal(null)}>
+               <div className="bg-brand-surface w-full h-full md:h-auto max-w-lg md:rounded-xl border-0 md:border border-brand-border shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
                   <div className="bg-brand-dark p-6 border-b border-brand-border flex justify-between">
                      <div><span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase mb-2 border ${viewModal.type === 'Mantenimiento' ? 'bg-blue-500/20 text-blue-400' : 'bg-orange-500/20 text-orange-400'}`}>{viewModal.type}</span><h2 className="text-xl font-bold text-white">Detalle de Trabajo</h2></div>
                      <button onClick={() => setViewModal(null)} className="text-stone-500"><span className="material-symbols-outlined">close</span></button>
@@ -209,8 +209,8 @@ const Maintenance = () => {
 
          {/* --- MODAL EDITAR / CREAR RESTAURADO (DISEÑO PROFESIONAL) --- */}
          {editModal.isOpen && editModal.data && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setEditModal({ ...editModal, isOpen: false })}>
-               <div className="bg-brand-surface w-full max-w-2xl rounded-xl border border-brand-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <div className="fixed inset-0 z-[60] flex items-center justify-center md:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setEditModal({ ...editModal, isOpen: false })}>
+               <div className="bg-brand-surface w-full h-full md:h-auto md:max-h-[90vh] max-w-2xl md:rounded-xl border-0 md:border border-brand-border shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
                   <div className="flex items-center justify-between px-6 py-4 border-b border-brand-border bg-brand-dark/50 flex-shrink-0">
                      <h3 className="text-white font-bold text-lg">{editModal.mode === 'create' ? 'Nuevo Registro' : 'Editar Registro'}</h3>
                      <button onClick={() => setEditModal({ ...editModal, isOpen: false })} className="text-stone-400 hover:text-white"><span className="material-symbols-outlined">close</span></button>

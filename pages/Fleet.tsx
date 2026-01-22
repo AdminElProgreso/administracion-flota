@@ -223,9 +223,9 @@ const Fleet = () => {
 
          {/* --- MODAL DE ALTA: CORRECCIÓN DE SCROLL PARA MOBILE --- */}
          {isModalOpen && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-[60] flex items-center justify-center md:p-4">
                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}></div>
-               <div className="relative w-full max-w-4xl bg-brand-surface rounded-xl border border-brand-border shadow-2xl flex flex-col max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+               <div className="relative w-full h-full md:h-auto md:max-h-[90vh] max-w-4xl bg-brand-surface md:rounded-xl border-0 md:border border-brand-border shadow-2xl flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
                   <form onSubmit={handleAddVehicle} className="flex flex-col h-full overflow-hidden">
                      <div className="flex items-center justify-between px-6 py-5 border-b border-brand-border flex-shrink-0">
                         <div><h3 className="text-xl font-bold text-white uppercase tracking-tight">Alta de Activo</h3><p className="text-xs text-stone-400">Seleccione el tipo y complete los datos</p></div>
