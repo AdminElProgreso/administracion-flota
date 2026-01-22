@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import { VehicleRow, Alert } from '../types';
 
@@ -80,115 +81,159 @@ const QuickAction: React.FC<QuickActionProps> = ({ to, icon, label, color, class
 );
 
 const Dashboard = () => {
-  const [stats, setStats] = useState<DashboardStats>({ total: 0, inWorkshop: 0, alertsCount: 0, monthlyExpenses: 0 });
-  const [urgentAlerts, setUrgentAlerts] = useState<Alert[]>([]);
-  const [todayAppts, setTodayAppts] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [showPasswordAlert, setShowPasswordAlert] = useState(false);
-
-  // Modal State
   const [renewalModal, setRenewalModal] = useState<RenewalModalState | null>(null);
 
   const currentMonthName = new Date().toLocaleString('es-ES', { month: 'long' });
   const capitalizedMonth = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
+  // --- Queries ---
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user && !user.user_metadata?.password_set) {
-      setShowPasswordAlert(true);
+  // Check user session/metadata
+  useQuery({
+    queryKey: ['userSession'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && !user.user_metadata?.password_set) {
+        setShowPasswordAlert(true);
+      }
+      return user;
+    },
+    staleTime: Infinity // User session rarely changes unexpectedly
+  });
+
+  // Fetch Fleet (Only active)
+  const { data: fleet, isLoading: isLoadingFleet } = useQuery({
+    queryKey: ['vehicles', 'all'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('vehiculos').select('*').returns<VehicleRow[]>();
+      if (error) throw error;
+      return data;
     }
+  });
 
-    const { data: fleet } = await supabase.from('vehiculos').select('*').neq('status', 'Baja').returns<VehicleRow[]>();
+  // Fetch Monthly Expenses
+  const { data: monthlyExpenses, isLoading: isLoadingExpenses } = useQuery({
+    queryKey: ['expenses', 'currentMonth'],
+    queryFn: async () => {
+      const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
 
-    const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+      const { data, error } = await supabase.from('mantenimientos')
+        .select('cost')
+        .gte('date', firstDay)
+        .lte('date', lastDay);
 
-    const { data: expensesData } = await supabase.from('mantenimientos')
-      .select('cost')
-      .gte('date', firstDay)
-      .lte('date', lastDay);
+      if (error) throw error;
+      return data?.reduce((acc, curr) => acc + (curr.cost || 0), 0) || 0;
+    }
+  });
 
-    const totalMonthlyExpenses = expensesData?.reduce((acc, curr) => acc + (curr.cost || 0), 0) || 0;
+  // --- Derived State (Stats & Alerts) ---
 
-    if (fleet) {
-      const todayLocal = new Date();
-      const offset = todayLocal.getTimezoneOffset();
-      const todayStr = new Date(todayLocal.getTime() - (offset * 60 * 1000)).toISOString().split('T')[0];
+  const { stats, urgentAlerts, todayAppts } = useMemo(() => {
+    if (!fleet) return {
+      stats: { total: 0, inWorkshop: 0, alertsCount: 0, monthlyExpenses: 0 },
+      urgentAlerts: [],
+      todayAppts: []
+    };
 
-      const realAlerts: Alert[] = [];
-      const apptsForToday: Appointment[] = [];
-      let workshopCount = 0;
+    const todayLocal = new Date();
+    // Adjust for timezone offset to match "today" string
+    const offset = todayLocal.getTimezoneOffset();
+    const todayStr = new Date(todayLocal.getTime() - (offset * 60 * 1000)).toISOString().split('T')[0];
 
-      fleet.forEach(v => {
-        if (v.status === 'En Taller') workshopCount++;
+    const activeFleet = fleet.filter(v => v.status !== 'Baja');
 
-        // Helper to check for Today's Appointments
-        const checkAppt = (apptStr: string | null, expiryStr: string | null, type: string) => {
-          if (apptStr === todayStr) {
-            apptsForToday.push({
-              id: v.id,
-              vehicle: v.model,
-              plate: v.patente || null,
-              type,
-              currentExpiry: expiryStr,
-              fullData: v
-            });
-          }
-        };
+    const realAlerts: Alert[] = [];
+    const apptsForToday: Appointment[] = [];
+    let workshopCount = 0;
 
-        checkAppt(v.vtv_appointment, v.vtv_expiration, 'VTV');
-        checkAppt(v.insurance_appointment, v.insurance_expiration, 'Seguro');
-        checkAppt(v.patente_appointment, v.patente_expiration, 'Patente');
+    activeFleet.forEach(v => {
+      if (v.status === 'En Taller') workshopCount++;
 
-        // Helper to track Expirations
-        const checkDoc = (dateStr: string | null, apptStr: string | null, type: string) => {
-          if (!dateStr && !apptStr) return;
-          let diffDays = 999;
+      // Helper to check for Today's Appointments
+      const checkAppt = (apptStr: string | null, expiryStr: string | null, type: string) => {
+        if (apptStr === todayStr) {
+          apptsForToday.push({
+            id: v.id,
+            vehicle: v.model,
+            plate: v.patente || null,
+            type,
+            currentExpiry: expiryStr,
+            fullData: v
+          });
+        }
+      };
 
-          if (dateStr) {
-            const expiry = new Date(dateStr + 'T00:00:00');
-            diffDays = Math.ceil((expiry.getTime() - todayLocal.getTime()) / (1000 * 60 * 60 * 24));
-          }
+      checkAppt(v.vtv_appointment, v.vtv_expiration, 'VTV');
+      checkAppt(v.insurance_appointment, v.insurance_expiration, 'Seguro');
+      checkAppt(v.patente_appointment, v.patente_expiration, 'Patente');
 
-          if (diffDays <= 30 || apptStr) {
-            realAlerts.push({
-              id: `${v.id}-${type}`,
-              type: 'Vencimiento',
-              subtype: type,
-              vehicle: `${v.model} (${v.patente ? v.patente.toUpperCase() : 'S/P'})`,
-              days: diffDays,
-              hasAppointment: !!apptStr,
-              status: apptStr ? 'appointment' : (diffDays < 0 ? 'expired' : (diffDays <= 15 ? 'warning' : 'info'))
-            });
-          }
-        };
+      // Helper to track Expirations
+      const checkDoc = (dateStr: string | null, apptStr: string | null, type: string) => {
+        if (!dateStr && !apptStr) return;
+        let diffDays = 999;
 
-        checkDoc(v.vtv_expiration, v.vtv_appointment, 'VTV');
-        checkDoc(v.insurance_expiration, v.insurance_appointment, 'Seguro');
-        checkDoc(v.patente_expiration, v.patente_appointment, 'Patente');
-      });
+        if (dateStr) {
+          const expiry = new Date(dateStr + 'T00:00:00');
+          diffDays = Math.ceil((expiry.getTime() - todayLocal.getTime()) / (1000 * 60 * 60 * 24));
+        }
 
-      setTodayAppts(apptsForToday);
-      setUrgentAlerts(realAlerts.sort((a, b) => a.days - b.days).slice(0, 5));
-      setStats({
-        total: fleet.length,
+        if (diffDays <= 30 || apptStr) {
+          realAlerts.push({
+            id: `${v.id}-${type}`,
+            type: 'Vencimiento',
+            subtype: type,
+            vehicle: `${v.model} (${v.patente ? v.patente.toUpperCase() : 'S/P'})`,
+            days: diffDays,
+            hasAppointment: !!apptStr,
+            status: apptStr ? 'appointment' : (diffDays < 0 ? 'expired' : (diffDays <= 15 ? 'warning' : 'info'))
+          });
+        }
+      };
+
+      checkDoc(v.vtv_expiration, v.vtv_appointment, 'VTV');
+      checkDoc(v.insurance_expiration, v.insurance_appointment, 'Seguro');
+      checkDoc(v.patente_expiration, v.patente_appointment, 'Patente');
+    });
+
+    return {
+      stats: {
+        total: activeFleet.length,
         inWorkshop: workshopCount,
         alertsCount: realAlerts.length,
-        monthlyExpenses: totalMonthlyExpenses
-      });
+        monthlyExpenses: monthlyExpenses || 0
+      },
+      urgentAlerts: realAlerts.sort((a, b) => a.days - b.days).slice(0, 5),
+      todayAppts: apptsForToday
+    };
+  }, [fleet, monthlyExpenses]);
+
+
+  // --- Mutations ---
+
+  const renewalMutation = useMutation({
+    mutationFn: async ({ vehicleId, fields, newDate }: { vehicleId: string, fields: any, newDate: string }) => {
+      const { error } = await supabase.from('vehiculos').update({
+        [fields.exp]: newDate,
+        [fields.appt]: null
+      }).eq('id', vehicleId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      setRenewalModal(null);
+    },
+    onError: (error: any) => {
+      alert("Error al actualizar: " + error.message);
     }
-    setLoading(false);
-  };
+  });
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  // Update logic: Renewal
-  const handleConfirmRenewal = async (newDate: string) => {
+  const handleConfirmRenewal = (newDate: string) => {
     if (!renewalModal || !newDate) return;
 
     const columnMap: Record<string, { exp: keyof VehicleRow; appt: keyof VehicleRow }> = {
@@ -198,29 +243,12 @@ const Dashboard = () => {
     };
 
     const fields = columnMap[renewalModal.type];
+    if (!fields) return;
 
-    if (!fields) {
-      console.error("Unknown renewal type:", renewalModal.type);
-      return;
-    }
-
-    const { error } = await supabase
-      .from('vehiculos')
-      .update({
-        [fields.exp]: newDate,
-        [fields.appt]: null // Clear appointment automatically
-      })
-      .eq('id', renewalModal.vehicle.id);
-
-    if (error) {
-      alert("Error al actualizar: " + error.message);
-    } else {
-      setRenewalModal(null);
-      fetchDashboardData();
-    }
+    renewalMutation.mutate({ vehicleId: renewalModal.vehicle.id, fields, newDate });
   };
 
-  if (loading) return <div className="h-screen flex items-center justify-center bg-background-dark"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
+  if (isLoadingFleet || isLoadingExpenses) return <div className="h-screen flex items-center justify-center bg-background-dark"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
 
   return (
     <div className="p-4 md:p-6 pb-20 md:pb-6">
@@ -383,8 +411,9 @@ const Dashboard = () => {
                     handleConfirmRenewal(input.value);
                   }}
                   className="flex-1 bg-primary hover:bg-primary-dark text-brand-dark font-bold py-3 rounded-lg text-sm transition-colors shadow-lg shadow-primary/10"
+                  disabled={renewalMutation.isPending}
                 >
-                  Confirmar Renovación
+                  {renewalMutation.isPending ? 'Procesando...' : 'Confirmar Renovación'}
                 </button>
                 <button onClick={() => setRenewalModal(null)} className="px-4 py-3 border border-brand-border text-stone-300 text-sm rounded-lg">Cerrar</button>
               </div>

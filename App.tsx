@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, useLocation, Link, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import Login from './pages/Login';
 
@@ -121,6 +122,8 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
   );
 };
 
+const queryClient = new QueryClient();
+
 export default function App() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -151,24 +154,26 @@ export default function App() {
   }
 
   return (
-    <HashRouter>
-      <Routes>
-        {!session ? (
-          <Route path="*" element={<Login />} />
-        ) : (
-          <Route path="/" element={<Layout><Dashboard /></Layout>} />
-        )}
+    <QueryClientProvider client={queryClient}>
+      <HashRouter>
+        <Routes>
+          {!session ? (
+            <Route path="*" element={<Login />} />
+          ) : (
+            <Route path="/" element={<Layout><Dashboard /></Layout>} />
+          )}
 
-        {session && (
-          <>
-            <Route path="/fleet" element={<Layout><Fleet /></Layout>} />
-            <Route path="/fleet/:id" element={<Layout><VehicleDetail /></Layout>} />
-            <Route path="/maintenance" element={<Layout><Maintenance /></Layout>} />
-            <Route path="/calendar" element={<Layout><Calendar /></Layout>} />
-            <Route path="/settings" element={<Layout><Settings /></Layout>} />
-          </>
-        )}
-      </Routes>
-    </HashRouter>
+          {session && (
+            <>
+              <Route path="/fleet" element={<Layout><Fleet /></Layout>} />
+              <Route path="/fleet/:id" element={<Layout><VehicleDetail /></Layout>} />
+              <Route path="/maintenance" element={<Layout><Maintenance /></Layout>} />
+              <Route path="/calendar" element={<Layout><Calendar /></Layout>} />
+              <Route path="/settings" element={<Layout><Settings /></Layout>} />
+            </>
+          )}
+        </Routes>
+      </HashRouter>
+    </QueryClientProvider>
   );
 }
