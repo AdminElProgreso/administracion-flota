@@ -17,7 +17,7 @@ const Settings = () => {
     // --- PUSH NOTIFICATION CONFIG ---
     // IMPORTANTE: Debes generar tus propias llaves VAPID (Public y Private)
     // Puedes usar: https://web-push-codelab.glitch.me/
-    const VAPID_PUBLIC_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U';
+    const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
     const urlBase64ToUint8Array = (base64String: string) => {
         const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -85,6 +85,28 @@ const Settings = () => {
         }
     };
 
+    const sendTestNotification = async () => {
+        if ('serviceWorker' in navigator && notificationState.masterToggle) {
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                await registration.showNotification('Prueba de Notificación', {
+                    body: '¡El sistema de alertas funciona correctamente!',
+                    icon: '/pwa-192x192.png',
+                    badge: '/pwa-192x192.png',
+                    vibrate: [200, 100, 200],
+                    data: {
+                        url: window.location.href
+                    }
+                } as any);
+            } catch (error) {
+                console.error('Error sending test notification:', error);
+                alert('Error al enviar la notificación de prueba.');
+            }
+        } else {
+            alert('Asegúrate de activar las notificaciones primero y permitir permisos.');
+        }
+    };
+
 
     // --- ESTADOS PARA PWA ---
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -120,6 +142,13 @@ const Settings = () => {
     const [purgeTo, setPurgeTo] = useState('');
 
     useEffect(() => {
+        // Cargar configuración de LocalStorage
+        const savedThresholds = localStorage.getItem('fleet_thresholds');
+        const savedNotifications = localStorage.getItem('fleet_notifications');
+
+        if (savedThresholds) setThresholds(JSON.parse(savedThresholds));
+        if (savedNotifications) setNotificationState(JSON.parse(savedNotifications));
+
         // Escuchar el evento de instalación (Android/Chrome)
         const handler = (e: any) => {
             e.preventDefault();
@@ -172,19 +201,20 @@ const Settings = () => {
         setPasswordLoading(false);
     };
 
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
+
     const handleSaveGeneral = () => {
-        const btn = document.getElementById('save-btn');
-        if (btn) {
-            const originalText = btn.innerText;
-            btn.innerText = 'Guardado!';
-            btn.classList.add('bg-emerald-500', 'text-white');
-            btn.classList.remove('bg-primary', 'text-brand-dark');
-            setTimeout(() => {
-                btn.innerText = originalText;
-                btn.classList.remove('bg-emerald-500', 'text-white');
-                btn.classList.add('bg-primary', 'text-brand-dark');
-            }, 2000);
-        }
+        setSaveStatus('saving');
+
+        // Guardar en LocalStorage
+        localStorage.setItem('fleet_thresholds', JSON.stringify(thresholds));
+        localStorage.setItem('fleet_notifications', JSON.stringify(notificationState));
+
+        // Simular retardo de red
+        setTimeout(() => {
+            setSaveStatus('success');
+            setTimeout(() => setSaveStatus('idle'), 2000);
+        }, 800);
     };
 
     const TabButton = ({ id, label, icon }: { id: string; label: string; icon: string }) => (
@@ -245,8 +275,19 @@ const Settings = () => {
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-8 py-6 border-b border-brand-border bg-brand-dark/20">
                         <h2 className="text-xl font-bold text-white">{getTabTitle()}</h2>
                         {activeTab !== 'security' && (
-                            <button id="save-btn" onClick={handleSaveGeneral} className="bg-primary hover:bg-primary-dark text-brand-dark font-bold text-sm px-6 py-2 rounded-lg shadow-lg transition-all flex items-center gap-2">
-                                <span className="material-symbols-outlined text-[18px]">save</span> Guardar Cambios
+                            <button
+                                id="save-btn"
+                                onClick={handleSaveGeneral}
+                                disabled={saveStatus !== 'idle'}
+                                className={`font-bold text-sm px-6 py-2 rounded-lg shadow-lg transition-all flex items-center gap-2 ${saveStatus === 'success'
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'bg-primary hover:bg-primary-dark text-brand-dark'
+                                    }`}
+                            >
+                                <span className="material-symbols-outlined text-[18px]">
+                                    {saveStatus === 'success' ? 'check' : saveStatus === 'saving' ? 'sync' : 'save'}
+                                </span>
+                                {saveStatus === 'success' ? 'Guardado!' : saveStatus === 'saving' ? 'Guardando...' : 'Guardar Cambios'}
                             </button>
                         )}
                     </div>
@@ -439,6 +480,18 @@ const Settings = () => {
                                             onChange={handlePushToggle}
                                         />
                                         <p className="text-xs text-stone-500 mt-2 px-1">Al desactivar esta opción, no recibirás ninguna notificación en tu dispositivo.</p>
+
+                                        {notificationState.masterToggle && (
+                                            <div className="mt-4 flex justify-end">
+                                                <button
+                                                    onClick={sendTestNotification}
+                                                    className="bg-brand-dark hover:bg-stone-800 text-stone-300 hover:text-primary text-xs font-bold py-2 px-4 rounded-lg border border-stone-700 transition-all flex items-center gap-2"
+                                                >
+                                                    <span className="material-symbols-outlined text-[18px]">notifications_active</span>
+                                                    Probar Notificación
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {notificationState.masterToggle && (
