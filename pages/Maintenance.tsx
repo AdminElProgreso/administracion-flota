@@ -186,7 +186,7 @@ const Maintenance = () => {
 
          {/* VIEW DETAIL MODAL */}
          {viewModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setViewModal(null)}>
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setViewModal(null)}>
                <div className="bg-brand-surface w-full max-w-lg rounded-xl border border-brand-border shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
                   <div className="bg-brand-dark p-6 border-b border-brand-border flex justify-between">
                      <div><span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase mb-2 border ${viewModal.type === 'Mantenimiento' ? 'bg-blue-500/20 text-blue-400' : 'bg-orange-500/20 text-orange-400'}`}>{viewModal.type}</span><h2 className="text-xl font-bold text-white">Detalle de Trabajo</h2></div>
@@ -209,7 +209,7 @@ const Maintenance = () => {
 
          {/* --- MODAL EDITAR / CREAR RESTAURADO (DISEÑO PROFESIONAL) --- */}
          {editModal.isOpen && editModal.data && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setEditModal({ ...editModal, isOpen: false })}>
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setEditModal({ ...editModal, isOpen: false })}>
                <div className="bg-brand-surface w-full max-w-2xl rounded-xl border border-brand-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
                   <div className="flex items-center justify-between px-6 py-4 border-b border-brand-border bg-brand-dark/50 flex-shrink-0">
                      <h3 className="text-white font-bold text-lg">{editModal.mode === 'create' ? 'Nuevo Registro' : 'Editar Registro'}</h3>
@@ -223,8 +223,8 @@ const Maintenance = () => {
                            <div>
                               <label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Tipo de Trabajo</label>
                               <div className={`px-3 py-2 rounded-lg border flex items-center gap-2 ${editModal.data.type === 'Mantenimiento'
-                                    ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
-                                    : 'bg-orange-500/10 border-orange-500/30 text-orange-400'
+                                 ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+                                 : 'bg-orange-500/10 border-orange-500/30 text-orange-400'
                                  }`}>
                                  <span className="material-symbols-outlined text-lg">{editModal.data.type === 'Mantenimiento' ? 'build' : 'car_crash'}</span>
                                  <span className="font-bold text-sm">{editModal.data.type}</span>
