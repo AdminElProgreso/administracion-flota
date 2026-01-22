@@ -1,23 +1,68 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../supabase';
+import { VehicleRow, Alert } from '../types';
 
-// Función auxiliar para corregir el desfase de fecha UTC
-const formatLocalDate = (dateStr: string) => {
+// --- Interfaces & Types ---
+
+interface DashboardStats {
+  total: number;
+  inWorkshop: number;
+  alertsCount: number;
+  monthlyExpenses: number;
+}
+
+interface Appointment {
+  id: string;
+  vehicle: string;
+  plate: string | null;
+  type: string;
+  currentExpiry: string | null;
+  fullData: VehicleRow;
+}
+
+interface RenewalModalState {
+  isOpen: boolean;
+  vehicle: VehicleRow;
+  type: string;
+  currentExpiry: string | null;
+}
+
+interface StatCardProps {
+  title: string;
+  value: number | string;
+  subtext: string;
+  icon: string;
+  colorClass: string;
+  borderClass: string;
+  onClick?: () => void;
+  customValueClass?: string;
+}
+
+interface QuickActionProps {
+  to: string;
+  icon: string;
+  label: string;
+  color: string;
+  className?: string;
+}
+
+// --- Helper Functions ---
+
+const formatLocalDate = (dateStr: string | null) => {
   if (!dateStr) return '';
   const [year, month, day] = dateStr.split('-').map(Number);
   const date = new Date(year, month - 1, day);
   return date.toLocaleDateString();
 };
 
-const StatCard = ({ title, value, subtext, icon, colorClass, borderClass, onClick, customValueClass = "" }: any) => (
+const StatCard: React.FC<StatCardProps> = ({ title, value, subtext, icon, colorClass, borderClass, onClick, customValueClass = "" }) => (
   <div className={`bg-brand-surface border ${borderClass} rounded-xl p-5 relative overflow-hidden group cursor-pointer transition-all hover:scale-[1.02]`} onClick={onClick}>
     <div className={`absolute right-0 top-0 w-20 h-20 bg-gradient-to-br ${colorClass} to-transparent rounded-bl-full -mr-4 -mt-4 opacity-10`}></div>
     <div className="flex justify-between items-start mb-2">
       <div className={`p-2 rounded-lg bg-brand-dark border border-brand-border ${colorClass.replace('from-', 'text-')}`}>
         <span className="material-symbols-outlined">{icon}</span>
       </div>
-      {/* Se añadió customValueClass para controlar el tamaño en mobile y evitar cortes */}
       <span className={`font-bold text-white tracking-tight ${customValueClass || "text-3xl"}`}>{value}</span>
     </div>
     <h3 className="text-stone-400 text-xs font-bold uppercase tracking-widest">{title}</h3>
@@ -25,7 +70,7 @@ const StatCard = ({ title, value, subtext, icon, colorClass, borderClass, onClic
   </div>
 );
 
-const QuickAction = ({ to, icon, label, color, className = "" }: any) => (
+const QuickAction: React.FC<QuickActionProps> = ({ to, icon, label, color, className = "" }) => (
   <Link to={to} className={`flex flex-col items-center justify-center p-4 bg-brand-surface border border-brand-border rounded-xl hover:bg-stone-800 transition-colors active:scale-95 group ${className}`}>
     <div className={`w-12 h-12 rounded-full ${color} flex items-center justify-center mb-2 group-hover:scale-110 transition-transform`}>
       <span className="material-symbols-outlined text-xl text-white">{icon}</span>
@@ -35,19 +80,14 @@ const QuickAction = ({ to, icon, label, color, className = "" }: any) => (
 );
 
 const Dashboard = () => {
-  const [stats, setStats] = useState({ total: 0, inWorkshop: 0, alertsCount: 0, monthlyExpenses: 0 });
-  const [urgentAlerts, setUrgentAlerts] = useState<any[]>([]);
-  const [todayAppts, setTodayAppts] = useState<any[]>([]);
+  const [stats, setStats] = useState<DashboardStats>({ total: 0, inWorkshop: 0, alertsCount: 0, monthlyExpenses: 0 });
+  const [urgentAlerts, setUrgentAlerts] = useState<Alert[]>([]);
+  const [todayAppts, setTodayAppts] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showPasswordAlert, setShowPasswordAlert] = useState(false);
 
-  // ESTADO PARA EL MODAL DE RENOVACIÓN RÁPIDA
-  const [renewalModal, setRenewalModal] = useState<{
-    isOpen: boolean;
-    vehicle: any;
-    type: string;
-    currentExpiry: string
-  } | null>(null);
+  // Modal State
+  const [renewalModal, setRenewalModal] = useState<RenewalModalState | null>(null);
 
   const currentMonthName = new Date().toLocaleString('es-ES', { month: 'long' });
   const capitalizedMonth = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
@@ -60,7 +100,7 @@ const Dashboard = () => {
       setShowPasswordAlert(true);
     }
 
-    const { data: fleet } = await supabase.from('vehiculos').select('*').neq('status', 'Baja');
+    const { data: fleet } = await supabase.from('vehiculos').select('*').neq('status', 'Baja').returns<VehicleRow[]>();
 
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
@@ -78,20 +118,20 @@ const Dashboard = () => {
       const offset = todayLocal.getTimezoneOffset();
       const todayStr = new Date(todayLocal.getTime() - (offset * 60 * 1000)).toISOString().split('T')[0];
 
-      const realAlerts: any[] = [];
-      const apptsForToday: any[] = [];
+      const realAlerts: Alert[] = [];
+      const apptsForToday: Appointment[] = [];
       let workshopCount = 0;
 
       fleet.forEach(v => {
         if (v.status === 'En Taller') workshopCount++;
 
-        // Detectar turnos para hoy
-        const checkAppt = (apptStr: string, expiryStr: string, type: string) => {
+        // Helper to check for Today's Appointments
+        const checkAppt = (apptStr: string | null, expiryStr: string | null, type: string) => {
           if (apptStr === todayStr) {
             apptsForToday.push({
               id: v.id,
               vehicle: v.model,
-              plate: v.patente,
+              plate: v.patente || null,
               type,
               currentExpiry: expiryStr,
               fullData: v
@@ -103,9 +143,11 @@ const Dashboard = () => {
         checkAppt(v.insurance_appointment, v.insurance_expiration, 'Seguro');
         checkAppt(v.patente_appointment, v.patente_expiration, 'Patente');
 
-        const checkDoc = (dateStr: string, apptStr: string, type: string) => {
+        // Helper to track Expirations
+        const checkDoc = (dateStr: string | null, apptStr: string | null, type: string) => {
           if (!dateStr && !apptStr) return;
           let diffDays = 999;
+
           if (dateStr) {
             const expiry = new Date(dateStr + 'T00:00:00');
             diffDays = Math.ceil((expiry.getTime() - todayLocal.getTime()) / (1000 * 60 * 60 * 24));
@@ -145,11 +187,11 @@ const Dashboard = () => {
     fetchDashboardData();
   }, []);
 
-  // LÓGICA PARA ACTUALIZAR VENCIMIENTO Y BORRAR TURNO
+  // Update logic: Renewal
   const handleConfirmRenewal = async (newDate: string) => {
     if (!renewalModal || !newDate) return;
 
-    const columnMap: any = {
+    const columnMap: Record<string, { exp: keyof VehicleRow; appt: keyof VehicleRow }> = {
       'VTV': { exp: 'vtv_expiration', appt: 'vtv_appointment' },
       'Seguro': { exp: 'insurance_expiration', appt: 'insurance_appointment' },
       'Patente': { exp: 'patente_expiration', appt: 'patente_appointment' }
@@ -157,11 +199,16 @@ const Dashboard = () => {
 
     const fields = columnMap[renewalModal.type];
 
+    if (!fields) {
+      console.error("Unknown renewal type:", renewalModal.type);
+      return;
+    }
+
     const { error } = await supabase
       .from('vehiculos')
       .update({
         [fields.exp]: newDate,
-        [fields.appt]: null // Elimina el turno automáticamente
+        [fields.appt]: null // Clear appointment automatically
       })
       .eq('id', renewalModal.vehicle.id);
 
@@ -185,7 +232,7 @@ const Dashboard = () => {
         <p className="text-sm text-stone-500 font-medium">Estado real de la flota de El Progreso</p>
       </header>
 
-      {/* Notificación de Turnos para Hoy con Acción de Modal */}
+      {/* Notifications: Today's Appointments */}
       {todayAppts.length > 0 && (
         <div className="mb-6 space-y-3">
           {todayAppts.map((appt, idx) => (
@@ -222,7 +269,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Stat Cards - Se ajustó el tamaño de fuente para evitar cortes en móviles */}
+      {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
         <StatCard title="Documentación" value={stats.alertsCount} subtext="Pendientes o turnos" icon="notifications_active" colorClass="from-rose-500" borderClass={stats.alertsCount > 0 ? "border-rose-500/30" : "border-brand-border"} />
         <StatCard title="En Taller" value={stats.inWorkshop} subtext="Unidades detenidas" icon="build" colorClass="from-amber-500" borderClass="border-brand-border" />
@@ -233,17 +280,15 @@ const Dashboard = () => {
           icon="payments"
           colorClass="from-emerald-500"
           borderClass="border-brand-border"
-          customValueClass="text-xl sm:text-3xl" // Reducción de fuente en mobile
+          customValueClass="text-xl sm:text-3xl"
         />
         <StatCard title="Flota Total" value={stats.total} subtext="Vehículos operativos" icon="local_shipping" colorClass="from-primary" borderClass="border-brand-border" />
       </div>
 
       <h3 className="text-stone-400 text-xs font-bold uppercase tracking-widest mb-3 px-1">Accesos Rápidos</h3>
-      {/* Diseño Mobile 2x1 corregido: 2 columnas en mobile, 3 en desktop */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         <QuickAction to="/maintenance" icon="handyman" label="Cargar Mantenim." color="bg-blue-600" />
         <QuickAction to="/fleet" icon="add_circle" label="Nueva Unidad" color="bg-primary-dark" />
-        {/* El botón de agenda ocupa 2 columnas abajo en mobile */}
         <QuickAction to="/calendar" icon="calendar_clock" label="Ver Agenda" color="bg-emerald-600" className="col-span-2 sm:col-span-1" />
       </div>
 
@@ -283,7 +328,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* MODAL DE RENOVACIÓN DESDE DASHBOARD (DISEÑO CALENDARIO) */}
+      {/* Renewal Modal */}
       {renewalModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setRenewalModal(null)}>
           <div className="bg-brand-surface border border-brand-border rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
