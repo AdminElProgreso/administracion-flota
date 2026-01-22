@@ -57,7 +57,11 @@ Deno.serve(async (req) => {
 
         if (alerts.length === 0) {
             return new Response(JSON.stringify({ message: 'No active alerts found' }), {
-                headers: { 'Content-Type': 'application/json' }
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+                }
             });
         }
 
