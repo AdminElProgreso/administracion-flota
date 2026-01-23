@@ -96,13 +96,20 @@ Deno.serve(async (req) => {
         // 5. Enviar Notificaciones
         let successfulSends = 0;
         const results = [];
-        const plainTextMessage = alerts.length === 1
-            ? `${alerts[0].type} de ${alerts[0].vehicle} vence en ${alerts[0].days} días.`
-            : `Tienes ${alerts.length} vencimientos próximos de flota.`;
+
+        // Creamos el contenido estructurado
+        const notificationPayload = JSON.stringify({
+            title: alerts.length === 1 ? '⚠️ Vencimiento Próximo' : '⚠️ Alertas de Flota',
+            body: alerts.length === 1
+                ? `${alerts[0].type} de ${alerts[0].vehicle} (${alerts[0].patente}) vence en ${alerts[0].days} días.`
+                : `Tienes ${alerts.length} vencimientos próximos (HILUX, RANGER, etc.).`,
+            url: '/fleet', // Redirigir a la sección de flota
+            tag: 'fleet-alert'
+        });
 
         for (const subRecord of subscriptions) {
             try {
-                await webpush.sendNotification(subRecord.subscription, plainTextMessage);
+                await webpush.sendNotification(subRecord.subscription, notificationPayload);
                 successfulSends++;
                 results.push({ success: true, id: subRecord.id });
             } catch (error: any) {
