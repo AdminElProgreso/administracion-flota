@@ -94,30 +94,30 @@ Deno.serve(async (req) => {
         if (subsError) throw subsError;
 
         // 5. Enviar Notificaciones
+        let successfulSends = 0;
         const results = [];
         for (const subRecord of subscriptions) {
-            // Podríamos filtrar aquí por preferencias de usuario si las guardáramos en la DB
             const payload = JSON.stringify({
                 title,
                 body,
-                url: '/', // Abrir la app
-                tag: 'alerts-check' // Reemplazar notificaciones viejas con el mismo tag
+                url: '/',
+                tag: 'alerts-check'
             });
 
             try {
                 await webpush.sendNotification(subRecord.subscription, payload);
+                successfulSends++;
                 results.push({ success: true, id: subRecord.id });
-            } catch (error) {
-                console.error('Error sending to sub', subRecord.id, error);
+            } catch (error: any) {
+                console.error(`Error sending to sub ${subRecord.id}:`, error.message || error);
                 if (error.statusCode === 410 || error.statusCode === 404) {
-                    // Suscripción inválida, eliminar
                     await supabase.from('push_subscriptions').delete().eq('id', subRecord.id);
                 }
-                results.push({ success: false, id: subRecord.id, error });
+                results.push({ success: false, id: subRecord.id, error: error.message || error });
             }
         }
 
-        return new Response(JSON.stringify({ sent: results.length, alertsCount: alerts.length, details: alerts }), {
+        return new Response(JSON.stringify({ sent: successfulSends, totalSubs: subscriptions.length, alertsCount: alerts.length, details: alerts }), {
             headers: { 'Content-Type': 'application/json' }
         });
 

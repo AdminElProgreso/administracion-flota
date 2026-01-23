@@ -41,16 +41,19 @@ const Settings = () => {
         try {
             const registration = await navigator.serviceWorker.ready;
 
-            // Verificar si ya existe una suscripción para no duplicar esfuerzo innecesario
-            let subscription = await registration.pushManager.getSubscription();
-
-            if (!subscription) {
-                console.log('Creating new subscription...');
-                subscription = await registration.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-                });
+            // FORZAR NUEVA SUSCRIPCIÓN:
+            // Desuscribimos la anterior para asegurar que se use la llave VAPID actual
+            const oldSubscription = await registration.pushManager.getSubscription();
+            if (oldSubscription) {
+                console.log('Cleaning old subscription...');
+                await oldSubscription.unsubscribe();
             }
+
+            console.log('Creating fresh subscription...');
+            const subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+            });
 
             console.log('Subscription object:', JSON.stringify(subscription));
 
