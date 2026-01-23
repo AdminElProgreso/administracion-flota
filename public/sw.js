@@ -1,33 +1,15 @@
-// Service Worker v1.6 - Modo Depuración Total
-self.addEventListener('install', (event) => {
-    self.skipWaiting();
-});
+// Service Worker v1.7 - El más simple posible
+self.addEventListener('install', (e) => self.skipWaiting());
+self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
 
-self.addEventListener('activate', (event) => {
-    event.waitUntil(clients.claim());
-});
+self.addEventListener('push', (event) => {
+    const text = event.data ? event.data.text() : 'Alerta de flota recibida';
 
-self.addEventListener('push', function (event) {
-    console.log('[SW] Push recibido');
-
-    let message = 'Nueva alerta de flota';
-    if (event.data) {
-        message = event.data.text();
-        console.log('[SW] Contenido:', message);
-    }
-
-    // Chrome EXIGE que se devuelva la promesa de showNotification
-    const promise = self.registration.showNotification('El Progreso - Flota', {
-        body: message,
-        icon: '/pwa-192x192.png',
-        tag: 'fleet-alert',
-        renotify: true
+    // Mostramos la notificación directamente sin buscar iconos ni JSON
+    const promise = self.registration.showNotification('El Progreso', {
+        body: text,
+        tag: 'fleet-alert'
     });
 
     event.waitUntil(promise);
-});
-
-self.addEventListener('notificationclick', function (event) {
-    event.notification.close();
-    event.waitUntil(clients.openWindow('/'));
 });
