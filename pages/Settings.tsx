@@ -117,17 +117,30 @@ const Settings = () => {
             }
         } else {
             console.log('--- Desactivando notificaciones y limpiando registros ---');
+
+            try {
+                // Intentar borrar de la base de datos la suscripción actual antes de desregistrar
+                const registration = await navigator.serviceWorker.getRegistration();
+                const subscription = await registration?.pushManager.getSubscription();
+
+                if (subscription) {
+                    await supabase.from('push_subscriptions').delete().filter('subscription', 'cs', JSON.stringify(subscription));
+                }
+            } catch (e) {
+                console.log('Error limpiando DB, procediendo con desregistro local');
+            }
+
             setNotificationState(prev => ({ ...prev, masterToggle: false }));
             localStorage.setItem('fleet_notifications', JSON.stringify({ ...notificationState, masterToggle: false }));
 
-            // Desregistrar el Service Worker para asegurar limpieza absoluta
+            // Desregistrar el Service Worker
             if ('serviceWorker' in navigator) {
                 const registrations = await navigator.serviceWorker.getRegistrations();
                 for (let registration of registrations) {
                     await registration.unregister();
                 }
             }
-            alert('Notificaciones desactivadas y dispositivo desvinculado.');
+            alert('Notificaciones desactivadas. Se limpió el registro del dispositivo.');
         }
     };
 
