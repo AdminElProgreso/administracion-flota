@@ -111,36 +111,32 @@ const Settings = () => {
             if (permission === 'granted') {
                 const success = await subscribeUser();
                 if (success) {
-                    setNotificationState(prev => ({ ...prev, masterToggle: true }));
-                    localStorage.setItem('fleet_notifications', JSON.stringify({ ...notificationState, masterToggle: true }));
+                    const updatedState = { ...notificationState, masterToggle: true };
+                    setNotificationState(updatedState);
+                    localStorage.setItem('fleet_notifications', JSON.stringify(updatedState));
                 }
             }
         } else {
             console.log('--- Desactivando notificaciones y limpiando registros ---');
 
             try {
-                // Intentar borrar de la base de datos la suscripción actual antes de desregistrar
                 const registration = await navigator.serviceWorker.getRegistration();
                 const subscription = await registration?.pushManager.getSubscription();
 
                 if (subscription) {
+                    // 1. Borrar de la base de datos
                     await supabase.from('push_subscriptions').delete().filter('subscription', 'cs', JSON.stringify(subscription));
+                    // 2. Desuscribir del navegador
+                    await subscription.unsubscribe();
                 }
             } catch (e) {
-                console.log('Error limpiando DB, procediendo con desregistro local');
+                console.log('Error limpiando suscripción, procediendo con cambio visual local');
             }
 
-            setNotificationState(prev => ({ ...prev, masterToggle: false }));
-            localStorage.setItem('fleet_notifications', JSON.stringify({ ...notificationState, masterToggle: false }));
-
-            // Desregistrar el Service Worker
-            if ('serviceWorker' in navigator) {
-                const registrations = await navigator.serviceWorker.getRegistrations();
-                for (let registration of registrations) {
-                    await registration.unregister();
-                }
-            }
-            alert('Notificaciones desactivadas. Se limpió el registro del dispositivo.');
+            const updatedState = { ...notificationState, masterToggle: false };
+            setNotificationState(updatedState);
+            localStorage.setItem('fleet_notifications', JSON.stringify(updatedState));
+            alert('Notificaciones desactivadas para este dispositivo.');
         }
     };
 
@@ -179,9 +175,9 @@ const Settings = () => {
 
     // --- OTROS ESTADOS ---
     const [notificationState, setNotificationState] = useState({
-        masterToggle: true,
+        masterToggle: false, // Default to false, will sync on load
         emailInfo: true,
-        emailAlerts: true, // Reused as Insurance Alert for now or generic
+        emailAlerts: true,
         vtvAlerts: true,
         patenteAlerts: true,
         apptAlerts: true,
@@ -204,13 +200,26 @@ const Settings = () => {
     // 1. CARGAR CONFIGURACIÓN (SUPABASE + LOCALSTORAGE)
     useEffect(() => {
         const loadInitialSettings = async () => {
-            // Primero cargar de LocalStorage como fallback rápido
+            // Verificar estado real de suscripción en el dispositivo
+            let isSubscribed = false;
+            if ('serviceWorker' in navigator) {
+                const registration = await navigator.serviceWorker.getRegistration();
+                const subscription = await registration?.pushManager.getSubscription();
+                isSubscribed = !!subscription;
+            }
+
             const savedThresholds = localStorage.getItem('fleet_thresholds');
             const savedNotifications = localStorage.getItem('fleet_notifications');
             if (savedThresholds) setThresholds(JSON.parse(savedThresholds));
-            if (savedNotifications) setNotificationState(JSON.parse(savedNotifications));
 
-            // Luego intentar cargar de Supabase para tener lo más reciente
+            if (savedNotifications) {
+                const parsed = JSON.parse(savedNotifications);
+                setNotificationState({ ...parsed, masterToggle: isSubscribed });
+            } else {
+                setNotificationState(prev => ({ ...prev, masterToggle: isSubscribed }));
+            }
+
+            // Luego intentar cargar de Supabase para tener lo más reciente de umbrales
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
                 const { data, error } = await supabase
