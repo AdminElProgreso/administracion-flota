@@ -552,7 +552,7 @@ const Settings = () => {
                                             </label>
                                             <span className="text-primary font-mono font-bold">{thresholds.insurance} días</span>
                                         </div>
-                                        <input type="range" min="5" max="60" value={thresholds.insurance} onChange={(e) => setThresholds({ ...thresholds, insurance: parseInt(e.target.value) })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
+                                        <input type="range" min="1" max="60" value={thresholds.insurance} onChange={(e) => setThresholds({ ...thresholds, insurance: parseInt(e.target.value) })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
                                     </div>
                                     <div>
                                         <div className="flex justify-between mb-2">
@@ -561,7 +561,7 @@ const Settings = () => {
                                             </label>
                                             <span className="text-primary font-mono font-bold">{thresholds.vtv} días</span>
                                         </div>
-                                        <input type="range" min="5" max="90" value={thresholds.vtv} onChange={(e) => setThresholds({ ...thresholds, vtv: parseInt(e.target.value) })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
+                                        <input type="range" min="1" max="90" value={thresholds.vtv} onChange={(e) => setThresholds({ ...thresholds, vtv: parseInt(e.target.value) })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
                                     </div>
                                     <div>
                                         <div className="flex justify-between mb-2">
@@ -570,7 +570,7 @@ const Settings = () => {
                                             </label>
                                             <span className="text-primary font-mono font-bold">{thresholds.patente} días</span>
                                         </div>
-                                        <input type="range" min="5" max="60" value={thresholds.patente} onChange={(e) => setThresholds({ ...thresholds, patente: parseInt(e.target.value) })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
+                                        <input type="range" min="1" max="60" value={thresholds.patente} onChange={(e) => setThresholds({ ...thresholds, patente: parseInt(e.target.value) })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
                                     </div>
                                     <div>
                                         <div className="flex justify-between mb-2">
