@@ -1,11 +1,11 @@
-// Custom Push Notification Logic - Mobile Navigation Fix v4.0
-// Este archivo es el corazón de las notificaciones para móviles.
+// Custom Push Notification Logic - HashRouter Fix v4.2
+// Asegura que la navegación funcione con el sistema de numeral (#) de React.
 
 self.addEventListener('push', (event) => {
     let data = {
         title: 'Gestión El Progreso',
         body: 'Tienes una nueva alerta de flota.',
-        url: '/fleet'
+        url: '/#/fleet' // Corregido para HashRouter
     };
 
     if (event.data) {
@@ -27,7 +27,7 @@ self.addEventListener('push', (event) => {
         renotify: true,
         vibrate: [100, 50, 100],
         data: {
-            url: data.url
+            url: new URL(data.url, self.location.origin).href
         }
     };
 
@@ -37,23 +37,18 @@ self.addEventListener('push', (event) => {
 });
 
 self.addEventListener('notificationclick', (event) => {
-    // Cerramos la notificación inmediatamente
     event.notification.close();
-
-    // Obtenemos la URL de destino (siempre absoluta)
-    const urlToOpen = new URL(event.notification.data.url || '/fleet', self.location.origin).href;
+    const urlToOpen = event.notification.data.url;
 
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true })
             .then((windowClients) => {
-                // Si la App ya está abierta, la traemos al frente y navegamos
                 for (let client of windowClients) {
                     if (client.url.startsWith(self.location.origin) && 'focus' in client) {
                         client.navigate(urlToOpen);
                         return client.focus();
                     }
                 }
-                // Si la App está cerrada, abrimos una nueva ventana (esto abre la PWA)
                 if (clients.openWindow) {
                     return clients.openWindow(urlToOpen);
                 }

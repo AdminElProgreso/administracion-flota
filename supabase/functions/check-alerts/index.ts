@@ -52,6 +52,7 @@ Deno.serve(async (req) => {
 
                 if (days <= threshold && days >= 0) {
                     alerts.push({
+                        id: vehicle.id,
                         type,
                         vehicle: vehicle.model,
                         patente: vehicle.patente,
@@ -103,7 +104,7 @@ Deno.serve(async (req) => {
             body: alerts.length === 1
                 ? `${alerts[0].type} de ${alerts[0].vehicle} (${alerts[0].patente}) vence en ${alerts[0].days} días.`
                 : `Tienes ${alerts.length} vencimientos próximos (HILUX, RANGER, etc.).`,
-            url: '/fleet', // Redirigir a la sección de flota
+            url: alerts.length === 1 ? `/#/fleet/${alerts[0].id}` : '/#/fleet',
             tag: 'fleet-alert'
         });
 
