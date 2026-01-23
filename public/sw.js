@@ -1,40 +1,26 @@
-// Service Worker v1.8 - Final Fix
+// Service Worker v1.9 - Sin imágenes (Prueba de compatibilidad)
 self.addEventListener('install', (e) => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
 
 self.addEventListener('push', (event) => {
-    console.log('[SW] Señal de red recibida');
+    // Extraer texto o poner uno por defecto
+    const text = event.data ? event.data.text() : 'Hay nuevos vencimientos en la flota';
 
-    // Extraemos el texto con seguridad
-    let text = 'Nueva alerta de flota disponible';
-    if (event.data) {
-        try {
-            text = event.data.text();
-        } catch (e) {
-            console.error('Error al leer el texto del push');
-        }
-    }
+    // Título con versión para confirmar que el cambio llegó
+    const title = 'ALERTA FLOTA v1.9';
 
-    // Chrome exige que showNotification sea lo último que hagamos dentro de waitUntil
-    const notificationPromise = self.registration.showNotification('El Progreso - Gestión', {
+    // IMPORTANTE: En Windows/Chrome, a veces los iconos causan el error 
+    // de "actualizado en segundo plano" si fallan. Los quitamos para probar.
+    const promise = self.registration.showNotification(title, {
         body: text,
-        icon: '/pwa-192x192.png',
-        badge: '/pwa-192x192.png',
-        tag: 'fleet-alert-final',
+        tag: 'fleet-unique-tag',
         renotify: true
     });
 
-    event.waitUntil(notificationPromise);
+    event.waitUntil(promise);
 });
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-    event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-            if (windowClients.length > 0) {
-                return windowClients[0].focus();
-            }
-            return clients.openWindow('/');
-        })
-    );
+    event.waitUntil(clients.openWindow('/'));
 });
