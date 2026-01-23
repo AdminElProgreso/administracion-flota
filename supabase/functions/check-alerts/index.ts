@@ -8,7 +8,7 @@ const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')?.trim() || "";
 const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')?.trim() || "";
 const subject = 'mailto:admin@elprogreso.com';
 
-console.log("Check Alerts Function Started (Personalized Mode)");
+console.log("Check Alerts Function Started (Personalized Mode v2)");
 
 Deno.serve(async (req) => {
     try {
@@ -29,6 +29,7 @@ Deno.serve(async (req) => {
         userSettings?.forEach(s => settingsMap.set(s.user_id, s));
 
         const today = new Date();
+        today.setHours(0, 0, 0, 0);
         let totalSent = 0;
 
         // 3. Procesar CADA suscripción de forma personalizada
@@ -37,32 +38,59 @@ Deno.serve(async (req) => {
             const settings = settingsMap.get(userId) || {
                 vtv_threshold: 30,
                 insurance_threshold: 15,
-                patente_threshold: 10
+                patente_threshold: 10,
+                appointments_threshold: 3
             };
 
             // Filtrar alertas para ESTE usuario según SUS umbrales
             const userAlerts: any[] = [];
             vehicles.forEach(v => {
-                const check = (dateStr: string | null, type: string, threshold: number) => {
+                // Función genérica para vencimientos
+                const checkExpiry = (dateStr: string | null, type: string, threshold: number) => {
                     if (!dateStr) return;
-                    const days = Math.ceil((new Date(dateStr).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                    const diff = new Date(dateStr).getTime() - today.getTime();
+                    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
                     if (days <= threshold && days >= 0) {
                         userAlerts.push({ id: v.id, type, vehicle: v.model, patente: v.patente, days });
                     }
                 };
 
-                check(v.vtv_expiration, 'VTV', settings.vtv_threshold);
-                check(v.insurance_expiration, 'Seguro', settings.insurance_threshold);
-                check(v.patente_expiration, 'Patente', settings.patente_threshold);
+                // Función genérica para turnos (Appointments)
+                const checkAppt = (dateStr: string | null, type: string) => {
+                    if (!dateStr) return;
+                    const diff = new Date(dateStr).getTime() - today.getTime();
+                    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+                    const threshold = settings.appointments_threshold || 3;
+                    if (days <= threshold && days >= 0) {
+                        userAlerts.push({
+                            id: v.id,
+                            type: `Turno ${type}`,
+                            vehicle: v.model,
+                            patente: v.patente,
+                            days,
+                            isAppt: true
+                        });
+                    }
+                };
+
+                // Vencimientos
+                checkExpiry(v.vtv_expiration, 'VTV', settings.vtv_threshold);
+                checkExpiry(v.insurance_expiration, 'Seguro', settings.insurance_threshold);
+                checkExpiry(v.patente_expiration, 'Patente', settings.patente_threshold);
+
+                // Turnos
+                checkAppt(v.vtv_appointment, 'VTV');
+                checkAppt(v.insurance_appointment, 'Seguro');
+                checkAppt(v.patente_appointment, 'Patente');
             });
 
             // 4. Si hay alertas para este usuario, enviar notificación
             if (userAlerts.length > 0) {
                 const payload = JSON.stringify({
-                    title: userAlerts.length === 1 ? '⚠️ Vencimiento Próximo' : '⚠️ Alertas de Flota',
+                    title: userAlerts.length === 1 ? '⚠️ Alerta de Flota' : '⚠️ Alertas de Flota',
                     body: userAlerts.length === 1
-                        ? `${userAlerts[0].type} de ${userAlerts[0].vehicle} (${userAlerts[0].patente}) vence en ${userAlerts[0].days} días.`
-                        : `Tienes ${userAlerts.length} vencimientos próximos en tu flota.`,
+                        ? `${userAlerts[0].type} de ${userAlerts[0].vehicle} (${userAlerts[0].patente}) en ${userAlerts[0].days} días.`
+                        : `Tienes ${userAlerts.length} avisos próximos en tu flota.`,
                     url: userAlerts.length === 1 ? `/#/fleet/${userAlerts[0].id}` : '/#/fleet',
                     tag: 'fleet-alert'
                 });

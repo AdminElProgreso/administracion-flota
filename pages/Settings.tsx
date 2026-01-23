@@ -225,7 +225,7 @@ const Settings = () => {
                         insurance: data.insurance_threshold,
                         vtv: data.vtv_threshold,
                         patente: data.patente_threshold,
-                        appointments: 3, // Defaults por ahora si no están en tabla
+                        appointments: data.appointments_threshold || 3,
                         service: 1000
                     };
                     setThresholds(cloudThresholds);
@@ -262,6 +262,7 @@ const Settings = () => {
                         insurance_threshold: thresholds.insurance,
                         vtv_threshold: thresholds.vtv,
                         patente_threshold: thresholds.patente,
+                        appointments_threshold: thresholds.appointments,
                         updated_at: new Date()
                     });
 
