@@ -111,7 +111,7 @@ const Calendar = () => {
    );
 
    return (
-      <div className="p-4 md:p-6 min-h-full flex flex-col max-w-7xl mx-auto space-y-6">
+      <div className="p-4 md:p-6 pb-28 lg:pb-6 min-h-full flex flex-col max-w-7xl mx-auto space-y-6">
          <header className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-6">
             <div className="flex flex-col gap-2">
                <div className="flex items-center gap-4">
@@ -137,8 +137,8 @@ const Calendar = () => {
                         key={type}
                         onClick={() => setFilterType(type as any)}
                         className={`px-4 py-2 text-[10px] font-black rounded-lg transition-all uppercase tracking-wider flex items-center gap-2 ${filterType === type
-                              ? 'bg-primary text-brand-dark shadow-lg shadow-primary/10'
-                              : 'text-stone-500 hover:text-stone-200'
+                           ? 'bg-primary text-brand-dark shadow-lg shadow-primary/10'
+                           : 'text-stone-500 hover:text-stone-200'
                            }`}
                      >
                         {type !== 'all' && (
@@ -179,12 +179,12 @@ const Calendar = () => {
                            <div
                               key={i}
                               onClick={() => isCurrentMonth && setSelectedDay(dayNum)}
-                              className={`group relative aspect-square lg:aspect-auto lg:min-h-[100px] p-2 transition-all duration-300 cursor-pointer overflow-hidden ${!isCurrentMonth ? 'bg-stone-950/10 opacity-30 pointer-events-none' :
-                                    isSelected ? 'bg-primary/10 shadow-inner' : 'bg-brand-dark/40 hover:bg-brand-surface/60'
+                              className={`group relative aspect-square lg:aspect-auto lg:min-h-[100px] p-2 transition-all duration-300 cursor-pointer overflow-hidden rounded-xl ${!isCurrentMonth ? 'bg-stone-950/10 opacity-30 pointer-events-none' :
+                                 isSelected ? 'bg-primary/10 shadow-inner' : 'bg-brand-dark/40 hover:bg-brand-surface/60'
                                  }`}
                            >
                               <div className={`absolute top-2 right-2 flex items-center justify-center w-6 h-6 rounded-lg text-xs font-black transition-all ${isToday ? 'bg-primary text-brand-dark shadow-lg shadow-primary/30' :
-                                    isSelected ? 'text-primary' : 'text-stone-500 group-hover:text-stone-200'
+                                 isSelected ? 'text-primary' : 'text-stone-500 group-hover:text-stone-200'
                                  }`}>
                                  {isCurrentMonth ? dayNum : ''}
                               </div>
@@ -195,8 +195,8 @@ const Calendar = () => {
                                     <div
                                        key={evt.id}
                                        className={`w-2 h-2 rounded-full shadow-sm animate-in zoom-in-50 duration-300 delay-${idx * 75} ${evt.color === 'rose' ? 'bg-rose-500 shadow-rose-500/50' :
-                                             evt.color === 'blue' ? 'bg-blue-400 shadow-blue-400/50' :
-                                                evt.color === 'amber' ? 'bg-amber-500 shadow-amber-500/50' : 'bg-emerald-500 shadow-emerald-500/50'
+                                          evt.color === 'blue' ? 'bg-blue-400 shadow-blue-400/50' :
+                                             evt.color === 'amber' ? 'bg-amber-500 shadow-amber-500/50' : 'bg-emerald-500 shadow-emerald-500/50'
                                           }`}
                                     />
                                  ))}
@@ -215,7 +215,7 @@ const Calendar = () => {
                               </div>
 
                               {isSelected && (
-                                 <div className="absolute inset-0 border-2 border-primary/40 rounded-none pointer-events-none" />
+                                 <div className="absolute inset-0 border-2 border-primary/40 rounded-xl pointer-events-none" />
                               )}
                            </div>
                         );
@@ -248,8 +248,8 @@ const Calendar = () => {
                                  to="/fleet"
                                  key={evt.id}
                                  className={`block p-4 rounded-xl border transition-all duration-300 hover:translate-x-2 animate-in slide-in-from-right-4 delay-${i * 100} ${evt.color === 'rose' ? 'bg-rose-500/5 border-rose-500/20 hover:bg-rose-500/10' :
-                                       evt.color === 'blue' ? 'bg-blue-500/5 border-blue-500/20 hover:bg-blue-500/10' :
-                                          evt.color === 'amber' ? 'bg-amber-500/5 border-amber-500/20 hover:bg-amber-500/10' : 'bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10'
+                                    evt.color === 'blue' ? 'bg-blue-500/5 border-blue-500/20 hover:bg-blue-500/10' :
+                                       evt.color === 'amber' ? 'bg-amber-500/5 border-amber-500/20 hover:bg-amber-500/10' : 'bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10'
                                     }`}
                               >
                                  <div className="flex items-center gap-3 mb-2">
@@ -288,8 +288,8 @@ const Calendar = () => {
                      {filteredEvents.sort((a, b) => a.day - b.day).map((evt, i) => (
                         <div key={evt.id} className="p-6 hover:bg-brand-surface/40 transition-all flex items-center gap-6 group animate-in slide-in-from-left-4" style={{ animationDelay: `${i * 30}ms` }}>
                            <div className={`w-14 h-14 rounded-2xl border flex flex-col items-center justify-center bg-brand-dark/50 transition-transform group-hover:scale-110 shadow-lg ${evt.color === 'rose' ? 'border-rose-500/20 text-rose-500 shadow-rose-500/5' :
-                                 evt.color === 'blue' ? 'border-blue-500/20 text-blue-400 shadow-blue-500/5' :
-                                    evt.color === 'amber' ? 'border-amber-500/20 text-amber-500 shadow-amber-500/5' : 'border-emerald-500/20 text-emerald-500 shadow-emerald-500/5'
+                              evt.color === 'blue' ? 'border-blue-500/20 text-blue-400 shadow-blue-500/5' :
+                                 evt.color === 'amber' ? 'border-amber-500/20 text-amber-500 shadow-amber-500/5' : 'border-emerald-500/20 text-emerald-500 shadow-emerald-500/5'
                               }`}>
                               <span className="text-lg font-black leading-none">{evt.day}</span>
                               <span className="text-[8px] font-black uppercase tracking-widest">{monthName.substring(0, 3)}</span>
@@ -304,8 +304,8 @@ const Calendar = () => {
                            </div>
                            <div className="hidden sm:flex flex-col items-end gap-1">
                               <span className={`text-[10px] font-black px-3 py-1 rounded-full border uppercase tracking-widest shadow-lg ${evt.color === 'rose' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
-                                    evt.color === 'blue' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                       evt.color === 'amber' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                                 evt.color === 'blue' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                    evt.color === 'amber' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
                                  }`}>
                                  {evt.status}
                               </span>
