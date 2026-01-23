@@ -1,13 +1,13 @@
-// Custom Push Notification Logic - Premium Version v2.1
+// Custom Push Notification Logic - Mobile Navigation Fix v3.0
 // Imported into the main sw.js by VitePWA
 
 self.addEventListener('push', (event) => {
-    console.log('[SW-Push] Received rich payload');
+    console.log('[SW-Push] Rich signal received');
 
     let data = {
         title: 'Gestión El Progreso',
         body: 'Tienes una nueva alerta de flota.',
-        url: '/fleet',
+        url: '/fleet', // Ruta por defecto
         tag: 'fleet-alert-unique'
     };
 
@@ -17,6 +17,7 @@ self.addEventListener('push', (event) => {
             data = { ...data, ...json };
         } catch (e) {
             data.body = event.data.text();
+            console.warn('[SW-Push] Data was not JSON');
         }
     }
 
@@ -42,38 +43,33 @@ self.addEventListener('push', (event) => {
 });
 
 self.addEventListener('notificationclick', (event) => {
-    const notification = event.notification;
-    const action = event.action;
+    event.notification.close();
 
-    // Resolvemos la URL absoluta para evitar errores en navegadores
-    const targetUrl = new URL(notification.data.url || '/', self.location.origin).href;
+    if (event.action === 'close') return;
 
-    notification.close();
+    // Construir URL absoluta de forma ultra-segura para móvil
+    const targetUrl = new URL(event.notification.data.url || '/', self.location.origin).href;
 
-    if (action === 'close') {
-        return;
-    }
-
-    // Intentar encontrar una ventana abierta de nuestra App
     event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-            // 1. Intentar encontrar la pestaña exacta
-            for (let client of windowClients) {
-                if (client.url === targetUrl && 'focus' in client) {
-                    return client.focus();
+        clients.matchAll({ type: 'window', includeUncontrolled: true })
+            .then((windowClients) => {
+                // 1. Intentar encontrar UNA pestaña abierta de nuestra App
+                for (let client of windowClients) {
+                    // Si encontramos CUALQUIER pestaña de nuestro sitio
+                    if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+                        return client.focus().then(focusedClient => {
+                            // Una vez en foco, le mandamos a la sección de flota
+                            if (focusedClient.navigate) {
+                                return focusedClient.navigate(targetUrl);
+                            }
+                        });
+                    }
                 }
-            }
-            // 2. Si no está la exacta, enfocar cualquier pestaña de la App
-            for (let client of windowClients) {
-                if ('focus' in client) {
-                    client.navigate(targetUrl); // Cambiamos la URL de la pestaña abierta a Flota
-                    return client.focus();
+
+                // 2. Si no había ninguna pestaña abierta, abrir una nueva
+                if (clients.openWindow) {
+                    return clients.openWindow(targetUrl);
                 }
-            }
-            // 3. Si no hay nada abierto, abrir nueva ventana
-            if (clients.openWindow) {
-                return clients.openWindow(targetUrl);
-            }
-        })
+            })
     );
 });
