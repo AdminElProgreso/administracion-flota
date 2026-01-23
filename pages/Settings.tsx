@@ -199,29 +199,79 @@ const Settings = () => {
 
     const [purgeFrom, setPurgeFrom] = useState('');
     const [purgeTo, setPurgeTo] = useState('');
+    const [isSyncing, setIsSyncing] = useState(false);
 
+    // 1. CARGAR CONFIGURACIÓN (SUPABASE + LOCALSTORAGE)
     useEffect(() => {
-        // Cargar configuración de LocalStorage
-        const savedThresholds = localStorage.getItem('fleet_thresholds');
-        const savedNotifications = localStorage.getItem('fleet_notifications');
+        const loadInitialSettings = async () => {
+            // Primero cargar de LocalStorage como fallback rápido
+            const savedThresholds = localStorage.getItem('fleet_thresholds');
+            const savedNotifications = localStorage.getItem('fleet_notifications');
+            if (savedThresholds) setThresholds(JSON.parse(savedThresholds));
+            if (savedNotifications) setNotificationState(JSON.parse(savedNotifications));
 
-        if (savedThresholds) setThresholds(JSON.parse(savedThresholds));
-        if (savedNotifications) setNotificationState(JSON.parse(savedNotifications));
+            // Luego intentar cargar de Supabase para tener lo más reciente
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                const { data, error } = await supabase
+                    .from('user_settings')
+                    .select('*')
+                    .eq('user_id', session.user.id)
+                    .single();
 
-        // Escuchar el evento de instalación (Android/Chrome)
+                if (data && !error) {
+                    console.log('Settings loaded from Supabase:', data);
+                    const cloudThresholds = {
+                        insurance: data.insurance_threshold,
+                        vtv: data.vtv_threshold,
+                        patente: data.patente_threshold,
+                        appointments: 3, // Defaults por ahora si no están en tabla
+                        service: 1000
+                    };
+                    setThresholds(cloudThresholds);
+                    localStorage.setItem('fleet_thresholds', JSON.stringify(cloudThresholds));
+                }
+            }
+        };
+
+        loadInitialSettings();
+
         const handler = (e: any) => {
             e.preventDefault();
             setDeferredPrompt(e);
         };
         window.addEventListener('beforeinstallprompt', handler);
 
-        // Verificar si ya está instalada
-        if (isInStandaloneMode()) {
-            setIsInstalled(true);
-        }
+        if (isInStandaloneMode()) setIsInstalled(true);
 
         return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
+
+    // 2. GUARDAR CONFIGURACIÓN AUTOMÁTICAMENTE (DEBOUNCED)
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            localStorage.setItem('fleet_thresholds', JSON.stringify(thresholds));
+
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                setIsSyncing(true);
+                const { error } = await supabase
+                    .from('user_settings')
+                    .upsert({
+                        user_id: session.user.id,
+                        insurance_threshold: thresholds.insurance,
+                        vtv_threshold: thresholds.vtv,
+                        patente_threshold: thresholds.patente,
+                        updated_at: new Date()
+                    });
+
+                if (error) console.error('Error syncing to Supabase:', error);
+                setTimeout(() => setIsSyncing(false), 1000);
+            }
+        }, 1000); // Guardar 1 segundo después del último cambio
+
+        return () => clearTimeout(timer);
+    }, [thresholds]);
 
     const handleInstallClick = () => {
         if (deferredPrompt) {
@@ -486,7 +536,14 @@ const Settings = () => {
                         {/* --- TAB: ALERTS --- */}
                         {activeTab === 'alerts' && (
                             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                                <p className="text-stone-400 text-sm mb-6">Configura con cuánta antelación quieres recibir avisos de vencimientos.</p>
+                                <div className="flex justify-between items-center mb-6">
+                                    <p className="text-stone-400 text-sm">Configura con cuánta antelación quieres recibir avisos de vencimientos.</p>
+                                    {isSyncing && (
+                                        <div className="flex items-center gap-2 text-xs text-primary animate-pulse">
+                                            <span className="material-symbols-outlined text-sm">sync</span> Sincronizando...
+                                        </div>
+                                    )}
+                                </div>
                                 <div className="space-y-8 max-w-xl">
                                     <div>
                                         <div className="flex justify-between mb-2">

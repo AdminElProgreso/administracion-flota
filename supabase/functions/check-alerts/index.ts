@@ -8,128 +8,82 @@ const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')?.trim() || "";
 const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')?.trim() || "";
 const subject = 'mailto:admin@elprogreso.com';
 
-console.log("Check Alerts Function Started");
-console.log("VAPID Pub:", vapidPublicKey.substring(0, 4) + "..." + vapidPublicKey.substring(vapidPublicKey.length - 4));
-console.log("VAPID Priv:", vapidPrivateKey.substring(0, 4) + "..." + vapidPrivateKey.substring(vapidPrivateKey.length - 4));
+console.log("Check Alerts Function Started (Personalized Mode)");
 
 Deno.serve(async (req) => {
     try {
-        if (!vapidPublicKey || !vapidPrivateKey) {
-            throw new Error("Missing or empty VAPID keys");
-        }
+        if (!vapidPublicKey || !vapidPrivateKey) throw new Error("Missing VAPID keys");
 
-        console.log("Configuring VAPID...");
         webpush.setVapidDetails(subject, vapidPublicKey, vapidPrivateKey);
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-        // 1. Obtener vehículos
-        console.log("Fetching vehicles...");
-        const { data: vehicles, error: vehiclesError } = await supabase
-            .from('vehiculos')
-            .select('*');
+        // 1. Obtener Datos Base
+        const { data: vehicles } = await supabase.from('vehiculos').select('*');
+        const { data: subscriptions } = await supabase.from('push_subscriptions').select('*');
+        const { data: userSettings } = await supabase.from('user_settings').select('*');
 
-        if (vehiclesError) {
-            console.error("Vehicles Error:", vehiclesError);
-            throw vehiclesError;
-        }
+        if (!vehicles || !subscriptions) return new Response(JSON.stringify({ message: "No vehicles or subs" }));
 
-        // 2. Identificar Alertas (Usando umbrales por defecto por ahora)
-        const alerts: any[] = [];
+        // 2. Crear mapa de ajustes por usuario
+        const settingsMap = new Map();
+        userSettings?.forEach(s => settingsMap.set(s.user_id, s));
+
         const today = new Date();
+        let totalSent = 0;
 
-        // Umbrales por defecto (Días)
-        const THRESHOLDS = {
-            vtv: 30,
-            insurance: 15,
-            patente: 10
-        };
-
-        vehicles.forEach((vehicle: any) => {
-            const checkExpiration = (dateStr: string | null, type: string, threshold: number) => {
-                if (!dateStr) return;
-                const diffTime = new Date(dateStr).getTime() - today.getTime();
-                const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                if (days <= threshold && days >= 0) {
-                    alerts.push({
-                        id: vehicle.id,
-                        type,
-                        vehicle: vehicle.model,
-                        patente: vehicle.patente,
-                        days
-                    });
-                }
+        // 3. Procesar CADA suscripción de forma personalizada
+        for (const subRecord of subscriptions) {
+            const userId = subRecord.user_id;
+            const settings = settingsMap.get(userId) || {
+                vtv_threshold: 30,
+                insurance_threshold: 15,
+                patente_threshold: 10
             };
 
-            checkExpiration(vehicle.vtv_expiration, 'VTV', THRESHOLDS.vtv);
-            checkExpiration(vehicle.insurance_expiration, 'Seguro', THRESHOLDS.insurance);
-            checkExpiration(vehicle.patente_expiration, 'Patente', THRESHOLDS.patente);
-        });
+            // Filtrar alertas para ESTE usuario según SUS umbrales
+            const userAlerts: any[] = [];
+            vehicles.forEach(v => {
+                const check = (dateStr: string | null, type: string, threshold: number) => {
+                    if (!dateStr) return;
+                    const days = Math.ceil((new Date(dateStr).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                    if (days <= threshold && days >= 0) {
+                        userAlerts.push({ id: v.id, type, vehicle: v.model, patente: v.patente, days });
+                    }
+                };
 
-        if (alerts.length === 0) {
-            return new Response(JSON.stringify({ message: 'No active alerts found' }), {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-                }
+                check(v.vtv_expiration, 'VTV', settings.vtv_threshold);
+                check(v.insurance_expiration, 'Seguro', settings.insurance_threshold);
+                check(v.patente_expiration, 'Patente', settings.patente_threshold);
             });
-        }
 
-        // 3. Crear mensaje resumido
-        // Para simplificar, enviamos una alerta genérica si hay muchas, o específica si es una.
-        const title = '⚠️ Alertas de Flota';
-        let body = '';
+            // 4. Si hay alertas para este usuario, enviar notificación
+            if (userAlerts.length > 0) {
+                const payload = JSON.stringify({
+                    title: userAlerts.length === 1 ? '⚠️ Vencimiento Próximo' : '⚠️ Alertas de Flota',
+                    body: userAlerts.length === 1
+                        ? `${userAlerts[0].type} de ${userAlerts[0].vehicle} (${userAlerts[0].patente}) vence en ${userAlerts[0].days} días.`
+                        : `Tienes ${userAlerts.length} vencimientos próximos en tu flota.`,
+                    url: userAlerts.length === 1 ? `/#/fleet/${userAlerts[0].id}` : '/#/fleet',
+                    tag: 'fleet-alert'
+                });
 
-        if (alerts.length === 1) {
-            body = `${alerts[0].type} de ${alerts[0].vehicle} vence en ${alerts[0].days} días.`;
-        } else {
-            body = `Tienes ${alerts.length} vencimientos próximos (VTV, Seguros, etc.).`;
-        }
-
-        // 4. Obtener Suscripciones
-        const { data: subscriptions, error: subsError } = await supabase
-            .from('push_subscriptions')
-            .select('*');
-
-        if (subsError) throw subsError;
-
-        // 5. Enviar Notificaciones
-        let successfulSends = 0;
-        const results = [];
-
-        // Creamos el contenido estructurado
-        const notificationPayload = JSON.stringify({
-            title: alerts.length === 1 ? '⚠️ Vencimiento Próximo' : '⚠️ Alertas de Flota',
-            body: alerts.length === 1
-                ? `${alerts[0].type} de ${alerts[0].vehicle} (${alerts[0].patente}) vence en ${alerts[0].days} días.`
-                : `Tienes ${alerts.length} vencimientos próximos (HILUX, RANGER, etc.).`,
-            url: alerts.length === 1 ? `/#/fleet/${alerts[0].id}` : '/#/fleet',
-            tag: 'fleet-alert'
-        });
-
-        for (const subRecord of subscriptions) {
-            try {
-                await webpush.sendNotification(subRecord.subscription, notificationPayload);
-                successfulSends++;
-                results.push({ success: true, id: subRecord.id });
-            } catch (error: any) {
-                console.error(`Error sending to sub ${subRecord.id}:`, error.message || error);
-                if (error.statusCode === 410 || error.statusCode === 404) {
-                    await supabase.from('push_subscriptions').delete().eq('id', subRecord.id);
+                try {
+                    await webpush.sendNotification(subRecord.subscription, payload);
+                    totalSent++;
+                } catch (error: any) {
+                    console.error(`Error sending to device ${subRecord.id}:`, error.message);
+                    if (error.statusCode === 410 || error.statusCode === 404) {
+                        await supabase.from('push_subscriptions').delete().eq('id', subRecord.id);
+                    }
                 }
-                results.push({ success: false, id: subRecord.id, error: error.message || error });
             }
         }
 
-        return new Response(JSON.stringify({ sent: successfulSends, totalSubs: subscriptions.length, alertsCount: alerts.length, details: alerts }), {
+        return new Response(JSON.stringify({ sent: totalSent, processed: subscriptions.length }), {
             headers: { 'Content-Type': 'application/json' }
         });
 
-    } catch (error) {
-        return new Response(JSON.stringify({ error: error.message }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' }
-        });
+    } catch (error: any) {
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }
 });
