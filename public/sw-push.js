@@ -1,4 +1,4 @@
-// Custom Push Notification Logic - Premium Version
+// Custom Push Notification Logic - Premium Version v2.1
 // Imported into the main sw.js by VitePWA
 
 self.addEventListener('push', (event) => {
@@ -13,13 +13,10 @@ self.addEventListener('push', (event) => {
 
     if (event.data) {
         try {
-            // Intentamos parsear el JSON que ahora manda el servidor
             const json = event.data.json();
             data = { ...data, ...json };
         } catch (e) {
-            // Si falla el JSON (ej: texto plano), lo usamos como body
             data.body = event.data.text();
-            console.warn('[SW-Push] Payload was not JSON, using as text');
         }
     }
 
@@ -47,24 +44,33 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
     const notification = event.notification;
     const action = event.action;
-    const targetUrl = notification.data.url || '/';
+
+    // Resolvemos la URL absoluta para evitar errores en navegadores
+    const targetUrl = new URL(notification.data.url || '/', self.location.origin).href;
 
     notification.close();
 
     if (action === 'close') {
-        return; // No hacer nada si el usuario tocó "Ignorar"
+        return;
     }
 
-    // Lógica para abrir la App o enfocar si ya está abierta
+    // Intentar encontrar una ventana abierta de nuestra App
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-            // Si hay una pestaña abierta, enfocarla
+            // 1. Intentar encontrar la pestaña exacta
             for (let client of windowClients) {
-                if (client.url.includes(targetUrl) && 'focus' in client) {
+                if (client.url === targetUrl && 'focus' in client) {
                     return client.focus();
                 }
             }
-            // Si no, abrir una nueva
+            // 2. Si no está la exacta, enfocar cualquier pestaña de la App
+            for (let client of windowClients) {
+                if ('focus' in client) {
+                    client.navigate(targetUrl); // Cambiamos la URL de la pestaña abierta a Flota
+                    return client.focus();
+                }
+            }
+            // 3. Si no hay nada abierto, abrir nueva ventana
             if (clients.openWindow) {
                 return clients.openWindow(targetUrl);
             }
