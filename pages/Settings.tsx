@@ -49,13 +49,13 @@ const Settings = () => {
                 await oldSubscription.unsubscribe();
             }
 
-            console.log('Creating fresh subscription...');
+
             const subscription = await registration.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
             });
 
-            console.log('Subscription object:', JSON.stringify(subscription));
+
 
             // GUARDAR SUSCRIPCIÓN EN SUPABASE
             const { data: { session } } = await supabase.auth.getSession();
@@ -69,15 +69,15 @@ const Settings = () => {
                 updated_at: new Date()
             };
 
-            console.log('Sending to Supabase:', subscriptionData);
+
 
             const { error } = await supabase
                 .from('push_subscriptions')
                 .upsert(subscriptionData, { onConflict: 'subscription' });
 
             if (error) {
-                console.error('Supabase Error:', error);
-                alert('Error al guardar en base de datos: ' + error.message);
+                console.error('Push registration error');
+                alert('No se pudo registrar el dispositivo. Intenta nuevamente.');
                 return false;
             }
 
@@ -99,7 +99,7 @@ const Settings = () => {
         const newState = !notificationState.masterToggle;
 
         if (newState) {
-            console.log('--- Intentando activar notificaciones ---');
+
             const currentPermission = Notification.permission;
 
             if (currentPermission === 'denied') {
@@ -117,7 +117,7 @@ const Settings = () => {
                 }
             }
         } else {
-            console.log('--- Desactivando notificaciones y limpiando registros ---');
+
 
             try {
                 const registration = await navigator.serviceWorker.getRegistration();
@@ -130,7 +130,7 @@ const Settings = () => {
                     await subscription.unsubscribe();
                 }
             } catch (e) {
-                console.log('Error limpiando suscripción, procediendo con cambio visual local');
+
             }
 
             const updatedState = { ...notificationState, masterToggle: false };
