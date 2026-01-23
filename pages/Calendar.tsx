@@ -9,6 +9,7 @@ const Calendar = () => {
    const [loading, setLoading] = useState(true);
    const [currentDate, setCurrentDate] = useState(new Date());
    const [selectedDay, setSelectedDay] = useState<number>(new Date().getDate());
+   const [selectedEvent, setSelectedEvent] = useState<any>(null);
 
    const fetchCalendarData = async () => {
       setLoading(true);
@@ -33,6 +34,7 @@ const Calendar = () => {
 
                   realEvents.push({
                      id: `${v.id}-exp-${type}`,
+                     vehicleId: v.id,
                      day: d.getDate(),
                      type,
                      vehicle: v.model,
@@ -50,6 +52,7 @@ const Calendar = () => {
                if (d.getMonth() === currentDate.getMonth() && d.getFullYear() === currentDate.getFullYear()) {
                   realEvents.push({
                      id: `${v.id}-appt-${type}`,
+                     vehicleId: v.id,
                      day: d.getDate(),
                      type: `TURNO ${type}`,
                      vehicle: v.model,
@@ -75,7 +78,6 @@ const Calendar = () => {
 
    useEffect(() => { fetchCalendarData(); }, [currentDate]);
 
-   // Reset selected day when month changes
    useEffect(() => {
       const today = new Date();
       if (currentDate.getMonth() === today.getMonth() && currentDate.getFullYear() === today.getFullYear()) {
@@ -111,16 +113,17 @@ const Calendar = () => {
    );
 
    return (
-      <div className="p-4 md:p-6 pb-28 lg:pb-6 min-h-full flex flex-col max-w-7xl mx-auto space-y-6">
+      <div className="p-4 md:p-6 pb-28 lg:pb-6 min-h-full flex flex-col max-w-7xl mx-auto space-y-6 overflow-x-hidden">
          <header className="flex flex-col lg:flex-row items-stretch lg:items-end justify-between gap-4 lg:gap-6">
-            <div className="flex items-center justify-between gap-4">
-               {/* MES Y AÑO A LA IZQUIERDA */}
+            {/* FILA SUPERIOR: MES Y SELECTOR DE VISTA */}
+            <div className="flex items-center justify-center lg:justify-start gap-3 sm:gap-6">
+               {/* MES Y AÑO */}
                <div className="flex items-center bg-brand-surface/50 backdrop-blur-md border border-brand-border rounded-xl p-1 shadow-xl">
                   <button onClick={prevMonth} className="p-2 hover:bg-stone-700/50 rounded-lg text-stone-400 hover:text-white transition-all active:scale-90">
                      <span className="material-symbols-outlined">chevron_left</span>
                   </button>
-                  <div className="px-4 min-w-[120px] sm:min-w-[160px] text-center">
-                     <h2 className="text-lg sm:text-2xl font-black text-white capitalize tracking-tight leading-none">{monthName}</h2>
+                  <div className="px-3 sm:px-6 min-w-[110px] sm:min-w-[160px] text-center">
+                     <h2 className="text-base sm:text-2xl font-black text-white capitalize tracking-tight leading-none">{monthName}</h2>
                      <span className="text-[10px] sm:text-xs text-primary font-mono font-bold tracking-widest uppercase">{currentDate.getFullYear()}</span>
                   </div>
                   <button onClick={nextMonth} className="p-2 hover:bg-stone-700/50 rounded-lg text-stone-400 hover:text-white transition-all active:scale-90">
@@ -128,20 +131,20 @@ const Calendar = () => {
                   </button>
                </div>
 
-               {/* SELECTOR DE VISTA A LA DERECHA (SOLO MOBILE/TABLET) */}
-               <div className="flex lg:hidden p-1 bg-brand-surface/40 backdrop-blur-md border border-brand-border rounded-xl shadow-lg">
+               {/* SELECTOR DE VISTA A LA DERECHA */}
+               <div className="flex lg:hidden p-1 bg-brand-surface/40 backdrop-blur-md border border-brand-border rounded-xl shadow-lg mr-2">
                   <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-stone-700 text-primary shadow-inner' : 'text-stone-500'}`}>
-                     <span className="material-symbols-outlined text-[20px]">calendar_view_month</span>
+                     <span className="material-symbols-outlined text-[18px] sm:text-[20px]">calendar_view_month</span>
                   </button>
                   <button onClick={() => setViewMode('list')} className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-stone-700 text-primary shadow-inner' : 'text-stone-500'}`}>
-                     <span className="material-symbols-outlined text-[20px]">view_agenda</span>
+                     <span className="material-symbols-outlined text-[18px] sm:text-[20px]">view_agenda</span>
                   </button>
                </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3">
-               {/* FILTROS OCUPANDO EL RESTO DEL ESPACIO */}
-               <div className="flex p-1 bg-brand-surface/40 backdrop-blur-md border border-brand-border rounded-xl shadow-lg overflow-x-auto">
+            {/* FILA INFERIOR: FILTROS CENTRADOS */}
+            <div className="flex flex-wrap items-center justify-center lg:justify-between gap-3">
+               <div className="flex p-1 bg-brand-surface/40 backdrop-blur-md border border-brand-border rounded-xl shadow-lg overflow-x-auto scrollbar-hide">
                   {['all', 'Seguro', 'VTV', 'Patente'].map((type) => (
                      <button
                         key={type}
@@ -160,7 +163,7 @@ const Calendar = () => {
                   ))}
                </div>
 
-               {/* SELECTOR DE VISTA (SOLO DESKTOP PARA EVITAR DUPLICADO) */}
+               {/* SELECTOR DE VISTA DESKTOP */}
                <div className="hidden lg:flex p-1 bg-brand-surface/40 backdrop-blur-md border border-brand-border rounded-xl shadow-lg">
                   <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-stone-700 text-primary shadow-inner' : 'text-stone-500'}`}>
                      <span className="material-symbols-outlined text-[20px]">calendar_view_month</span>
@@ -174,7 +177,6 @@ const Calendar = () => {
 
          {viewMode === 'grid' ? (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-500">
-               {/* CALENDARIO COMPACTO (GLASSMORPHISM) */}
                <div className="lg:col-span-8 bg-brand-surface/30 backdrop-blur-xl border border-brand-border rounded-2xl shadow-2xl overflow-hidden">
                   <div className="grid grid-cols-7 gap-px bg-brand-border/20">
                      {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(day => (
@@ -201,7 +203,6 @@ const Calendar = () => {
                                  {isCurrentMonth ? dayNum : ''}
                               </div>
 
-                              {/* INDICADORES DE PUNTOS (DOTS) */}
                               <div className="mt-8 flex flex-wrap justify-center gap-1 xl:gap-1.5 transition-transform duration-300 group-hover:scale-110">
                                  {isCurrentMonth && dayEvents.map((evt, idx) => (
                                     <div
@@ -214,7 +215,6 @@ const Calendar = () => {
                                  ))}
                               </div>
 
-                              {/* TEXTO SOLO EN DESKTOP */}
                               <div className="hidden xl:block mt-2 space-y-1">
                                  {isCurrentMonth && dayEvents.slice(0, 2).map(evt => (
                                     <div key={evt.id} className="text-[9px] font-bold truncate text-stone-400 bg-brand-surface/30 px-1 rounded border border-brand-border/30">
@@ -235,7 +235,6 @@ const Calendar = () => {
                   </div>
                </div>
 
-               {/* PANEL DE EVENTOS DEL DÍA SELECCIONADO (VISTA HÍBRIDA) */}
                <div className="lg:col-span-4 flex flex-col space-y-4 animate-in slide-in-from-right-10 duration-500">
                   <div className="p-6 bg-brand-surface/40 backdrop-blur-xl border border-brand-border rounded-2xl shadow-2xl flex-1 flex flex-col">
                      <div className="flex items-center justify-between mb-6">
@@ -256,10 +255,10 @@ const Calendar = () => {
                            </div>
                         ) : (
                            selectedDayEvents.map((evt, i) => (
-                              <Link
-                                 to="/fleet"
+                              <button
                                  key={evt.id}
-                                 className={`block p-4 rounded-xl border transition-all duration-300 hover:translate-x-2 animate-in slide-in-from-right-4 delay-${i * 100} ${evt.color === 'rose' ? 'bg-rose-500/5 border-rose-500/20 hover:bg-rose-500/10' :
+                                 onClick={() => setSelectedEvent(evt)}
+                                 className={`w-full text-left p-4 rounded-xl border transition-all duration-300 hover:translate-x-2 animate-in slide-in-from-right-4 delay-${i * 100} ${evt.color === 'rose' ? 'bg-rose-500/5 border-rose-500/20 hover:bg-rose-500/10' :
                                     evt.color === 'blue' ? 'bg-blue-500/5 border-blue-500/20 hover:bg-blue-500/10' :
                                        evt.color === 'amber' ? 'bg-amber-500/5 border-amber-500/20 hover:bg-amber-500/10' : 'bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10'
                                     }`}
@@ -281,7 +280,7 @@ const Calendar = () => {
                                        {evt.status}
                                     </span>
                                  </div>
-                              </Link>
+                              </button>
                            ))
                         )}
                      </div>
@@ -298,7 +297,7 @@ const Calendar = () => {
                ) : (
                   <div className="divide-y divide-brand-border/30">
                      {filteredEvents.sort((a, b) => a.day - b.day).map((evt, i) => (
-                        <div key={evt.id} className="p-6 hover:bg-brand-surface/40 transition-all flex items-center gap-6 group animate-in slide-in-from-left-4" style={{ animationDelay: `${i * 30}ms` }}>
+                        <div key={evt.id} className="p-6 hover:bg-brand-surface/40 transition-all flex items-center gap-6 group animate-in slide-in-from-left-4 cursor-pointer" style={{ animationDelay: `${i * 30}ms` }} onClick={() => setSelectedEvent(evt)}>
                            <div className={`w-14 h-14 rounded-2xl border flex flex-col items-center justify-center bg-brand-dark/50 transition-transform group-hover:scale-110 shadow-lg ${evt.color === 'rose' ? 'border-rose-500/20 text-rose-500 shadow-rose-500/5' :
                               evt.color === 'blue' ? 'border-blue-500/20 text-blue-400 shadow-blue-500/5' :
                                  evt.color === 'amber' ? 'border-amber-500/20 text-amber-500 shadow-amber-500/5' : 'border-emerald-500/20 text-emerald-500 shadow-emerald-500/5'
@@ -327,6 +326,80 @@ const Calendar = () => {
                      ))}
                   </div>
                )}
+            </div>
+         )}
+
+         {/* MODAL DE DETALLE DE EVENTO */}
+         {selectedEvent && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setSelectedEvent(null)}>
+               <div className="bg-brand-surface border border-brand-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                  <div className={`h-2 w-full ${selectedEvent.color === 'rose' ? 'bg-rose-500' :
+                     selectedEvent.color === 'blue' ? 'bg-blue-500' :
+                        selectedEvent.color === 'amber' ? 'bg-amber-500' : 'bg-emerald-500'
+                     }`}></div>
+                  <div className="p-6">
+                     <div className="flex justify-between items-start mb-6">
+                        <div className="flex items-center gap-3">
+                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center border shadow-lg ${selectedEvent.color === 'rose' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : selectedEvent.color === 'blue' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
+                              <span className="material-symbols-outlined text-2xl">{selectedEvent.type.includes('Seguro') ? 'security' : selectedEvent.type.includes('VTV') ? 'verified' : 'badge'}</span>
+                           </div>
+                           <div>
+                              <h3 className="text-xl font-black text-white leading-tight tracking-tight">{selectedEvent.type}</h3>
+                              <p className="text-primary font-mono text-[10px] font-bold uppercase tracking-widest">{selectedEvent.status}</p>
+                           </div>
+                        </div>
+                        <button onClick={() => setSelectedEvent(null)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-stone-800 text-stone-500 hover:text-white transition-all">
+                           <span className="material-symbols-outlined text-xl">close</span>
+                        </button>
+                     </div>
+
+                     <div className="space-y-4 mb-8">
+                        <div className="bg-brand-dark/50 backdrop-blur-xl rounded-xl p-5 border border-brand-border">
+                           <div className="flex justify-between items-start mb-4">
+                              <div>
+                                 <p className="text-[10px] text-stone-500 uppercase font-black tracking-widest mb-1">Vehículo / Unidad</p>
+                                 <p className="text-white font-black text-lg">{selectedEvent.vehicle}</p>
+                              </div>
+                              <div className="text-right">
+                                 <p className="text-[10px] text-stone-500 uppercase font-black tracking-widest mb-1">Patente</p>
+                                 <p className="text-primary font-mono text-sm font-bold bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-lg inline-block uppercase tracking-wider">{selectedEvent.plate}</p>
+                              </div>
+                           </div>
+                           <div className="h-px bg-brand-border/50 my-4"></div>
+                           <div>
+                              <p className="text-[10px] text-stone-500 uppercase font-black tracking-widest mb-2">Información de la Alerta</p>
+                              <p className="text-stone-300 text-sm leading-relaxed font-medium italic">{selectedEvent.description}</p>
+                           </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 p-4 rounded-xl bg-primary/5 border border-primary/10 shadow-inner">
+                           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                              <span className="material-symbols-outlined">calendar_today</span>
+                           </div>
+                           <div>
+                              <p className="text-[10px] text-stone-500 uppercase font-black tracking-widest leading-none mb-1">Fecha Programada</p>
+                              <p className="text-white font-black">{selectedEvent.day} de {monthName.charAt(0).toUpperCase() + monthName.slice(1)}, {currentDate.getFullYear()}</p>
+                           </div>
+                        </div>
+                     </div>
+
+                     <div className="flex gap-3">
+                        <Link
+                           to={`/fleet/${selectedEvent.vehicleId}`}
+                           className="flex-1 bg-primary hover:bg-primary-dark text-brand-dark font-black py-3 rounded-xl text-center text-sm transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 active:scale-95"
+                        >
+                           <span className="material-symbols-outlined text-lg">directions_car</span>
+                           Ver Detalle Unidad
+                        </Link>
+                        <button
+                           onClick={() => setSelectedEvent(null)}
+                           className="flex-1 px-4 py-3 border border-brand-border text-stone-300 font-bold text-sm rounded-xl hover:bg-stone-800 transition-all active:scale-95"
+                        >
+                           Cerrar
+                        </button>
+                     </div>
+                  </div>
+               </div>
             </div>
          )}
       </div>
