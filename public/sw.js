@@ -1,31 +1,47 @@
-self.addEventListener('push', function (event) {
-    console.log('Push recibido:', event);
+// Versión: 1.3 (Forzar actualización)
+self.addEventListener('install', (event) => {
+    self.skipWaiting();
+});
 
-    let data = {};
-    try {
-        // Intentar parsear como JSON, si falla, tratar como texto
-        data = event.data ? event.data.json() : {};
-    } catch (e) {
-        console.warn('El payload no es JSON, usando como texto:', event.data.text());
-        data = { body: event.data.text() };
+self.addEventListener('activate', (event) => {
+    event.waitUntil(clients.claim());
+});
+
+self.addEventListener('push', function (event) {
+    console.log('Push recibido con datos:', event.data ? event.data.text() : 'sin datos');
+
+    let data = {
+        title: 'Alerta El Progreso',
+        body: 'Tienes un nuevo aviso de flota.',
+        url: '/'
+    };
+
+    if (event.data) {
+        try {
+            const json = event.data.json();
+            data.title = json.title || data.title;
+            data.body = json.body || data.body;
+            data.url = json.url || data.url;
+        } catch (e) {
+            data.body = event.data.text();
+        }
     }
 
-    const title = data.title || 'Alerta El Progreso';
     const options = {
-        body: data.body || 'Tienes un nuevo aviso del sistema.',
+        body: data.body,
         icon: '/pwa-192x192.png',
         badge: '/pwa-192x192.png',
         vibrate: [200, 100, 200],
-        tag: data.tag || 'alert-default',
+        tag: 'alerts-check',
         renotify: true,
         data: {
-            url: data.url || '/'
+            url: data.url
         }
     };
 
+    // Chrome exige que waitUntil reciba la promesa de showNotification
     event.waitUntil(
-        self.registration.showNotification(title, options)
-            .catch(err => console.error('Error al mostrar notificación:', err))
+        self.registration.showNotification(data.title, options)
     );
 });
 
@@ -35,13 +51,11 @@ self.addEventListener('notificationclick', function (event) {
 
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
-            // Si la app ya está abierta, ir a esa pestaña
             for (let client of windowClients) {
-                if (client.url === targetUrl && 'focus' in client) {
+                if (client.url.includes(targetUrl) && 'focus' in client) {
                     return client.focus();
                 }
             }
-            // Si no, abrir una nueva
             if (clients.openWindow) {
                 return clients.openWindow(targetUrl);
             }

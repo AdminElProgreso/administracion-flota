@@ -99,11 +99,11 @@ const Settings = () => {
         const newState = !notificationState.masterToggle;
 
         if (newState) {
-            console.log('Requesting notification permission...');
+            console.log('--- Intentando activar notificaciones ---');
             const currentPermission = Notification.permission;
 
             if (currentPermission === 'denied') {
-                alert('Las notificaciones están bloqueadas en tu navegador. Debes habilitarlas manualmente en la configuración del sitio.');
+                alert('Las notificaciones están bloqueadas. Debes habilitarlas manualmente en los ajustes de tu navegador/sistema.');
                 return;
             }
 
@@ -116,9 +116,18 @@ const Settings = () => {
                 }
             }
         } else {
+            console.log('--- Desactivando notificaciones y limpiando registros ---');
             setNotificationState(prev => ({ ...prev, masterToggle: false }));
             localStorage.setItem('fleet_notifications', JSON.stringify({ ...notificationState, masterToggle: false }));
-            alert('Has desactivado las notificaciones en este dispositivo.');
+
+            // Desregistrar el Service Worker para asegurar limpieza absoluta
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (let registration of registrations) {
+                    await registration.unregister();
+                }
+            }
+            alert('Notificaciones desactivadas y dispositivo desvinculado.');
         }
     };
 
