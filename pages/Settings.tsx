@@ -16,7 +16,7 @@ const Settings = () => {
 
     // --- PUSH NOTIFICATION CONFIG ---
     const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-    console.log('--- LLAVE VAPID EN USO:', VAPID_PUBLIC_KEY, '---');
+
 
     const urlBase64ToUint8Array = (base64String: string) => {
         if (!base64String) {
