@@ -1,4 +1,4 @@
-// Service Worker v1.5 - Diagnóstico Directo
+// Service Worker v1.6 - Modo Depuración Total
 self.addEventListener('install', (event) => {
     self.skipWaiting();
 });
@@ -7,40 +7,27 @@ self.addEventListener('activate', (event) => {
     event.waitUntil(clients.claim());
 });
 
-self.addEventListener('push', (event) => {
-    console.log('[SW] Señal Push recibida');
+self.addEventListener('push', function (event) {
+    console.log('[SW] Push recibido');
 
-    let title = 'Alerta El Progreso';
-    let body = 'Tienes un aviso pendiente.';
-
+    let message = 'Nueva alerta de flota';
     if (event.data) {
-        try {
-            const data = event.data.json();
-            title = data.title || title;
-            body = data.body || body;
-        } catch (e) {
-            body = event.data.text() || body;
-        }
+        message = event.data.text();
+        console.log('[SW] Contenido:', message);
     }
 
-    const promise = self.registration.showNotification(title, {
-        body: body,
-        tag: 'fleet-alert-unique', // Evita que se amontonen
+    // Chrome EXIGE que se devuelva la promesa de showNotification
+    const promise = self.registration.showNotification('El Progreso - Flota', {
+        body: message,
+        icon: '/pwa-192x192.png',
+        tag: 'fleet-alert',
         renotify: true
-        // Quitamos iconos temporalmente para descartar errores de carga
     });
 
     event.waitUntil(promise);
 });
 
-self.addEventListener('notificationclick', (event) => {
+self.addEventListener('notificationclick', function (event) {
     event.notification.close();
-    event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-            for (let client of clients) {
-                if ('focus' in client) return client.focus();
-            }
-            if (clients.openWindow) return clients.openWindow('/');
-        })
-    );
+    event.waitUntil(clients.openWindow('/'));
 });

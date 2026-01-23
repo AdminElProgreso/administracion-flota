@@ -96,16 +96,13 @@ Deno.serve(async (req) => {
         // 5. Enviar Notificaciones
         let successfulSends = 0;
         const results = [];
-        for (const subRecord of subscriptions) {
-            const payload = JSON.stringify({
-                title,
-                body,
-                url: '/',
-                tag: 'alerts-check'
-            });
+        const plainTextMessage = alerts.length === 1
+            ? `${alerts[0].type} de ${alerts[0].vehicle} vence en ${alerts[0].days} días.`
+            : `Tienes ${alerts.length} vencimientos próximos de flota.`;
 
+        for (const subRecord of subscriptions) {
             try {
-                await webpush.sendNotification(subRecord.subscription, payload);
+                await webpush.sendNotification(subRecord.subscription, plainTextMessage);
                 successfulSends++;
                 results.push({ success: true, id: subRecord.id });
             } catch (error: any) {
