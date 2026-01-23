@@ -15,9 +15,8 @@ const Settings = () => {
     const [activeTab, setActiveTab] = useState<'general' | 'alerts' | 'notifications' | 'security' | 'data'>('general');
 
     // --- PUSH NOTIFICATION CONFIG ---
-    // IMPORTANTE: Debes generar tus propias llaves VAPID (Public y Private)
-    // Puedes usar: https://web-push-codelab.glitch.me/
     const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+    console.log('--- LLAVE VAPID EN USO:', VAPID_PUBLIC_KEY, '---');
 
     const urlBase64ToUint8Array = (base64String: string) => {
         if (!base64String) {

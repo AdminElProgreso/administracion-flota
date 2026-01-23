@@ -9,8 +9,8 @@ const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')?.trim() || "";
 const subject = 'mailto:admin@elprogreso.com';
 
 console.log("Check Alerts Function Started");
-console.log("VAPID Pub Length:", vapidPublicKey.length);
-console.log("VAPID Priv Length:", vapidPrivateKey.length);
+console.log("VAPID Pub:", vapidPublicKey.substring(0, 4) + "..." + vapidPublicKey.substring(vapidPublicKey.length - 4));
+console.log("VAPID Priv:", vapidPrivateKey.substring(0, 4) + "..." + vapidPrivateKey.substring(vapidPrivateKey.length - 4));
 
 Deno.serve(async (req) => {
     try {
