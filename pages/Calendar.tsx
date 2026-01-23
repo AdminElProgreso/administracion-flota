@@ -112,31 +112,41 @@ const Calendar = () => {
 
    return (
       <div className="p-4 md:p-6 pb-28 lg:pb-6 min-h-full flex flex-col max-w-7xl mx-auto space-y-6">
-         <header className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-6">
-            <div className="flex flex-col gap-2">
-               <div className="flex items-center gap-4">
-                  <div className="flex items-center bg-brand-surface/50 backdrop-blur-md border border-brand-border rounded-xl p-1 shadow-xl">
-                     <button onClick={prevMonth} className="p-2 hover:bg-stone-700/50 rounded-lg text-stone-400 hover:text-white transition-all active:scale-90">
-                        <span className="material-symbols-outlined">chevron_left</span>
-                     </button>
-                     <div className="px-6 min-w-[160px] text-center">
-                        <h2 className="text-2xl font-black text-white capitalize tracking-tight leading-none">{monthName}</h2>
-                        <span className="text-xs text-primary font-mono font-bold tracking-widest uppercase">{currentDate.getFullYear()}</span>
-                     </div>
-                     <button onClick={nextMonth} className="p-2 hover:bg-stone-700/50 rounded-lg text-stone-400 hover:text-white transition-all active:scale-90">
-                        <span className="material-symbols-outlined">chevron_right</span>
-                     </button>
+         <header className="flex flex-col lg:flex-row items-stretch lg:items-end justify-between gap-4 lg:gap-6">
+            <div className="flex items-center justify-between gap-4">
+               {/* MES Y AÑO A LA IZQUIERDA */}
+               <div className="flex items-center bg-brand-surface/50 backdrop-blur-md border border-brand-border rounded-xl p-1 shadow-xl">
+                  <button onClick={prevMonth} className="p-2 hover:bg-stone-700/50 rounded-lg text-stone-400 hover:text-white transition-all active:scale-90">
+                     <span className="material-symbols-outlined">chevron_left</span>
+                  </button>
+                  <div className="px-4 min-w-[120px] sm:min-w-[160px] text-center">
+                     <h2 className="text-lg sm:text-2xl font-black text-white capitalize tracking-tight leading-none">{monthName}</h2>
+                     <span className="text-[10px] sm:text-xs text-primary font-mono font-bold tracking-widest uppercase">{currentDate.getFullYear()}</span>
                   </div>
+                  <button onClick={nextMonth} className="p-2 hover:bg-stone-700/50 rounded-lg text-stone-400 hover:text-white transition-all active:scale-90">
+                     <span className="material-symbols-outlined">chevron_right</span>
+                  </button>
+               </div>
+
+               {/* SELECTOR DE VISTA A LA DERECHA (SOLO MOBILE/TABLET) */}
+               <div className="flex lg:hidden p-1 bg-brand-surface/40 backdrop-blur-md border border-brand-border rounded-xl shadow-lg">
+                  <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-stone-700 text-primary shadow-inner' : 'text-stone-500'}`}>
+                     <span className="material-symbols-outlined text-[20px]">calendar_view_month</span>
+                  </button>
+                  <button onClick={() => setViewMode('list')} className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-stone-700 text-primary shadow-inner' : 'text-stone-500'}`}>
+                     <span className="material-symbols-outlined text-[20px]">view_agenda</span>
+                  </button>
                </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-               <div className="flex p-1 bg-brand-surface/40 backdrop-blur-md border border-brand-border rounded-xl shadow-lg">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+               {/* FILTROS OCUPANDO EL RESTO DEL ESPACIO */}
+               <div className="flex p-1 bg-brand-surface/40 backdrop-blur-md border border-brand-border rounded-xl shadow-lg overflow-x-auto">
                   {['all', 'Seguro', 'VTV', 'Patente'].map((type) => (
                      <button
                         key={type}
                         onClick={() => setFilterType(type as any)}
-                        className={`px-4 py-2 text-[10px] font-black rounded-lg transition-all uppercase tracking-wider flex items-center gap-2 ${filterType === type
+                        className={`px-3 sm:px-4 py-2 text-[9px] sm:text-[10px] font-black rounded-lg transition-all uppercase tracking-wider flex items-center gap-2 whitespace-nowrap ${filterType === type
                            ? 'bg-primary text-brand-dark shadow-lg shadow-primary/10'
                            : 'text-stone-500 hover:text-stone-200'
                            }`}
@@ -149,7 +159,9 @@ const Calendar = () => {
                      </button>
                   ))}
                </div>
-               <div className="flex p-1 bg-brand-surface/40 backdrop-blur-md border border-brand-border rounded-xl shadow-lg">
+
+               {/* SELECTOR DE VISTA (SOLO DESKTOP PARA EVITAR DUPLICADO) */}
+               <div className="hidden lg:flex p-1 bg-brand-surface/40 backdrop-blur-md border border-brand-border rounded-xl shadow-lg">
                   <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-stone-700 text-primary shadow-inner' : 'text-stone-500'}`}>
                      <span className="material-symbols-outlined text-[20px]">calendar_view_month</span>
                   </button>
