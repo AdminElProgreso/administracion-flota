@@ -1,34 +1,49 @@
 self.addEventListener('push', function (event) {
-    const data = event.data ? event.data.json() : {};
-    const title = data.title || 'El Progreso - Flota';
+    console.log('Push recibido:', event);
+
+    let data = {};
+    try {
+        // Intentar parsear como JSON, si falla, tratar como texto
+        data = event.data ? event.data.json() : {};
+    } catch (e) {
+        console.warn('El payload no es JSON, usando como texto:', event.data.text());
+        data = { body: event.data.text() };
+    }
+
+    const title = data.title || 'Alerta El Progreso';
     const options = {
-        body: data.body || 'Nueva alerta del sistema.',
-        icon: '/pwa-192x192.png', // Asegúrate de que este icono exista en public
+        body: data.body || 'Tienes un nuevo aviso del sistema.',
+        icon: '/pwa-192x192.png',
         badge: '/pwa-192x192.png',
-        vibrate: [100, 50, 100],
+        vibrate: [200, 100, 200],
+        tag: data.tag || 'alert-default',
+        renotify: true,
         data: {
             url: data.url || '/'
         }
     };
 
-    event.waitUntil(self.registration.showNotification(title, options));
+    event.waitUntil(
+        self.registration.showNotification(title, options)
+            .catch(err => console.error('Error al mostrar notificación:', err))
+    );
 });
 
 self.addEventListener('notificationclick', function (event) {
     event.notification.close();
+    const targetUrl = event.notification.data.url || '/';
+
     event.waitUntil(
-        clients.matchAll({ type: 'window' }).then(windowClients => {
-            // Check if there is already a window/tab open with the target URL
-            for (var i = 0; i < windowClients.length; i++) {
-                var client = windowClients[i];
-                // If so, just focus it.
-                if (client.url === event.notification.data.url && 'focus' in client) {
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+            // Si la app ya está abierta, ir a esa pestaña
+            for (let client of windowClients) {
+                if (client.url === targetUrl && 'focus' in client) {
                     return client.focus();
                 }
             }
-            // If not, then open the target URL in a new window/tab.
+            // Si no, abrir una nueva
             if (clients.openWindow) {
-                return clients.openWindow(event.notification.data.url);
+                return clients.openWindow(targetUrl);
             }
         })
     );
