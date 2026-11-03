@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
+import { useAlertPrefs, saveAlertPrefs, ALERT_PREFS_KEY } from '../lib/useAlertPrefs';
+import { DEFAULT_PREFS, type AlertPrefs } from '../supabase/functions/_shared/alerts';
 
 // Funciones auxiliares para detección de dispositivo
 const isIos = () => {
@@ -176,28 +179,21 @@ const Settings = () => {
     // --- OTROS ESTADOS ---
     const [notificationState, setNotificationState] = useState({
         masterToggle: false, // Default to false, will sync on load
-        emailInfo: true,
-        emailAlerts: true,
-        vtvAlerts: true,
-        patenteAlerts: true,
-        apptAlerts: true,
-        pushUrgent: true,
-        weeklyReport: false,
     });
 
-    const [thresholds, setThresholds] = useState({
-        insurance: 15,
-        vtv: 30,
-        patente: 10,
-        appointments: 3,
-        service: 1000
-    });
+    // --- UMBRALES E INTERRUPTORES DE AVISOS (la base es la fuente de verdad) ---
+    const queryClient = useQueryClient();
+    const { prefs: savedPrefs, userId, isLoading: prefsLoading, error: prefsError } = useAlertPrefs();
+    const [prefs, setPrefs] = useState<AlertPrefs>(DEFAULT_PREFS);
+    const [prefsLoaded, setPrefsLoaded] = useState(false);
+    const lastSaved = useRef('');
+    const [syncError, setSyncError] = useState<string | null>(null);
 
     const [purgeFrom, setPurgeFrom] = useState('');
     const [purgeTo, setPurgeTo] = useState('');
     const [isSyncing, setIsSyncing] = useState(false);
 
-    // 1. CARGAR CONFIGURACIÓN (SUPABASE + LOCALSTORAGE)
+    // 1. CARGAR ESTADO DEL DISPOSITIVO (SUSCRIPCIÓN PUSH + INSTALACIÓN PWA)
     useEffect(() => {
         const loadInitialSettings = async () => {
             // Verificar estado real de suscripción en el dispositivo
@@ -207,40 +203,7 @@ const Settings = () => {
                 const subscription = await registration?.pushManager.getSubscription();
                 isSubscribed = !!subscription;
             }
-
-            const savedThresholds = localStorage.getItem('fleet_thresholds');
-            const savedNotifications = localStorage.getItem('fleet_notifications');
-            if (savedThresholds) setThresholds(JSON.parse(savedThresholds));
-
-            if (savedNotifications) {
-                const parsed = JSON.parse(savedNotifications);
-                setNotificationState({ ...parsed, masterToggle: isSubscribed });
-            } else {
-                setNotificationState(prev => ({ ...prev, masterToggle: isSubscribed }));
-            }
-
-            // Luego intentar cargar de Supabase para tener lo más reciente de umbrales
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user) {
-                const { data, error } = await supabase
-                    .from('user_settings')
-                    .select('*')
-                    .eq('user_id', session.user.id)
-                    .single();
-
-                if (data && !error) {
-                    console.log('Settings loaded from Supabase:', data);
-                    const cloudThresholds = {
-                        insurance: data.insurance_threshold,
-                        vtv: data.vtv_threshold,
-                        patente: data.patente_threshold,
-                        appointments: data.appointments_threshold || 3,
-                        service: 1000
-                    };
-                    setThresholds(cloudThresholds);
-                    localStorage.setItem('fleet_thresholds', JSON.stringify(cloudThresholds));
-                }
-            }
+            setNotificationState(prev => ({ ...prev, masterToggle: isSubscribed }));
         };
 
         loadInitialSettings();
@@ -256,32 +219,45 @@ const Settings = () => {
         return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
 
-    // 2. GUARDAR CONFIGURACIÓN AUTOMÁTICAMENTE (DEBOUNCED)
+    // 2. CARGAR UMBRALES E INTERRUPTORES DE LA BASE (una sola vez; si la carga falla no se guarda nada,
+    //    para no pisar los valores guardados con los de defecto)
     useEffect(() => {
-        const timer = setTimeout(async () => {
-            localStorage.setItem('fleet_thresholds', JSON.stringify(thresholds));
+        if (prefsLoaded || prefsLoading) return;
+        if (prefsError) {
+            setSyncError('No se pudieron cargar tus ajustes. Revisá la conexión y volvé a entrar.');
+            return;
+        }
+        setPrefs(savedPrefs);
+        lastSaved.current = JSON.stringify(savedPrefs);
+        setPrefsLoaded(true);
+    }, [prefsLoaded, prefsLoading, prefsError, savedPrefs]);
 
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user) {
-                setIsSyncing(true);
-                const { error } = await supabase
-                    .from('user_settings')
-                    .upsert({
-                        user_id: session.user.id,
-                        insurance_threshold: thresholds.insurance,
-                        vtv_threshold: thresholds.vtv,
-                        patente_threshold: thresholds.patente,
-                        appointments_threshold: thresholds.appointments,
-                        updated_at: new Date()
-                    });
+    const persistPrefs = async (): Promise<boolean> => {
+        if (!userId || !prefsLoaded) {
+            setSyncError('No se pudo guardar. Revisá la conexión.');
+            return false;
+        }
+        setIsSyncing(true);
+        try {
+            await saveAlertPrefs(userId, prefs);
+            lastSaved.current = JSON.stringify(prefs);
+            setSyncError(null);
+            queryClient.invalidateQueries({ queryKey: ALERT_PREFS_KEY });
+            return true;
+        } catch {
+            setSyncError('No se pudo guardar. Revisá la conexión.');
+            return false;
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
-                if (error) console.error('Error syncing to Supabase:', error);
-                setTimeout(() => setIsSyncing(false), 1000);
-            }
-        }, 1000); // Guardar 1 segundo después del último cambio
-
+    // 3. GUARDAR AUTOMÁTICAMENTE 1 SEGUNDO DESPUÉS DEL ÚLTIMO CAMBIO
+    useEffect(() => {
+        if (!prefsLoaded || !userId || JSON.stringify(prefs) === lastSaved.current) return;
+        const timer = setTimeout(persistPrefs, 1000);
         return () => clearTimeout(timer);
-    }, [thresholds]);
+    }, [prefs, prefsLoaded, userId]);
 
     const handleInstallClick = () => {
         if (deferredPrompt) {
@@ -320,20 +296,13 @@ const Settings = () => {
         setPasswordLoading(false);
     };
 
-    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
 
-    const handleSaveGeneral = () => {
+    const handleSaveGeneral = async () => {
         setSaveStatus('saving');
-
-        // Guardar en LocalStorage
-        localStorage.setItem('fleet_thresholds', JSON.stringify(thresholds));
-        localStorage.setItem('fleet_notifications', JSON.stringify(notificationState));
-
-        // Simular retardo de red
-        setTimeout(() => {
-            setSaveStatus('success');
-            setTimeout(() => setSaveStatus('idle'), 2000);
-        }, 800);
+        const ok = await persistPrefs();
+        setSaveStatus(ok ? 'success' : 'error');
+        setTimeout(() => setSaveStatus('idle'), 2000);
     };
 
     const TabButton = ({ id, label, icon }: { id: string; label: string; icon: string }) => (
@@ -400,13 +369,15 @@ const Settings = () => {
                                 disabled={saveStatus !== 'idle'}
                                 className={`font-bold text-sm px-6 py-2 rounded-lg shadow-lg transition-all flex items-center gap-2 ${saveStatus === 'success'
                                     ? 'bg-emerald-500 text-white'
-                                    : 'bg-primary hover:bg-primary-dark text-brand-dark'
+                                    : saveStatus === 'error'
+                                        ? 'bg-rose-600 text-white'
+                                        : 'bg-primary hover:bg-primary-dark text-brand-dark'
                                     }`}
                             >
                                 <span className="material-symbols-outlined text-[18px]">
-                                    {saveStatus === 'success' ? 'check' : saveStatus === 'saving' ? 'sync' : 'save'}
+                                    {saveStatus === 'success' ? 'check' : saveStatus === 'error' ? 'error' : saveStatus === 'saving' ? 'sync' : 'save'}
                                 </span>
-                                {saveStatus === 'success' ? 'Guardado!' : saveStatus === 'saving' ? 'Guardando...' : 'Guardar Cambios'}
+                                {saveStatus === 'success' ? 'Guardado!' : saveStatus === 'error' ? 'Error al guardar' : saveStatus === 'saving' ? 'Guardando...' : 'Guardar Cambios'}
                             </button>
                         )}
                     </div>
@@ -553,6 +524,7 @@ const Settings = () => {
                                             <span className="material-symbols-outlined text-sm">sync</span> Sincronizando...
                                         </div>
                                     )}
+                                    {!isSyncing && syncError && <p className="text-rose-500 text-xs">{syncError}</p>}
                                 </div>
                                 <div className="space-y-8 max-w-xl">
                                     <div>
@@ -560,36 +532,36 @@ const Settings = () => {
                                             <label className="text-white font-bold text-sm flex items-center gap-2">
                                                 <span className="material-symbols-outlined text-blue-500">security</span> Seguros
                                             </label>
-                                            <span className="text-primary font-mono font-bold">{thresholds.insurance} días</span>
+                                            <span className="text-primary font-mono font-bold">{prefs.thresholds.Seguro} días</span>
                                         </div>
-                                        <input type="range" min="1" max="60" value={thresholds.insurance} onChange={(e) => setThresholds({ ...thresholds, insurance: parseInt(e.target.value) })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
+                                        <input type="range" min="1" max="60" value={prefs.thresholds.Seguro} onChange={(e) => setPrefs({ ...prefs, thresholds: { ...prefs.thresholds, Seguro: parseInt(e.target.value) } })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
                                     </div>
                                     <div>
                                         <div className="flex justify-between mb-2">
                                             <label className="text-white font-bold text-sm flex items-center gap-2">
                                                 <span className="material-symbols-outlined text-amber-500">verified</span> VTV
                                             </label>
-                                            <span className="text-primary font-mono font-bold">{thresholds.vtv} días</span>
+                                            <span className="text-primary font-mono font-bold">{prefs.thresholds.VTV} días</span>
                                         </div>
-                                        <input type="range" min="1" max="90" value={thresholds.vtv} onChange={(e) => setThresholds({ ...thresholds, vtv: parseInt(e.target.value) })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
+                                        <input type="range" min="1" max="90" value={prefs.thresholds.VTV} onChange={(e) => setPrefs({ ...prefs, thresholds: { ...prefs.thresholds, VTV: parseInt(e.target.value) } })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
                                     </div>
                                     <div>
                                         <div className="flex justify-between mb-2">
                                             <label className="text-white font-bold text-sm flex items-center gap-2">
                                                 <span className="material-symbols-outlined text-white">badge</span> Patente / Impuestos
                                             </label>
-                                            <span className="text-primary font-mono font-bold">{thresholds.patente} días</span>
+                                            <span className="text-primary font-mono font-bold">{prefs.thresholds.Patente} días</span>
                                         </div>
-                                        <input type="range" min="1" max="60" value={thresholds.patente} onChange={(e) => setThresholds({ ...thresholds, patente: parseInt(e.target.value) })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
+                                        <input type="range" min="1" max="60" value={prefs.thresholds.Patente} onChange={(e) => setPrefs({ ...prefs, thresholds: { ...prefs.thresholds, Patente: parseInt(e.target.value) } })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
                                     </div>
                                     <div>
                                         <div className="flex justify-between mb-2">
                                             <label className="text-white font-bold text-sm flex items-center gap-2">
                                                 <span className="material-symbols-outlined text-purple-500">event</span> Turnos Programados
                                             </label>
-                                            <span className="text-primary font-mono font-bold">{thresholds.appointments} días</span>
+                                            <span className="text-primary font-mono font-bold">{prefs.thresholds.appointments} días</span>
                                         </div>
-                                        <input type="range" min="1" max="30" value={thresholds.appointments} onChange={(e) => setThresholds({ ...thresholds, appointments: parseInt(e.target.value) })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
+                                        <input type="range" min="1" max="30" value={prefs.thresholds.appointments} onChange={(e) => setPrefs({ ...prefs, thresholds: { ...prefs.thresholds, appointments: parseInt(e.target.value) } })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
                                     </div>
                                 </div>
                             </div>
@@ -622,13 +594,12 @@ const Settings = () => {
 
                                     {notificationState.masterToggle && (
                                         <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                                            {syncError && <p className="text-rose-500 text-xs px-1">{syncError}</p>}
                                             <h4 className="text-xs font-bold text-stone-500 uppercase tracking-widest mb-3 px-1">Tipos de Alerta</h4>
-                                            <Toggle label="Vencimiento de Seguros" checked={notificationState.emailAlerts} onChange={() => setNotificationState({ ...notificationState, emailAlerts: !notificationState.emailAlerts })} />
-                                            <Toggle label="Vencimiento de VTV" checked={notificationState.vtvAlerts} onChange={() => setNotificationState({ ...notificationState, vtvAlerts: !notificationState.vtvAlerts })} />
-                                            <Toggle label="Vencimiento de Patentes" checked={notificationState.patenteAlerts} onChange={() => setNotificationState({ ...notificationState, patenteAlerts: !notificationState.patenteAlerts })} />
-                                            <Toggle label="Recordatorio de Turnos" checked={notificationState.apptAlerts} onChange={() => setNotificationState({ ...notificationState, apptAlerts: !notificationState.apptAlerts })} />
-                                            <div className="border-t border-brand-border my-2"></div>
-                                            <Toggle label="Resumen Semanal" checked={notificationState.weeklyReport} onChange={() => setNotificationState({ ...notificationState, weeklyReport: !notificationState.weeklyReport })} />
+                                            <Toggle label="Vencimiento de Seguros" checked={prefs.enabled.Seguro} onChange={() => setPrefs({ ...prefs, enabled: { ...prefs.enabled, Seguro: !prefs.enabled.Seguro } })} />
+                                            <Toggle label="Vencimiento de VTV" checked={prefs.enabled.VTV} onChange={() => setPrefs({ ...prefs, enabled: { ...prefs.enabled, VTV: !prefs.enabled.VTV } })} />
+                                            <Toggle label="Vencimiento de Patentes" checked={prefs.enabled.Patente} onChange={() => setPrefs({ ...prefs, enabled: { ...prefs.enabled, Patente: !prefs.enabled.Patente } })} />
+                                            <Toggle label="Recordatorio de Turnos" checked={prefs.enabled.appointments} onChange={() => setPrefs({ ...prefs, enabled: { ...prefs.enabled, appointments: !prefs.enabled.appointments } })} />
                                         </div>
                                     )}
                                 </div>
