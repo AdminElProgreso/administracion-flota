@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Vehicle, MaintenanceLog } from '../types';
 import { supabase } from '../supabase';
+import { useAlertPrefs } from '../lib/useAlertPrefs';
+import { docStatus, appointmentAfterRenewal, type DocType, type DocStatus } from '../supabase/functions/_shared/alerts';
+import { todayISO, formatDateLong } from '../supabase/functions/_shared/dates';
+import { docLabel, DOC_CARD_CLASSES } from '../lib/docStyles';
 
 const VehicleDetail = () => {
    const { id } = useParams();
@@ -22,6 +26,9 @@ const VehicleDetail = () => {
       currentDoc: string;
       currentAppt: string
    } | null>(null);
+
+   // Alert thresholds of the logged-in user
+   const { prefs, isLoading: prefsLoading } = useAlertPrefs();
 
    const fetchVehicleData = async () => {
       setLoading(true);
@@ -88,66 +95,40 @@ const VehicleDetail = () => {
 
       const fields = columnMap[docUpdateModal.type];
 
+      // Renewing without loading a new appointment clears the old one
       const { error } = await supabase.from('vehiculos').update({
          [fields.doc]: newDocDate || null,
-         [fields.appt]: newApptDate || null
+         [fields.appt]: appointmentAfterRenewal(docUpdateModal.currentDoc, newDocDate, docUpdateModal.currentAppt, newApptDate)
       }).eq('id', id);
 
       if (error) alert('Error: ' + error.message);
       else { setDocUpdateModal(null); fetchVehicleData(); }
    };
 
-   if (loading) return <div className="h-screen flex items-center justify-center bg-background-dark"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
+   if (loading || prefsLoading) return <div className="h-screen flex items-center justify-center bg-background-dark"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
    if (!vehicle) return <div className="p-6 text-white text-center">Vehículo no encontrado.</div>;
 
    const isGenerator = vehicle.tipo === 'generator';
+   const today = todayISO();
 
-   const ExpirationCard = ({ title, date, appointment, icon, type }: any) => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const expiry = date ? new Date(date + 'T00:00:00') : null;
-      const appt = appointment ? new Date(appointment + 'T00:00:00') : null;
-
-      let colorClass = "text-emerald-500";
-      let borderClass = "border-emerald-500/20";
-      let bgClass = "bg-emerald-500/10";
-      let statusText = "Al día";
-
-      if (appt) {
-         colorClass = "text-blue-400";
-         borderClass = "border-blue-400/50";
-         bgClass = "bg-blue-400/10";
-         statusText = `Turno: ${appt.toLocaleDateString()}`;
-      } else if (expiry) {
-         const diffDays = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-         if (diffDays < 0) {
-            colorClass = "text-rose-500";
-            borderClass = "border-rose-500/50";
-            bgClass = "bg-rose-500/10";
-            statusText = "Vencido";
-         } else if (diffDays <= 15) {
-            colorClass = "text-amber-500";
-            borderClass = "border-amber-500/50";
-            bgClass = "bg-amber-500/10";
-            statusText = "Vence pronto";
-         }
-      }
+   const ExpirationCard = ({ title, icon, type, doc }: { title: string; icon: string; type: DocType; doc: DocStatus }) => {
+      const { text: colorClass, border: borderClass, bg: bgClass } = DOC_CARD_CLASSES[doc.state];
+      const statusText = docLabel(doc) + (doc.pastAppointment ? ' · Turno pasado' : '');
 
       return (
          <button
             onClick={() => setDocUpdateModal({
                isOpen: true,
                type,
-               currentDoc: date || '',
-               currentAppt: appointment || ''
+               currentDoc: doc.expiration || '',
+               currentAppt: doc.appointment || ''
             })}
             className={`w-full text-left bg-brand-surface border ${borderClass} rounded-lg p-4 flex items-center justify-between relative overflow-hidden group hover:bg-brand-dark/30 transition-all`}
          >
             <div className={`absolute right-0 top-0 p-4 opacity-10 ${colorClass}`}><span className="material-symbols-outlined text-6xl">{icon}</span></div>
             <div className="relative z-10">
                <p className="text-xs text-stone-400 uppercase font-bold tracking-wider mb-1">{title}</p>
-               <p className={`text-lg font-mono font-bold ${colorClass}`}>{expiry ? expiry.toLocaleDateString() : 'Sin fecha'}</p>
+               <p className={`text-lg font-mono font-bold ${colorClass}`}>{doc.expiration ? formatDateLong(doc.expiration) : 'Sin fecha'}</p>
                <p className={`text-[10px] mt-1 font-bold uppercase ${colorClass}`}>{statusText}</p>
             </div>
             <div className={`h-10 w-10 rounded-full flex items-center justify-center ${bgClass} ${colorClass}`}><span className="material-symbols-outlined">{icon}</span></div>
@@ -200,9 +181,9 @@ const VehicleDetail = () => {
 
          {vehicle.tipo !== 'generator' && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-               <ExpirationCard title="Seguro Automotor" date={vehicle.insurance_expiration} appointment={vehicle.insurance_appointment} icon="security" type="Seguro" />
-               <ExpirationCard title="VTV / Técnica" date={vehicle.vtv_expiration} appointment={vehicle.vtv_appointment} icon="verified" type="VTV" />
-               <ExpirationCard title="Patente" date={vehicle.patente_expiration} appointment={vehicle.patente_appointment} icon="badge" type="Patente" />
+               <ExpirationCard title="Seguro Automotor" icon="security" type="Seguro" doc={docStatus('Seguro', vehicle.insurance_expiration, vehicle.insurance_appointment, prefs.thresholds.Seguro, today)} />
+               <ExpirationCard title="VTV / Técnica" icon="verified" type="VTV" doc={docStatus('VTV', vehicle.vtv_expiration, vehicle.vtv_appointment, prefs.thresholds.VTV, today)} />
+               <ExpirationCard title="Patente" icon="badge" type="Patente" doc={docStatus('Patente', vehicle.patente_expiration, vehicle.patente_appointment, prefs.thresholds.Patente, today)} />
             </div>
          )}
 
@@ -321,6 +302,7 @@ const VehicleDetail = () => {
                         <label className="text-xs font-bold text-stone-500 uppercase mb-2 block tracking-widest">Nueva fecha de vencimiento</label>
                         <input type="date" id="docDate" defaultValue={docUpdateModal.currentDoc} className="w-full bg-brand-dark border border-brand-border rounded-lg h-12 px-3 text-white focus:ring-1 focus:ring-primary" />
                         <p className="text-[10px] text-stone-500 mt-1">Usa esto solo si ya renovaste el documento.</p>
+                        <p className="text-[10px] text-stone-500 mt-1">Si cambiás la fecha y no cargás un turno nuevo, el turno anterior se borra.</p>
                      </div>
                      <button
                         onClick={() => {
