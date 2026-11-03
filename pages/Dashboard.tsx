@@ -2,7 +2,11 @@ import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
-import { VehicleRow, Alert } from '../types';
+import { VehicleRow } from '../types';
+import { useAlertPrefs } from '../lib/useAlertPrefs';
+import { attentionList } from '../supabase/functions/_shared/alerts';
+import { todayISO } from '../supabase/functions/_shared/dates';
+import { docLabel, DOC_CHIP_CLASSES, DOC_ICONS, DOC_HEADLINES } from '../lib/docStyles';
 
 // --- Interfaces & Types ---
 
@@ -131,23 +135,22 @@ const Dashboard = () => {
     }
   });
 
+  // Alert thresholds of the logged-in user
+  const { prefs, isLoading: isLoadingPrefs } = useAlertPrefs();
+
   // --- Derived State (Stats & Alerts) ---
 
-  const { stats, urgentAlerts, todayAppts } = useMemo(() => {
+  const { stats, attention, todayAppts } = useMemo(() => {
     if (!fleet) return {
       stats: { total: 0, inWorkshop: 0, alertsCount: 0, monthlyExpenses: 0 },
-      urgentAlerts: [],
+      attention: [],
       todayAppts: []
     };
 
-    const todayLocal = new Date();
-    // Adjust for timezone offset to match "today" string
-    const offset = todayLocal.getTimezoneOffset();
-    const todayStr = new Date(todayLocal.getTime() - (offset * 60 * 1000)).toISOString().split('T')[0];
+    const today = todayISO();
 
     const activeFleet = fleet.filter(v => v.status !== 'Baja');
 
-    const realAlerts: Alert[] = [];
     const apptsForToday: Appointment[] = [];
     let workshopCount = 0;
 
@@ -156,7 +159,7 @@ const Dashboard = () => {
 
       // Helper to check for Today's Appointments
       const checkAppt = (apptStr: string | null, expiryStr: string | null, type: string) => {
-        if (apptStr === todayStr) {
+        if (apptStr === today) {
           apptsForToday.push({
             id: v.id,
             vehicle: v.model,
@@ -171,46 +174,22 @@ const Dashboard = () => {
       checkAppt(v.vtv_appointment, v.vtv_expiration, 'VTV');
       checkAppt(v.insurance_appointment, v.insurance_expiration, 'Seguro');
       checkAppt(v.patente_appointment, v.patente_expiration, 'Patente');
-
-      // Helper to track Expirations
-      const checkDoc = (dateStr: string | null, apptStr: string | null, type: string) => {
-        if (!dateStr && !apptStr) return;
-        let diffDays = 999;
-
-        if (dateStr) {
-          const expiry = new Date(dateStr + 'T00:00:00');
-          diffDays = Math.ceil((expiry.getTime() - todayLocal.getTime()) / (1000 * 60 * 60 * 24));
-        }
-
-        if (diffDays <= 30 || apptStr) {
-          realAlerts.push({
-            id: `${v.id}-${type}`,
-            type: 'Vencimiento',
-            subtype: type,
-            vehicle: `${v.model} (${v.patente ? v.patente.toUpperCase() : 'S/P'})`,
-            days: diffDays,
-            hasAppointment: !!apptStr,
-            status: apptStr ? 'appointment' : (diffDays < 0 ? 'expired' : (diffDays <= 15 ? 'warning' : 'info'))
-          });
-        }
-      };
-
-      checkDoc(v.vtv_expiration, v.vtv_appointment, 'VTV');
-      checkDoc(v.insurance_expiration, v.insurance_appointment, 'Seguro');
-      checkDoc(v.patente_expiration, v.patente_appointment, 'Patente');
     });
+
+    // Expired, expiring and booked documents with the shared rule (units in Baja are left out)
+    const attention = attentionList(fleet, prefs, today);
 
     return {
       stats: {
         total: activeFleet.length,
         inWorkshop: workshopCount,
-        alertsCount: realAlerts.length,
+        alertsCount: attention.length,
         monthlyExpenses: monthlyExpenses || 0
       },
-      urgentAlerts: realAlerts.sort((a, b) => a.days - b.days).slice(0, 5),
+      attention,
       todayAppts: apptsForToday
     };
-  }, [fleet, monthlyExpenses]);
+  }, [fleet, monthlyExpenses, prefs]);
 
 
   // --- Mutations ---
@@ -248,7 +227,7 @@ const Dashboard = () => {
     renewalMutation.mutate({ vehicleId: renewalModal.vehicle.id, fields, newDate });
   };
 
-  if (isLoadingFleet || isLoadingExpenses) return <div className="h-screen flex items-center justify-center bg-background-dark"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
+  if (isLoadingFleet || isLoadingExpenses || isLoadingPrefs) return <div className="h-screen flex items-center justify-center bg-background-dark"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
 
   return (
     <div className="p-4 md:p-6 pb-20 md:pb-6">
@@ -327,27 +306,23 @@ const Dashboard = () => {
           <Link to="/calendar" className="text-xs text-primary hover:underline">Ver Agenda</Link>
         </div>
         <div className="divide-y divide-brand-border">
-          {urgentAlerts.length === 0 ? (
+          {attention.length === 0 ? (
             <div className="p-8 text-center text-stone-500"><span className="material-symbols-outlined text-4xl mb-2 opacity-50">check_circle</span><p>Todo en orden</p></div>
           ) : (
-            urgentAlerts.map((alert) => (
-              <div key={alert.id} className="p-4 flex items-center gap-4 hover:bg-brand-dark/30 transition-colors">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${alert.status === 'appointment' ? 'bg-blue-500/10 text-blue-400' :
-                  alert.status === 'expired' ? 'bg-rose-500/10 text-rose-500' :
-                    alert.status === 'warning' ? 'bg-amber-500/10 text-amber-500' : 'bg-stone-800 text-stone-500'
-                  }`}>
-                  <span className="material-symbols-outlined">{alert.subtype === 'Seguro' ? 'security' : alert.subtype === 'VTV' ? 'verified' : 'badge'}</span>
+            attention.map(({ vehicle, doc }) => (
+              <div key={`${vehicle.id}-${doc.type}`} className="p-4 flex items-center gap-4 hover:bg-brand-dark/30 transition-colors">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${DOC_CHIP_CLASSES[doc.state]}`}>
+                  <span className="material-symbols-outlined">{DOC_ICONS[doc.type]}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white truncate">{alert.subtype} • {alert.status === 'appointment' ? 'Turno Programado' : (alert.days < 0 ? 'Vencido' : 'Vence pronto')}</p>
-                  <p className="text-xs text-stone-400 truncate">{alert.vehicle}</p>
+                  <p className="text-sm font-bold text-white truncate">{doc.type} • {DOC_HEADLINES[doc.state]}</p>
+                  <p className="text-xs text-stone-400 truncate">
+                    {`${vehicle.model} (${vehicle.patente?.toUpperCase() || 'S/P'})`}{doc.pastAppointment ? ' · Turno pasado' : ''}
+                  </p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <span className={`text-xs font-bold px-2 py-1 rounded border ${alert.status === 'appointment' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                    alert.status === 'expired' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
-                      alert.status === 'warning' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                    }`}>
-                    {alert.status === 'appointment' ? 'EN PROCESO' : (alert.days < 0 ? `Vencido` : `Faltan ${alert.days} días`)}
+                  <span className={`text-xs font-bold px-2 py-1 rounded border ${DOC_CHIP_CLASSES[doc.state]}`}>
+                    {docLabel(doc, 'short')}
                   </span>
                 </div>
               </div>

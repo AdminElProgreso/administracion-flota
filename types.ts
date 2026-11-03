@@ -59,13 +59,3 @@ export interface TeamMember {
   avatar: string;
   status: 'active' | 'inactive';
 }
-
-export interface Alert {
-  id: string;
-  type: 'Vencimiento';
-  subtype: string; // 'Seguro' | 'VTV' | 'Patente'
-  vehicle: string;
-  days: number;
-  hasAppointment: boolean;
-  status: 'appointment' | 'expired' | 'warning' | 'info';
-}
