@@ -137,7 +137,9 @@ export default function App() {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Cached data (vehicles, alert thresholds) belongs to the user who just left
+      if (event === 'SIGNED_OUT') queryClient.clear();
       setSession(session);
       setLoading(false);
     });

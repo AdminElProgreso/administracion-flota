@@ -1,6 +1,6 @@
 // Single rule for the state of each vehicle document, shared by the app screens and the
 // check-alerts Edge Function. No Deno or Node APIs and no packages, so both runtimes can import it.
-import { daysBetween } from './dates.ts';
+import { daysBetween, toISODate } from './dates.ts';
 
 export type DocType = 'Seguro' | 'VTV' | 'Patente';
 export const DOC_TYPES: DocType[] = ['Seguro', 'VTV', 'Patente'];
@@ -92,9 +92,9 @@ export interface DocStatus {
 }
 
 export function docStatus(type: DocType, expiration: string | null, appointment: string | null, threshold: number, today: string): DocStatus {
-  // The ficha's modal saves '' when a date is cleared
-  const exp = expiration || null;
-  const appt = appointment || null;
+  // The ficha's modal saves '' when a date is cleared; anything that isn't a date counts as no date
+  const exp = toISODate(expiration);
+  const appt = toISODate(appointment);
   const daysToExpiration = exp ? daysBetween(today, exp) : null;
   const daysToAppointment = appt ? daysBetween(today, appt) : null;
 

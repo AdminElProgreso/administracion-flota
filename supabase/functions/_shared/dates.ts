@@ -12,9 +12,20 @@ const parseISO = (iso: string) => {
   return { year, month, day };
 };
 
+// 'YYYY-MM-DD' of a stored date (a timestamp keeps only its day); null when it isn't a date
+export function toISODate(value: string | null | undefined): string | null {
+  const day = value?.slice(0, 10) ?? '';
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null;
+}
+
 export function todayISO(now: Date = new Date(), timeZone?: string): string {
   if (timeZone) {
-    return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+    // formatToParts instead of a locale's format, so the order of the parts can't change under us
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+    const part = (type: string) => parts.find(p => p.type === type)?.value;
+    const [year, month, day] = [part('year'), part('month'), part('day')];
+    if (!year || !month || !day) throw new Error(`Cannot compute today's date in ${timeZone}`);
+    return `${year}-${month}-${day}`;
   }
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }

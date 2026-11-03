@@ -18,6 +18,11 @@ describe('docStatus', () => {
     expect(docStatus('VTV', '2026-11-10', '2026-11-03', 30, T)).toMatchObject({ state: 'appointment', daysToAppointment: 0 });
     expect(docStatus('VTV', null, '2026-11-20', 30, T)).toMatchObject({ state: 'appointment' });
   });
+  it('una fecha con hora usa solo el día, y una fecha inválida cuenta como sin fecha', () => {
+    expect(docStatus('VTV', '2026-10-01T00:00:00', null, 30, T)).toMatchObject({ state: 'expired', daysToExpiration: -33, expiration: '2026-10-01' });
+    expect(docStatus('VTV', 'basura', null, 30, T)).toMatchObject({ state: 'no-date', expiration: null, daysToExpiration: null });
+    expect(docStatus('VTV', '2026-10-29', 'basura', 30, T)).toMatchObject({ state: 'expired', appointment: null, daysToAppointment: null });
+  });
   it('un turno pasado no cuenta; la nota aparece solo si está por vencer o vencido', () => {
     expect(docStatus('VTV', '2026-10-29', '2026-11-01', 30, T)).toMatchObject({ state: 'expired', pastAppointment: true });
     expect(docStatus('VTV', '2027-05-01', '2026-11-01', 30, T)).toMatchObject({ state: 'ok', pastAppointment: false });
