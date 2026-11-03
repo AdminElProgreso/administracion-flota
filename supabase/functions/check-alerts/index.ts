@@ -1,5 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.39.3';
 import webpush from 'npm:web-push@3.6.7';
+import { AR_TIME_ZONE, todayISO } from '../_shared/dates.ts';
+import { planDeliveries, sendAll } from '../_shared/notifications.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -8,7 +10,7 @@ const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')?.trim() || "";
 const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')?.trim() || "";
 const subject = 'mailto:admin@elprogreso.com';
 
-console.log("Check Alerts Function Started (Personalized Mode v2)");
+console.log("Check Alerts Function Started (Shared Rules v3)");
 
 Deno.serve(async (req) => {
     try {
@@ -17,97 +19,42 @@ Deno.serve(async (req) => {
         webpush.setVapidDetails(subject, vapidPublicKey, vapidPrivateKey);
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-        // 1. Obtener Datos Base
-        const { data: vehicles } = await supabase.from('vehiculos').select('*');
-        const { data: subscriptions } = await supabase.from('push_subscriptions').select('*');
-        const { data: userSettings } = await supabase.from('user_settings').select('*');
+        // 1. Obtener Datos Base (las unidades de baja nunca avisan)
+        const [vehiclesRes, subscriptionsRes, settingsRes] = await Promise.all([
+            supabase.from('vehiculos').select('*').neq('status', 'Baja'),
+            supabase.from('push_subscriptions').select('id, user_id, subscription'),
+            // Ascendente: la fila más nueva de cada usuario queda última y gana
+            supabase.from('user_settings').select('*').order('updated_at', { ascending: true }),
+        ]);
+        if (vehiclesRes.error) throw vehiclesRes.error;
+        if (subscriptionsRes.error) throw subscriptionsRes.error;
+        if (settingsRes.error) throw settingsRes.error;
 
-        if (!vehicles || !subscriptions) return new Response(JSON.stringify({ message: "No vehicles or subs" }));
+        // 2. Avisos de hoy (fecha de Argentina) para cada dispositivo, con los ajustes de su usuario
+        const today = todayISO(new Date(), AR_TIME_ZONE);
+        const deliveries = planDeliveries(vehiclesRes.data ?? [], subscriptionsRes.data ?? [], settingsRes.data ?? [], today);
 
-        // 2. Crear mapa de ajustes por usuario
-        const settingsMap = new Map();
-        userSettings?.forEach(s => settingsMap.set(s.user_id, s));
+        // 3. Enviar todo en paralelo, dejando registro de cada falla
+        const result = await sendAll(deliveries, (subscription, payload) =>
+            webpush.sendNotification(subscription as any, payload).catch((error: any) => {
+                console.error(`Push failed (${error.statusCode ?? 'no status'}):`, error.body || error.message);
+                throw error;
+            })
+        );
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        let totalSent = 0;
-
-        // 3. Procesar CADA suscripción de forma personalizada
-        for (const subRecord of subscriptions) {
-            const userId = subRecord.user_id;
-            const settings = settingsMap.get(userId) || {
-                vtv_threshold: 30,
-                insurance_threshold: 15,
-                patente_threshold: 10,
-                appointments_threshold: 3
-            };
-
-            // Filtrar alertas para ESTE usuario según SUS umbrales
-            const userAlerts: any[] = [];
-            vehicles.forEach(v => {
-                // Función genérica para vencimientos
-                const checkExpiry = (dateStr: string | null, type: string, threshold: number) => {
-                    if (!dateStr) return;
-                    const diff = new Date(dateStr).getTime() - today.getTime();
-                    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-                    if (days <= threshold && days >= 0) {
-                        userAlerts.push({ id: v.id, type, vehicle: v.model, patente: v.patente, days });
-                    }
-                };
-
-                // Función genérica para turnos (Appointments)
-                const checkAppt = (dateStr: string | null, type: string) => {
-                    if (!dateStr) return;
-                    const diff = new Date(dateStr).getTime() - today.getTime();
-                    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-                    const threshold = settings.appointments_threshold || 3;
-                    if (days <= threshold && days >= 0) {
-                        userAlerts.push({
-                            id: v.id,
-                            type: `Turno ${type}`,
-                            vehicle: v.model,
-                            patente: v.patente,
-                            days,
-                            isAppt: true
-                        });
-                    }
-                };
-
-                // Vencimientos
-                checkExpiry(v.vtv_expiration, 'VTV', settings.vtv_threshold);
-                checkExpiry(v.insurance_expiration, 'Seguro', settings.insurance_threshold);
-                checkExpiry(v.patente_expiration, 'Patente', settings.patente_threshold);
-
-                // Turnos
-                checkAppt(v.vtv_appointment, 'VTV');
-                checkAppt(v.insurance_appointment, 'Seguro');
-                checkAppt(v.patente_appointment, 'Patente');
-            });
-
-            // 4. Si hay alertas para este usuario, enviar notificación
-            if (userAlerts.length > 0) {
-                const payload = JSON.stringify({
-                    title: userAlerts.length === 1 ? '⚠️ Alerta de Flota' : '⚠️ Alertas de Flota',
-                    body: userAlerts.length === 1
-                        ? `${userAlerts[0].type} de ${userAlerts[0].vehicle} (${userAlerts[0].patente}) en ${userAlerts[0].days} días.`
-                        : `Tienes ${userAlerts.length} avisos próximos en tu flota.`,
-                    url: userAlerts.length === 1 ? `/#/fleet/${userAlerts[0].id}` : '/#/fleet',
-                    tag: 'fleet-alert'
-                });
-
-                try {
-                    await webpush.sendNotification(subRecord.subscription, payload);
-                    totalSent++;
-                } catch (error: any) {
-                    console.error(`Error sending to device ${subRecord.id}:`, error.message);
-                    if (error.statusCode === 410 || error.statusCode === 404) {
-                        await supabase.from('push_subscriptions').delete().eq('id', subRecord.id);
-                    }
-                }
-            }
+        // 4. Borrar los dispositivos que ya no existen
+        if (result.expiredSubscriptionIds.length > 0) {
+            const { error } = await supabase.from('push_subscriptions').delete().in('id', result.expiredSubscriptionIds);
+            if (error) console.error('Error removing expired subscriptions:', error.message);
         }
 
-        return new Response(JSON.stringify({ sent: totalSent, processed: subscriptions.length }), {
+        return new Response(JSON.stringify({
+            today,
+            deliveries: deliveries.length,
+            sent: result.sent,
+            failed: result.failed,
+            removedSubscriptions: result.expiredSubscriptionIds.length,
+        }), {
             headers: { 'Content-Type': 'application/json' }
         });
 

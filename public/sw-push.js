@@ -5,7 +5,8 @@ self.addEventListener('push', (event) => {
     let data = {
         title: 'Gestión El Progreso',
         body: 'Tienes una nueva alerta de flota.',
-        url: '/#/fleet' // Corregido para HashRouter
+        url: '/#/fleet', // Corregido para HashRouter
+        tag: 'fleet-alert'
     };
 
     if (event.data) {
@@ -14,6 +15,7 @@ self.addEventListener('push', (event) => {
             data.title = json.title || data.title;
             data.body = json.body || data.body;
             data.url = json.url || data.url;
+            data.tag = json.tag || data.tag;
         } catch (e) {
             data.body = event.data.text();
         }
@@ -23,7 +25,8 @@ self.addEventListener('push', (event) => {
         body: data.body,
         icon: '/pwa-192x192.png',
         badge: '/pwa-192x192.png',
-        tag: 'fleet-alert-unique',
+        // Una notificación por documento: la de hoy reemplaza a la de ayer del mismo documento
+        tag: data.tag,
         renotify: true,
         vibrate: [100, 50, 100],
         data: {
