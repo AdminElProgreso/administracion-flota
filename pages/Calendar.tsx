@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../supabase';
+import { useAlertPrefs } from '../lib/useAlertPrefs';
+import { daysBetween, todayISO } from '../supabase/functions/_shared/dates';
+import { calendarExpirationLabel, calendarAppointmentLabel, CALENDAR_TONE_CLASSES, type CalendarTone } from '../lib/docStyles';
 
 const Calendar = () => {
    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -11,6 +14,9 @@ const Calendar = () => {
    const [selectedDay, setSelectedDay] = useState<number>(new Date().getDate());
    const [selectedEvent, setSelectedEvent] = useState<any>(null);
 
+   // Alert thresholds of the logged-in user (for the "Faltan N días" labels)
+   const { prefs, isLoading: isLoadingPrefs } = useAlertPrefs();
+
    const fetchCalendarData = async () => {
       setLoading(true);
       const { data: vehicles } = await supabase
@@ -19,8 +25,7 @@ const Calendar = () => {
          .neq('status', 'Baja');
 
       if (vehicles) {
-         const today = new Date();
-         today.setHours(0, 0, 0, 0);
+         const today = todayISO();
          const realEvents: any[] = [];
 
          vehicles.forEach(v => {
@@ -28,9 +33,7 @@ const Calendar = () => {
                if (!dateStr) return;
                const d = new Date(dateStr + 'T00:00:00');
                if (d.getMonth() === currentDate.getMonth() && d.getFullYear() === currentDate.getFullYear()) {
-                  let status = 'Próximo';
-                  if (d.getTime() < today.getTime()) status = 'Vencido';
-                  else if (d.getTime() === today.getTime()) status = 'Vence Hoy';
+                  const label = calendarExpirationLabel(daysBetween(today, dateStr), prefs.thresholds[type]);
 
                   realEvents.push({
                      id: `${v.id}-exp-${type}`,
@@ -39,7 +42,8 @@ const Calendar = () => {
                      type,
                      vehicle: v.model,
                      plate: v.patente ? v.patente.toUpperCase() : 'S/P',
-                     status,
+                     status: label.text,
+                     tone: label.tone,
                      color: type === 'Seguro' ? 'rose' : (type === 'VTV' ? 'amber' : 'emerald'),
                      description: `Vencimiento de ${type} registrado en la ficha del activo.`
                   });
@@ -57,7 +61,8 @@ const Calendar = () => {
                      type: `TURNO ${type}`,
                      vehicle: v.model,
                      plate: v.patente ? v.patente.toUpperCase() : 'S/P',
-                     status: 'Programado',
+                     status: calendarAppointmentLabel(daysBetween(today, dateStr)),
+                     tone: 'neutral',
                      color: 'blue',
                      description: `Turno programado para la renovación de ${type}.`
                   });
@@ -76,7 +81,7 @@ const Calendar = () => {
       setLoading(false);
    };
 
-   useEffect(() => { fetchCalendarData(); }, [currentDate]);
+   useEffect(() => { if (!isLoadingPrefs) fetchCalendarData(); }, [currentDate, prefs, isLoadingPrefs]);
 
    useEffect(() => {
       const today = new Date();
@@ -275,8 +280,7 @@ const Calendar = () => {
                                        <span className="text-[11px] font-bold text-stone-300">{evt.vehicle}</span>
                                        <span className="text-[10px] font-mono text-stone-500 uppercase">{evt.plate}</span>
                                     </div>
-                                    <span className={`px-2 py-0.5 rounded text-[9px] font-black border uppercase ${evt.status === 'Vencido' ? 'bg-red-500/20 text-red-400 border-red-500/20' : 'bg-brand-dark/50 text-stone-400 border-brand-border'
-                                       }`}>
+                                    <span className={`px-2 py-0.5 rounded text-[9px] font-black border uppercase ${CALENDAR_TONE_CLASSES[evt.tone as CalendarTone]}`}>
                                        {evt.status}
                                     </span>
                                  </div>
