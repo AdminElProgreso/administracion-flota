@@ -4,6 +4,10 @@ import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import { Vehicle, VehicleRow } from '../types';
+import { useAlertPrefs } from '../lib/useAlertPrefs';
+import { vehicleDocs } from '../supabase/functions/_shared/alerts';
+import { todayISO } from '../supabase/functions/_shared/dates';
+import { docLabel, DOC_CHIP_CLASSES, DOC_ICONS } from '../lib/docStyles';
 
 const Fleet = () => {
    const queryClient = useQueryClient();
@@ -38,6 +42,13 @@ const Fleet = () => {
          return data;
       }
    });
+
+   // Document states per vehicle, with the logged-in user's thresholds
+   const { prefs, isLoading: isLoadingPrefs } = useAlertPrefs();
+   const docsById = useMemo(() => {
+      const today = todayISO();
+      return new Map((rawVehicles ?? []).map(v => [v.id, vehicleDocs(v, prefs, today)]));
+   }, [rawVehicles, prefs]);
 
    // --- Derived State (Filtering & Mapping) ---
 
@@ -120,8 +131,6 @@ const Fleet = () => {
 
    // --- Helpers ---
 
-   const getExpirationStatus = (dateStr?: string) => { if (!dateStr) return 'none'; const d = new Date(dateStr + 'T00:00:00'); const today = new Date(); today.setHours(0, 0, 0, 0); const diffDays = Math.ceil((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)); if (diffDays < 0) return 'expired'; if (diffDays <= 30) return 'warning'; return 'ok'; };
-   const getDocColorClass = (status: string) => { switch (status) { case 'expired': return 'bg-rose-500/10 text-rose-500 border-rose-500/20'; case 'warning': return 'bg-amber-500/10 text-amber-500 border-amber-500/20'; case 'ok': return 'bg-emerald-500/10 text-emerald-500/40 border-emerald-500/10'; default: return 'bg-stone-800/30 text-stone-700 border-stone-800/50'; } };
    const getStatusStyles = (status: string) => { switch (status) { case 'Activo': return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'; case 'En Taller': return 'bg-amber-500/10 text-amber-500 border-amber-500/20'; case 'Baja': return 'bg-rose-500/10 text-rose-500 border-rose-500/20'; default: return 'bg-stone-500/10 text-stone-500 border-stone-500/20'; } };
 
    const getIconByType = (type: string) => {
@@ -134,7 +143,7 @@ const Fleet = () => {
       }
    };
 
-   if (isLoading) return <div className="flex items-center justify-center h-screen bg-background-dark"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
+   if (isLoading || isLoadingPrefs) return <div className="flex items-center justify-center h-screen bg-background-dark"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
 
    return (
       <div className="p-4 md:p-6 pb-24 md:pb-6">
@@ -184,13 +193,9 @@ const Fleet = () => {
                      </div>
                      <div className="flex items-center justify-between">
                         <div className="flex gap-2">
-                           {!isGenerator && (
-                              <>
-                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${getDocColorClass(getExpirationStatus(v.insuranceExpiration))}`}><span className="material-symbols-outlined text-sm">security</span></div>
-                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${getDocColorClass(getExpirationStatus(v.vtvExpiration))}`}><span className="material-symbols-outlined text-sm">verified</span></div>
-                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${getDocColorClass(getExpirationStatus(v.patenteExpiration))}`}><span className="material-symbols-outlined text-sm">badge</span></div>
-                              </>
-                           )}
+                           {!isGenerator && (docsById.get(v.id) ?? []).map(doc => (
+                              <div key={doc.type} title={`${doc.type}: ${docLabel(doc)}`} className={`w-8 h-8 rounded-full flex items-center justify-center border ${DOC_CHIP_CLASSES[doc.state]}`}><span className="material-symbols-outlined text-sm">{DOC_ICONS[doc.type]}</span></div>
+                           ))}
                         </div>
                         <Link to={`/fleet/${v.id}`} className="px-4 py-2 bg-brand-dark border border-brand-border rounded-lg text-sm text-stone-300 font-bold flex items-center gap-1">Ver Ficha <span className="material-symbols-outlined text-sm">chevron_right</span></Link>
                      </div>
@@ -212,7 +217,7 @@ const Fleet = () => {
                      <tr key={v.id} className="hover:bg-brand-dark/50 transition-colors group">
                         <td className="px-6 py-4"><div className="flex items-start gap-3"><div className="w-10 h-10 rounded bg-brand-dark flex items-center justify-center text-stone-500 border border-brand-border"><span className="material-symbols-outlined text-xl">{getIconByType(v.type)}</span></div><div>{v.patente && <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20 mb-1 inline-block">{v.patente}</span>}<div className="text-sm font-bold text-stone-200">{v.model}</div><div className="text-xs text-stone-500">{v.year}</div></div></div></td>
                         <td className="px-6 py-4"><div className="flex flex-col gap-1"><span className="inline-flex w-fit items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase border bg-brand-dark text-stone-400 border-brand-border">{v.section}</span><div className="flex items-center gap-1.5 mt-1"><span className="material-symbols-outlined text-stone-500 text-[14px]">person</span><span className="text-xs text-stone-300">{v.manager}</span></div></div></td>
-                        <td className="px-6 py-4">{v.type !== 'generator' && <div className="flex gap-2"><div className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all ${getDocColorClass(getExpirationStatus(v.insuranceExpiration))}`}><span className="material-symbols-outlined text-sm">security</span></div><div className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all ${getDocColorClass(getExpirationStatus(v.vtvExpiration))}`}><span className="material-symbols-outlined text-sm">verified</span></div><div className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all ${getDocColorClass(getExpirationStatus(v.patenteExpiration))}`}><span className="material-symbols-outlined text-sm">badge</span></div></div>}</td>
+                        <td className="px-6 py-4">{v.type !== 'generator' && <div className="flex gap-2">{(docsById.get(v.id) ?? []).map(doc => <div key={doc.type} title={`${doc.type}: ${docLabel(doc)}`} className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all ${DOC_CHIP_CLASSES[doc.state]}`}><span className="material-symbols-outlined text-sm">{DOC_ICONS[doc.type]}</span></div>)}</div>}</td>
                         <td className="px-6 py-4 font-mono text-sm text-stone-300">{v.odometer.toLocaleString()} {v.type === 'generator' || v.type === 'tractor' ? 'Hrs' : 'km'}</td>
                         <td className="px-6 py-4"><span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusStyles(v.status)}`}><span className={`w-1.5 h-1.5 rounded-full ${v.status === 'Activo' ? 'bg-emerald-500' : v.status === 'Baja' ? 'bg-rose-500' : 'bg-amber-500'}`}></span>{v.status}</span></td>
                         <td className="px-6 py-4 text-right"><Link to={`/fleet/${v.id}`} className="text-stone-500 hover:text-white"><span className="material-symbols-outlined">visibility</span></Link></td>
