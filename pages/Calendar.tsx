@@ -318,10 +318,7 @@ const Calendar = () => {
                               </div>
                            </div>
                            <div className="hidden sm:flex flex-col items-end gap-1">
-                              <span className={`text-[10px] font-black px-3 py-1 rounded-full border uppercase tracking-widest shadow-lg ${evt.color === 'rose' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
-                                 evt.color === 'blue' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                    evt.color === 'amber' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                                 }`}>
+                              <span className={`text-[10px] font-black px-3 py-1 rounded-full border uppercase tracking-widest shadow-lg ${CALENDAR_TONE_CLASSES[evt.tone as CalendarTone]}`}>
                                  {evt.status}
                               </span>
                               <p className="text-[9px] text-stone-600 font-mono italic">ID: {evt.id.substring(0, 8)}</p>

@@ -183,7 +183,7 @@ const Settings = () => {
 
     // --- UMBRALES E INTERRUPTORES DE AVISOS (la base es la fuente de verdad) ---
     const queryClient = useQueryClient();
-    const { prefs: savedPrefs, userId, isLoading: prefsLoading, error: prefsError } = useAlertPrefs();
+    const { prefs: savedPrefs, userId, loadState: prefsLoadStatus } = useAlertPrefs();
     const [prefs, setPrefs] = useState<AlertPrefs>(DEFAULT_PREFS);
     const [prefsLoaded, setPrefsLoaded] = useState(false);
     const lastSaved = useRef('');
@@ -219,18 +219,19 @@ const Settings = () => {
         return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
 
-    // 2. CARGAR UMBRALES E INTERRUPTORES DE LA BASE (una sola vez; si la carga falla no se guarda nada,
-    //    para no pisar los valores guardados con los de defecto)
+    // 2. CARGAR UMBRALES E INTERRUPTORES DE LA BASE (una sola vez, y solo cuando llegaron los datos:
+    //    sin conexión o con error no se guarda nada, para no pisar los valores guardados con los de defecto)
     useEffect(() => {
-        if (prefsLoaded || prefsLoading) return;
-        if (prefsError) {
-            setSyncError('No se pudieron cargar tus ajustes. Revisá la conexión y volvé a entrar.');
-            return;
+        if (prefsLoaded) return;
+        if (prefsLoadStatus === 'ready') {
+            setPrefs(savedPrefs);
+            lastSaved.current = JSON.stringify(savedPrefs);
+            setSyncError(null);
+            setPrefsLoaded(true);
+        } else if (prefsLoadStatus === 'error') {
+            setSyncError('No se pudieron cargar tus ajustes. Revisá la conexión.');
         }
-        setPrefs(savedPrefs);
-        lastSaved.current = JSON.stringify(savedPrefs);
-        setPrefsLoaded(true);
-    }, [prefsLoaded, prefsLoading, prefsError, savedPrefs]);
+    }, [prefsLoaded, prefsLoadStatus, savedPrefs]);
 
     const persistPrefs = async (): Promise<boolean> => {
         if (!userId || !prefsLoaded) {
@@ -318,12 +319,13 @@ const Settings = () => {
         </button>
     );
 
-    const Toggle = ({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) => (
+    const Toggle = ({ label, checked, onChange, disabled = false }: { label: string; checked: boolean; onChange: () => void; disabled?: boolean }) => (
         <div className="flex items-center justify-between py-3 border-b border-brand-border last:border-0">
             <span className="text-stone-300 text-sm">{label}</span>
             <button
                 onClick={onChange}
-                className={`w-12 h-6 rounded-full relative transition-colors ${checked ? 'bg-primary' : 'bg-stone-700'}`}
+                disabled={disabled}
+                className={`w-12 h-6 rounded-full relative transition-colors disabled:opacity-40 ${checked ? 'bg-primary' : 'bg-stone-700'}`}
             >
                 <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${checked ? 'left-7' : 'left-1'}`}></div>
             </button>
@@ -534,7 +536,7 @@ const Settings = () => {
                                             </label>
                                             <span className="text-primary font-mono font-bold">{prefs.thresholds.Seguro} días</span>
                                         </div>
-                                        <input type="range" min="1" max="60" value={prefs.thresholds.Seguro} onChange={(e) => setPrefs({ ...prefs, thresholds: { ...prefs.thresholds, Seguro: parseInt(e.target.value) } })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
+                                        <input type="range" min="1" max="60" disabled={!prefsLoaded} value={prefs.thresholds.Seguro} onChange={(e) => setPrefs({ ...prefs, thresholds: { ...prefs.thresholds, Seguro: parseInt(e.target.value) } })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary disabled:opacity-40 disabled:cursor-not-allowed" />
                                     </div>
                                     <div>
                                         <div className="flex justify-between mb-2">
@@ -543,7 +545,7 @@ const Settings = () => {
                                             </label>
                                             <span className="text-primary font-mono font-bold">{prefs.thresholds.VTV} días</span>
                                         </div>
-                                        <input type="range" min="1" max="90" value={prefs.thresholds.VTV} onChange={(e) => setPrefs({ ...prefs, thresholds: { ...prefs.thresholds, VTV: parseInt(e.target.value) } })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
+                                        <input type="range" min="1" max="90" disabled={!prefsLoaded} value={prefs.thresholds.VTV} onChange={(e) => setPrefs({ ...prefs, thresholds: { ...prefs.thresholds, VTV: parseInt(e.target.value) } })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary disabled:opacity-40 disabled:cursor-not-allowed" />
                                     </div>
                                     <div>
                                         <div className="flex justify-between mb-2">
@@ -552,7 +554,7 @@ const Settings = () => {
                                             </label>
                                             <span className="text-primary font-mono font-bold">{prefs.thresholds.Patente} días</span>
                                         </div>
-                                        <input type="range" min="1" max="60" value={prefs.thresholds.Patente} onChange={(e) => setPrefs({ ...prefs, thresholds: { ...prefs.thresholds, Patente: parseInt(e.target.value) } })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
+                                        <input type="range" min="1" max="60" disabled={!prefsLoaded} value={prefs.thresholds.Patente} onChange={(e) => setPrefs({ ...prefs, thresholds: { ...prefs.thresholds, Patente: parseInt(e.target.value) } })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary disabled:opacity-40 disabled:cursor-not-allowed" />
                                     </div>
                                     <div>
                                         <div className="flex justify-between mb-2">
@@ -561,7 +563,7 @@ const Settings = () => {
                                             </label>
                                             <span className="text-primary font-mono font-bold">{prefs.thresholds.appointments} días</span>
                                         </div>
-                                        <input type="range" min="1" max="30" value={prefs.thresholds.appointments} onChange={(e) => setPrefs({ ...prefs, thresholds: { ...prefs.thresholds, appointments: parseInt(e.target.value) } })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary" />
+                                        <input type="range" min="1" max="30" disabled={!prefsLoaded} value={prefs.thresholds.appointments} onChange={(e) => setPrefs({ ...prefs, thresholds: { ...prefs.thresholds, appointments: parseInt(e.target.value) } })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary disabled:opacity-40 disabled:cursor-not-allowed" />
                                     </div>
                                 </div>
                             </div>
@@ -596,10 +598,10 @@ const Settings = () => {
                                         <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
                                             {syncError && <p className="text-rose-500 text-xs px-1">{syncError}</p>}
                                             <h4 className="text-xs font-bold text-stone-500 uppercase tracking-widest mb-3 px-1">Tipos de Alerta</h4>
-                                            <Toggle label="Vencimiento de Seguros" checked={prefs.enabled.Seguro} onChange={() => setPrefs({ ...prefs, enabled: { ...prefs.enabled, Seguro: !prefs.enabled.Seguro } })} />
-                                            <Toggle label="Vencimiento de VTV" checked={prefs.enabled.VTV} onChange={() => setPrefs({ ...prefs, enabled: { ...prefs.enabled, VTV: !prefs.enabled.VTV } })} />
-                                            <Toggle label="Vencimiento de Patentes" checked={prefs.enabled.Patente} onChange={() => setPrefs({ ...prefs, enabled: { ...prefs.enabled, Patente: !prefs.enabled.Patente } })} />
-                                            <Toggle label="Recordatorio de Turnos" checked={prefs.enabled.appointments} onChange={() => setPrefs({ ...prefs, enabled: { ...prefs.enabled, appointments: !prefs.enabled.appointments } })} />
+                                            <Toggle label="Vencimiento de Seguros" disabled={!prefsLoaded} checked={prefs.enabled.Seguro} onChange={() => setPrefs({ ...prefs, enabled: { ...prefs.enabled, Seguro: !prefs.enabled.Seguro } })} />
+                                            <Toggle label="Vencimiento de VTV" disabled={!prefsLoaded} checked={prefs.enabled.VTV} onChange={() => setPrefs({ ...prefs, enabled: { ...prefs.enabled, VTV: !prefs.enabled.VTV } })} />
+                                            <Toggle label="Vencimiento de Patentes" disabled={!prefsLoaded} checked={prefs.enabled.Patente} onChange={() => setPrefs({ ...prefs, enabled: { ...prefs.enabled, Patente: !prefs.enabled.Patente } })} />
+                                            <Toggle label="Recordatorio de Turnos" disabled={!prefsLoaded} checked={prefs.enabled.appointments} onChange={() => setPrefs({ ...prefs, enabled: { ...prefs.enabled, appointments: !prefs.enabled.appointments } })} />
                                         </div>
                                     )}
                                 </div>

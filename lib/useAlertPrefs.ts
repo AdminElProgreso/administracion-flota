@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import { DEFAULT_PREFS, prefsFromRow, rowFromPrefs, type AlertPrefs } from '../supabase/functions/_shared/alerts';
+import { prefsLoadState, type PrefsLoadState } from './prefsLoadState';
 
 export const ALERT_PREFS_KEY = ['alertPrefs'] as const;
 
 // Alert thresholds and switches of the logged-in user; user_settings is the source of truth
-export function useAlertPrefs(): { prefs: AlertPrefs; userId: string | null; isLoading: boolean; error: Error | null } {
+export function useAlertPrefs(): { prefs: AlertPrefs; userId: string | null; isLoading: boolean; error: Error | null; loadState: PrefsLoadState } {
   const { data, isLoading, error } = useQuery({
     queryKey: ALERT_PREFS_KEY,
     queryFn: async () => {
@@ -27,7 +28,7 @@ export function useAlertPrefs(): { prefs: AlertPrefs; userId: string | null; isL
     staleTime: 5 * 60 * 1000,
   });
 
-  return { prefs: data?.prefs ?? DEFAULT_PREFS, userId: data?.userId ?? null, isLoading, error };
+  return { prefs: data?.prefs ?? DEFAULT_PREFS, userId: data?.userId ?? null, isLoading, error, loadState: prefsLoadState({ data, error }) };
 }
 
 export async function saveAlertPrefs(userId: string, prefs: AlertPrefs): Promise<void> {
