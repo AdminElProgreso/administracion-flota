@@ -315,8 +315,8 @@ const Dashboard = () => {
                   <span className="material-symbols-outlined">{DOC_ICONS[doc.type]}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white truncate">{doc.type} • {DOC_HEADLINES[doc.state]}</p>
-                  <p className="text-xs text-stone-400 truncate">
+                  <p className="text-sm font-bold text-white break-words">{doc.type} • {DOC_HEADLINES[doc.state]}</p>
+                  <p className="text-xs text-stone-400 break-words">
                     {`${vehicle.model} (${vehicle.patente?.toUpperCase() || 'S/P'})`}{doc.pastAppointment ? ' · Turno pasado' : ''}
                   </p>
                 </div>
