@@ -154,7 +154,7 @@
 .login-art::after{content:"";position:absolute;left:-40%;right:-40%;bottom:-30%;height:75%;background:repeating-linear-gradient(90deg,rgba(255,255,255,.09) 0 2px,transparent 2px 24px);transform:perspective(220px) rotateX(60deg);transform-origin:bottom}
 .login-art p{position:absolute;left:24px;bottom:92px;margin:0;color:#fff;font-family:'Bebas Neue';font-size:30px;line-height:1;letter-spacing:.03em;z-index:1;max-width:240px}
 .login-card{position:relative;z-index:2;margin:-70px 16px 24px;background:#fff;border-radius:24px;box-shadow:var(--sh-2);padding:22px 20px 20px}
-.login-card .logo{height:52px;margin-bottom:14px}
+.login-card .logo{height:64px;margin-bottom:14px}
 .login-card h1{margin:0;font-size:36px}
 .login-card>p{margin:6px 0 4px;color:var(--tinta-3)}
 .login-card .btn{margin-top:20px}
@@ -191,5 +191,6 @@
   .login-art::before{width:420px;height:420px;right:-90px;top:-120px}
   .login-art p{left:56px;bottom:120px;font-size:52px;max-width:460px}
   .login-card{flex:none;width:460px;margin:auto 64px;box-shadow:none;padding:0}
+  .login-card .logo{height:80px}
   .login-foot{position:absolute;right:64px;bottom:28px;margin:0;width:460px;text-align:left}
 }

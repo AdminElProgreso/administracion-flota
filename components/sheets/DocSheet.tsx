@@ -88,10 +88,11 @@ export function DocSheet({ kind, vehicleId, docType, onClose }: { kind: Kind; ve
     <Sheet
       open
       onClose={onClose}
+      busy={busy}
       title={sheetTitle}
       subtitle={fixed && <>{vehicle.model} <Plate value={vehicle.patente} /> · {type}</>}
       footer={<>
-        <button type="button" className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+        <button type="button" className="btn btn-ghost" disabled={busy} onClick={onClose}>Cancelar</button>
         <button type="button" className="btn btn-primary" disabled={busy} onClick={submit}>
           {busy ? 'Guardando…' : renew ? 'Guardar' : 'Guardar turno'}
         </button>

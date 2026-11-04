@@ -7,7 +7,7 @@ import { useConfirmStep } from '../../lib/useConfirmStep';
 import { emptyWorkForm, formFromWork, workFromForm, type WorkForm } from '../../lib/works';
 import { Sheet } from '../Sheet';
 import { useToast } from '../Toast';
-import { Icon, Segmented } from '../ui';
+import { EmptyState, Icon, Loading, Segmented } from '../ui';
 
 const TYPE_OPTIONS: { value: WorkType; label: string; icon: string }[] = [
   { value: 'Mantenimiento', label: 'Mantenimiento', icon: 'handyman' },
@@ -18,7 +18,7 @@ type TextField = Exclude<keyof WorkForm, 'type'>;
 
 // Records a maintenance or repair, or edits (and deletes) one already saved
 export function WorkSheet({ vehicleId, work, onClose }: { vehicleId?: string; work?: WorkRow; onClose: () => void }) {
-  const { data: vehicles = [] } = useVehicles();
+  const { data: vehicles, error: vehiclesError } = useVehicles();
   const save = useSaveWork();
   const remove = useDeleteWork();
   const toast = useToast();
@@ -27,7 +27,7 @@ export function WorkSheet({ vehicleId, work, onClose }: { vehicleId?: string; wo
   const busy = save.isPending || remove.isPending;
 
   // Units de baja only show up when the work already belongs to one
-  const options = vehicles
+  const options = (vehicles ?? [])
     .filter(v => v.status !== 'Baja' || v.id === form.vehicle_id)
     .sort((a, b) => a.model.localeCompare(b.model, 'es'));
   const known = options.some(v => v.id === form.vehicle_id);
@@ -61,13 +61,24 @@ export function WorkSheet({ vehicleId, work, onClose }: { vehicleId?: string; wo
     });
   };
 
+  const title = work ? 'Editar trabajo' : 'Registrar un trabajo';
+  // Without the list of vehicles there is nothing to choose: say why instead of an empty picker
+  if (!vehicles) {
+    return (
+      <Sheet open onClose={onClose} title={title}>
+        {vehiclesError ? <EmptyState icon="cloud_off" title="No se pudieron cargar los vehículos" text="Revisá la conexión y probá de nuevo." /> : <Loading />}
+      </Sheet>
+    );
+  }
+
   return (
     <Sheet
       open
       onClose={onClose}
-      title={work ? 'Editar trabajo' : 'Registrar un trabajo'}
+      busy={busy}
+      title={title}
       footer={<>
-        <button type="button" className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+        <button type="button" className="btn btn-ghost" disabled={busy} onClick={onClose}>Cancelar</button>
         <button type="button" className="btn btn-primary" disabled={busy} onClick={submit}>{save.isPending ? 'Guardando…' : 'Guardar'}</button>
       </>}
     >

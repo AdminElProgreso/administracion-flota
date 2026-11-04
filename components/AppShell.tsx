@@ -5,7 +5,9 @@ import { todayISO } from '../supabase/functions/_shared/dates';
 import { useVehicles } from '../lib/data';
 import { logout } from '../lib/session';
 import { useAlertPrefs } from '../lib/useAlertPrefs';
+import { ErrorBoundary } from './ErrorBoundary';
 import { useSheets } from './sheets/SheetsProvider';
+import { useToast } from './Toast';
 import { Icon, Logo } from './ui';
 
 const SECTIONS = [
@@ -24,6 +26,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: vehicles } = useVehicles();
   const { prefs } = useAlertPrefs();
   const { open } = useSheets();
+  const toast = useToast();
+  const signOut = () => void logout().then(problem => { if (problem) toast(problem, 'error'); });
   const count = vehicles ? attentionList(vehicles, prefs, todayISO()).length : 0;
 
   // The page scrolls the window: every screen starts at the top
@@ -47,7 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <button type="button" className="sb-new" onClick={() => open({ kind: 'quick' })}><Icon name="add" />Nuevo registro</button>
         <div className="sb-bottom">
           <NavLink to="/settings" className={navClass}><Icon name="settings" />Ajustes</NavLink>
-          <button type="button" className="nav-item" onClick={() => void logout()}><Icon name="logout" />Salir</button>
+          <button type="button" className="nav-item" onClick={signOut}><Icon name="logout" />Salir</button>
           <p className="sb-coop">Desde 1948 al servicio del productor y la comunidad.</p>
         </div>
       </aside>
@@ -62,7 +66,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </NavLink>
           <NavLink to="/settings" className="icon-btn" aria-label="Ajustes"><Icon name="settings" /></NavLink>
         </header>
-        <main>{children}</main>
+        {/* A new key per screen: after a failure, going to another screen works again */}
+        <main><ErrorBoundary key={pathname} inline>{children}</ErrorBoundary></main>
       </div>
 
       <nav className="tabbar" aria-label="Secciones">

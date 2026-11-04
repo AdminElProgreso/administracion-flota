@@ -138,9 +138,19 @@ const plateKey = (p: string | null | undefined) => (p ?? '').toUpperCase().repla
 
 export function vehicleFormError(f: VehicleForm, vehicles: VehicleRow[], editing?: Pick<VehicleRow, 'id' | 'patente'>): string | null {
   if (!f.model.trim() || !f.section.trim()) return 'Completá modelo y sección';
+  // A number that doesn't parse would be saved empty without a word: ask for it again instead
+  const year = int(f.year);
+  if (f.year.trim() && (year === null || year < 1900 || year > new Date().getFullYear() + 1)) return 'Revisá el año, por ejemplo 2016';
+  if (f.odometer.trim() && int(f.odometer) === null) {
+    return TYPE_INFO[f.tipo].unit === 'km' ? 'Escribí el kilometraje sin coma, por ejemplo 95.100' : 'Escribí las horas de uso sin coma, por ejemplo 2.300';
+  }
   const plate = f.tipo === 'generator' ? '' : plateKey(f.patente);
   // Editing keeps the plate a unit already had, even when another one shares it (placeholders like "S/P")
   if (!plate || (editing && plate === plateKey(editing.patente))) return null;
   const twin = vehicles.find(v => v.id !== editing?.id && plateKey(v.patente) === plate);
   return twin ? `Ya hay un vehículo con la patente ${plateText(plate)}` : null;
 }
+
+// Vehicle ids are UUIDs; an address like /#/fleet/no-existe is not worth asking the database about
+export const isVehicleId = (id: string | undefined): id is string =>
+  Boolean(id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));

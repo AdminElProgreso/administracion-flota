@@ -6,7 +6,7 @@ import { WorkItem } from '../components/rows';
 import { useSheets } from '../components/sheets/SheetsProvider';
 import { useToast } from '../components/Toast';
 import { DocBadge, EmptyState, ErrorState, Icon, Loading, Plate, SectionHead, StatusPill } from '../components/ui';
-import { useDeleteVehicle, useUpdateVehicle, useVehicles, useWorks } from '../lib/data';
+import { useDeleteVehicle, useUpdateVehicle, useVehicleWorks, useVehicles } from '../lib/data';
 import { docCardText } from '../lib/docCard';
 import { DOC_ICONS, STATE_CLASS } from '../lib/docStyles';
 import { money, num, orDash } from '../lib/format';
@@ -127,7 +127,7 @@ export default function VehicleDetail() {
   const { id } = useParams();
   const location = useLocation();
   const vehicles = useVehicles();
-  const works = useWorks();
+  const works = useVehicleWorks(id);
   const alertPrefs = useAlertPrefs();
   const { open } = useSheets();
   const navigate = useNavigate();
@@ -163,7 +163,7 @@ export default function VehicleDetail() {
   const info = TYPE_INFO[v.tipo] ?? TYPE_INFO.car;
   const today = todayISO();
   const year = today.slice(0, 4);
-  const history = works.data.filter(w => w.vehicle_id === v.id);
+  const history = works.data;
   const yearTotal = history.filter(w => w.date.startsWith(year)).reduce((a, w) => a + (w.cost ?? 0), 0);
   const facts: [string, string][] = [
     ['Año', orDash(v.year)],

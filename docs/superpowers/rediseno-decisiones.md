@@ -108,19 +108,21 @@ Durante la implementación (rama `rediseno-interfaz`) tomé estas decisiones cua
 - contenido de metadata.json — no llega a los usuarios — costo si está mal: ninguno.
 - datos fuera de lo esperado (status o tipo desconocidos, secciones con espacios) — hay valores por defecto (TYPE_INFO.car, STATUS_INFO.Activo) y sectionOptions recorta — costo si está mal: una unidad rara se ve como camioneta activa.
 
-## Pendientes menores
+## Pendientes menores, resueltos después de publicar
 
-La revisión final los marcó como menores y no entraron en los arreglos. Quedan para decidir si se hacen.
+La revisión final los había dejado como menores. Se resolvieron todos el 04/11/2026, junto con dos pedidos sobre la vista de escritorio.
 
-- cerrar una hoja mientras dice "Guardando…" pierde el aviso de éxito o error, y "Cancelar" no cancela el guardado.
-- el manifiesto sale con "lang":"en"; conviene lang: 'es-AR'.
-- "Salir" ignora el error de signOut (sin conexión no hace nada después de haber desuscripto el celular); signOut global también cierra la sesión en los otros dispositivos de la misma cuenta.
-- los avisos (toasts) quedan angostos a 375 px (~187 px) y los textos largos ocupan 3–4 líneas.
-- el botón Atrás de Android con una hoja abierta navega la pantalla de abajo y la hoja queda abierta.
-- las hojas no atrapan el foco ni lo devuelven al botón que las abrió.
-- la hoja de trabajo no avisa si falló la carga de vehículos (muestra "Elegí un vehículo" vacío).
-- el tope de 1000 trabajos también alimenta el historial, el total del año y el conteo de la confirmación de borrado.
-- borrar una unidad borra primero sus trabajos; si falla el segundo paso, el historial ya no está.
-- un costo con decimales se redondea al editar el trabajo; recharts es una dependencia sin uso.
-- un kilometraje escrito con coma ("95,100") se guarda vacío sin avisar.
-- no hay un límite de errores (error boundary): un error al dibujar deja la app en blanco.
+- **Escritorio** (pedido del usuario): el contenido queda centrado (hasta 1440 px) en vez de pegado a la izquierda, y el logo ocupa todo el ancho del menú lateral (211 × 78 px); también es más grande en la barra del celular (42 px de alto) y en el ingreso (64 px en el celular, 80 px en escritorio).
+- Cerrar una hoja mientras guardaba perdía el aviso: ahora no se cierra mientras dice "Guardando…" (ni con Escape ni tocando el fondo) y "Cancelar" queda deshabilitado.
+- El manifiesto quedó en castellano (`lang: 'es-AR'`), con el logo oficial.
+- "Salir": sin conexión avisa y no toca nada; cierra solo la sesión de este equipo (con una cuenta compartida, el otro teléfono sigue adentro); si Supabase no la cierra, lo avisa.
+- Los avisos toman el ancho del texto hasta el ancho de la pantalla (antes, unos 187 px en el celular).
+- Cambiar de pantalla, por ejemplo con el botón Atrás de Android, cierra la hoja abierta.
+- Las hojas no dejan salir el foco con Tab y al cerrarse lo devuelven al botón que las abrió.
+- La hoja de trabajo avisa si no se pudieron cargar los vehículos.
+- La ficha carga el historial completo de la unidad, sin el tope de 1000 de la lista general; una dirección inventada no consulta la base.
+- Si al eliminar una unidad se borra el historial pero no la unidad, el aviso lo dice y la pantalla se refresca.
+- Costos con decimales: sin cambio. Ningún trabajo guardado tiene centavos y la app guarda pesos enteros, así que editar no cambia ningún valor. `recharts`, que no se usaba, se quitó.
+- El año y el kilometraje que no se entienden ("95,100", "20a4") se avisan en vez de guardarse vacíos.
+- Una pantalla que falla muestra "Algo salió mal" con "Volver a cargar", y el menú sigue funcionando para ir a otra.
+- Dependencias: `react-router` 7.18.5, `ws` 8.22.1 y `bn.js` 4.12.5; las dependencias de producción quedaron sin vulnerabilidades conocidas.

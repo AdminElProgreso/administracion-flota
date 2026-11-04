@@ -245,6 +245,8 @@ function InstallCard() {
 
 export default function Settings() {
   const { prefs, setPrefs, prefsLoaded, userId, syncError, saving, savedOnce, retry } = useEditablePrefs();
+  const toast = useToast();
+  const signOut = () => void logout().then(problem => { if (problem) toast(problem, 'error'); });
   const [email, setEmail] = useState<string | null>(null);
   const [needsPassword, setNeedsPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -305,7 +307,7 @@ export default function Settings() {
       {showPassword && <PasswordForm onDone={() => { setShowPassword(false); setNeedsPassword(false); }} />}
       <div className="set-actions">
         {!showPassword && <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowPassword(true)}><Icon name="key" />Cambiar contraseña</button>}
-        <button type="button" className="btn btn-danger btn-sm" onClick={() => void logout()}><Icon name="logout" />Cerrar sesión</button>
+        <button type="button" className="btn btn-danger btn-sm" onClick={signOut}><Icon name="logout" />Cerrar sesión</button>
       </div>
     </Section>
   );

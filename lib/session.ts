@@ -1,8 +1,10 @@
 import { supabase } from '../supabase';
+import { logoutFlow } from './logoutFlow';
 import { unsubscribeDevice } from './push';
 
-export async function logout(): Promise<void> {
-  // This device stops receiving alerts, so they don't reach the next person who signs in here
-  await unsubscribeDevice().catch(error => console.error('Push unsubscribe on logout failed', error));
-  await supabase.auth.signOut();
-}
+// Returns the message to show when it couldn't sign out (see lib/logoutFlow.ts)
+export const logout = () => logoutFlow({
+  online: () => navigator.onLine,
+  unsubscribe: unsubscribeDevice,
+  signOut: scope => supabase.auth.signOut({ scope }),
+});

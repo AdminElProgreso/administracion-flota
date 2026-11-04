@@ -56,10 +56,11 @@ export function VehicleSheet({ vehicle, onClose }: { vehicle?: VehicleRow; onClo
     <Sheet
       open
       onClose={onClose}
+      busy={busy}
       title={editing ? 'Editar datos' : 'Agregar un vehículo'}
       subtitle={vehicle && <>{vehicle.model} <Plate value={vehicle.patente} /></>}
       footer={<>
-        <button type="button" className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+        <button type="button" className="btn btn-ghost" disabled={busy} onClick={onClose}>Cancelar</button>
         <button type="button" className="btn btn-primary" disabled={busy} onClick={submit}>{busy ? 'Guardando…' : 'Guardar'}</button>
       </>}
     >

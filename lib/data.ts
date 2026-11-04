@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import type { VehicleRow, WorkRow } from '../types';
+import { isVehicleId } from './vehicles';
 
 export const VEHICLES_KEY = ['vehicles'] as const;
 export const WORKS_KEY = ['works'] as const;
@@ -28,6 +29,22 @@ export function useWorks() {
     queryFn: async () => {
       const { data, error } = await supabase.from('mantenimientos').select('*').order('date', { ascending: false }).limit(1000);
       if (error) fail(error, 'No se pudieron cargar los trabajos.');
+      return (data ?? []) as WorkRow[];
+    },
+  });
+}
+
+// One unit's whole history (the general list stops at the latest 1000 works). Its key starts with WORKS_KEY,
+// so every save or delete of a work refreshes it too
+export function useVehicleWorks(vehicleId: string | undefined) {
+  return useQuery<WorkRow[], Error>({
+    queryKey: [...WORKS_KEY, 'vehicle', vehicleId],
+    enabled: Boolean(vehicleId),
+    queryFn: async () => {
+      // A made-up id would make Postgres fail on the uuid column: no unit, no history
+      if (!isVehicleId(vehicleId)) return [];
+      const { data, error } = await supabase.from('mantenimientos').select('*').eq('vehicle_id', vehicleId).order('date', { ascending: false });
+      if (error) fail(error, 'No se pudo cargar el historial de la unidad.');
       return (data ?? []) as WorkRow[];
     },
   });
@@ -71,10 +88,11 @@ export function useDeleteVehicle() {
       const works = await supabase.from('mantenimientos').delete().eq('vehicle_id', id);
       if (works.error) fail(works.error, 'No se pudo eliminar el historial de la unidad.');
       const { data, error } = await supabase.from('vehiculos').delete().eq('id', id).select('id');
-      if (error) fail(error, 'No se pudo eliminar la unidad.');
-      if (!data?.length) fail(null, 'No se pudo eliminar la unidad.');
+      // The history is already gone here: saying so lets the person retry knowing what happened
+      if (error || !data?.length) fail(error, 'Se borró el historial pero no la unidad. Probá de nuevo.');
     },
-    onSuccess: () => invalidate(VEHICLES_KEY, WORKS_KEY),
+    // Also after a failure halfway: the screens must stop showing works that no longer exist
+    onSettled: () => invalidate(VEHICLES_KEY, WORKS_KEY),
   });
 }
 

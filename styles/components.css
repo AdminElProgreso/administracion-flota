@@ -142,7 +142,7 @@ select.input{background-image:linear-gradient(45deg,transparent 50%,var(--tinta-
 .type-opt[aria-pressed="true"]{border-color:var(--verde-700);background:var(--verde-50);color:var(--verde-800)}
 
 /* Aviso breve */
-.toast{position:fixed;left:50%;bottom:calc(98px + env(safe-area-inset-bottom));z-index:60;transform:translate(-50%,16px);opacity:0;pointer-events:none;background:var(--carbon);color:#fff;padding:11px 16px;border-radius:13px;font-weight:600;font-size:14px;display:flex;gap:8px;align-items:center;max-width:calc(100vw - 32px);transition:.25s}
+.toast{position:fixed;left:50%;bottom:calc(98px + env(safe-area-inset-bottom));z-index:60;transform:translate(-50%,16px);opacity:0;pointer-events:none;background:var(--carbon);color:#fff;padding:11px 16px;border-radius:13px;font-weight:600;font-size:14px;display:flex;gap:8px;align-items:center;width:max-content;max-width:calc(100vw - 32px);transition:.25s}
 .toast .ms{color:var(--sol-300);font-size:20px}
 .toast.error .ms{color:#FFB4AB}
 .toast.show{opacity:1;transform:translate(-50%,0)}

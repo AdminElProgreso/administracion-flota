@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { AppShell } from './components/AppShell';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { SheetsProvider } from './components/sheets/SheetsProvider';
 import { ToastProvider } from './components/Toast';
 import { Loading } from './components/ui';
@@ -46,6 +47,7 @@ export default function App() {
   if (loading) return <Loading />;
 
   return (
+    <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <HashRouter>
@@ -69,5 +71,6 @@ export default function App() {
         </HashRouter>
       </ToastProvider>
     </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

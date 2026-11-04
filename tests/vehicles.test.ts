@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  filterVehicles, countByFilter, sectionOptions, vehicleFromForm, formFromVehicle, emptyVehicleForm, vehicleEditPatch, vehicleFormError, type VehicleForm,
+  filterVehicles, countByFilter, sectionOptions, vehicleFromForm, formFromVehicle, emptyVehicleForm, vehicleEditPatch, vehicleFormError, isVehicleId,
+  type VehicleForm,
 } from '../lib/vehicles';
 import { vrow } from './fixtures';
 
@@ -93,9 +94,25 @@ describe('vehicleFormError', () => {
     expect(vehicleFormError({ ...f, patente: 'AA236JS' }, fleet, fleet[0])).toBeNull();
     expect(vehicleFormError({ ...f, tipo: 'generator', patente: 'AA236JS' }, fleet)).toBeNull();
   });
+  it('avisa si el año o el kilometraje no se entienden, en vez de guardarlos vacíos', () => {
+    expect(vehicleFormError({ ...f, year: '20a4' }, fleet)).toBe('Revisá el año, por ejemplo 2016');
+    expect(vehicleFormError({ ...f, year: '1850' }, fleet)).toBe('Revisá el año, por ejemplo 2016');
+    expect(vehicleFormError({ ...f, odometer: '95,100' }, fleet)).toBe('Escribí el kilometraje sin coma, por ejemplo 95.100');
+    expect(vehicleFormError({ ...f, tipo: 'tractor', odometer: '2.300,5' }, fleet)).toBe('Escribí las horas de uso sin coma, por ejemplo 2.300');
+    expect(vehicleFormError({ ...f, year: '2016', odometer: '95.100' }, fleet)).toBeNull();
+    expect(vehicleFormError({ ...f, year: '', odometer: '' }, fleet)).toBeNull();
+  });
   it('editar una unidad que ya compartía patente no la traba', () => {
     const twins = [vrow('a', { patente: 'SP' }), vrow('b', { patente: 'SP' }), vrow('c', { patente: 'JRS506' })];
     expect(vehicleFormError({ ...f, patente: 'SP' }, twins, twins[0])).toBeNull();
     expect(vehicleFormError({ ...f, patente: 'JRS506' }, twins, twins[0])).toBe('Ya hay un vehículo con la patente JRS 506');
+  });
+});
+
+describe('isVehicleId', () => {
+  it('reconoce los ids de la base y descarta una dirección inventada', () => {
+    expect(isVehicleId('1056c1c5-5a6e-4105-a3d6-6437e4daa377')).toBe(true);
+    expect(isVehicleId('no-existe')).toBe(false);
+    expect(isVehicleId(undefined)).toBe(false);
   });
 });
