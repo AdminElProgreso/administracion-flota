@@ -1,5 +1,5 @@
 import { vehicleDocs, type AlertPrefs, type DocStatus, type VehicleDates } from '../supabase/functions/_shared/alerts';
-import { docTitle } from './docStyles';
+import { STATE_CLASS, docTitle } from './docStyles';
 
 export interface AgendaEvent {
   date: string;
@@ -27,6 +27,10 @@ export function agendaEvents(vehicles: VehicleDates[], prefs: AlertPrefs, today:
 
 export const eventDays = (e: AgendaEvent): number =>
   (e.kind === 'appointment' ? e.doc.daysToAppointment : e.doc.daysToExpiration) ?? 0;
+
+// Color of an event (row date, month dots): an appointment is blue even over an expired document
+export const eventTone = (e: AgendaEvent): string =>
+  e.kind === 'appointment' ? STATE_CLASS.appointment : STATE_CLASS[e.doc.state];
 
 const UPCOMING_TITLE = { Seguro: 'Vence el seguro', VTV: 'Vence la VTV', Patente: 'Vence la patente' } as const;
 

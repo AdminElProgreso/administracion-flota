@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_PREFS } from '../supabase/functions/_shared/alerts';
-import { agendaEvents, eventTitle, agendaWhen, groupByMonth, monthCells, eventDays, type AgendaEvent } from '../lib/agenda';
+import { agendaEvents, eventTitle, agendaWhen, groupByMonth, monthCells, eventDays, eventTone, type AgendaEvent } from '../lib/agenda';
 import { T, vehicle } from './fixtures';
 
 describe('agendaEvents', () => {
@@ -22,6 +22,11 @@ describe('agendaEvents', () => {
     const { overdue, upcoming } = agendaEvents(vs, DEFAULT_PREFS, T);
     expect(eventTitle(overdue[0])).toBe('VTV vencida');
     expect(upcoming.map(eventTitle)).toEqual(['Vence la patente', 'Turno de VTV', 'Vence el seguro']);
+  });
+  it('color: el turno manda sobre el estado del documento', () => {
+    const { overdue, upcoming } = agendaEvents(vs, DEFAULT_PREFS, T);
+    expect(eventTone(overdue[0])).toBe('st-bad');
+    expect(upcoming.map(eventTone)).toEqual(['st-warn', 'st-appt', 'st-ok']);
   });
 });
 

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { AttentionItem } from '../supabase/functions/_shared/alerts';
 import { todayISO } from '../supabase/functions/_shared/dates';
-import { agendaWhen, eventDays, eventTitle, type AgendaEvent } from '../lib/agenda';
+import { agendaWhen, eventDays, eventTitle, eventTone, type AgendaEvent } from '../lib/agenda';
 import { DOC_ICONS, STATE_CLASS, docTitle } from '../lib/docStyles';
 import { MONTHS_SHORT, money, shortDate } from '../lib/format';
 import type { VehicleRow, WorkRow } from '../types';
@@ -37,7 +37,7 @@ export function WorkItem({ work, vehicle, showVehicle = true, onClick }: { work:
 }
 
 export function EventRow({ event }: { event: AgendaEvent }) {
-  const tone = event.kind === 'appointment' ? STATE_CLASS.appointment : STATE_CLASS[event.doc.state];
+  const tone = eventTone(event);
   const [, month, day] = event.date.split('-').map(Number);
   return (
     <Link className="row" to={`/fleet/${event.vehicle.id}`}>
