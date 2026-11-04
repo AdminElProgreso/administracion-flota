@@ -36,7 +36,7 @@ export function VehicleSheet({ vehicle, onClose }: { vehicle?: VehicleRow; onClo
   });
 
   const submit = () => {
-    const problem = vehicleFormError(form, vehicles, vehicle?.id);
+    const problem = vehicleFormError(form, vehicles, vehicle);
     if (problem) { toast(problem, 'error'); return; }
     const onError = (e: Error) => toast(e.message, 'error');
     if (vehicle) {

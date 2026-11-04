@@ -1,4 +1,5 @@
-import { Link, useSearchParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { vehicleDocs, type AlertPrefs } from '../supabase/functions/_shared/alerts';
 import { todayISO } from '../supabase/functions/_shared/dates';
 import { useSheets } from '../components/sheets/SheetsProvider';
@@ -68,7 +69,17 @@ export default function Fleet() {
   // Filter and search live in the address, so coming back from a ficha keeps them
   const [params, setParams] = useSearchParams();
   const filter = FILTERS.find(f => f.value === params.get('filtro'))?.value ?? 'todos';
-  const query = params.get('q') ?? '';
+  // The box keeps its own text and copies it to the address: bound straight to the address, which the router
+  // updates in a transition, it was reset under the fingers (typing in the middle of a word lost the text)
+  const [query, setQuery] = useState(() => params.get('q') ?? '');
+  const location = useLocation();
+
+  // The list's own writes carry state.fromList; any other navigation here (the tab bar, a link) sets the box
+  useEffect(() => {
+    if ((location.state as { fromList?: boolean } | null)?.fromList) return;
+    setQuery(params.get('q') ?? '');
+    // Only when the address changes
+  }, [location.key]);
 
   const change = (next: { filtro?: VehicleFilter; q?: string }) => {
     const p = new URLSearchParams(params);
@@ -80,7 +91,7 @@ export default function Fleet() {
       if (next.q) p.set('q', next.q);
       else p.delete('q');
     }
-    setParams(p, { replace: true });
+    setParams(p, { replace: true, state: { fromList: true } });
   };
 
   const add = <button type="button" className="btn btn-primary btn-sm" onClick={() => open({ kind: 'vehicle' })}><Icon name="add" />Agregar</button>;
@@ -126,7 +137,7 @@ export default function Fleet() {
             aria-label="Buscar vehículos"
             autoComplete="off"
             value={query}
-            onChange={e => change({ q: e.target.value })}
+            onChange={e => { setQuery(e.target.value); change({ q: e.target.value }); }}
           />
         </label>
         <div className="chips" role="group" aria-label="Filtrar por estado">

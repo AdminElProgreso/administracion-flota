@@ -136,10 +136,11 @@ export function vehicleEditPatch(f: VehicleForm): Partial<VehicleRow> {
 
 const plateKey = (p: string | null | undefined) => (p ?? '').toUpperCase().replace(/\s+/g, '');
 
-export function vehicleFormError(f: VehicleForm, vehicles: VehicleRow[], editingId?: string): string | null {
+export function vehicleFormError(f: VehicleForm, vehicles: VehicleRow[], editing?: Pick<VehicleRow, 'id' | 'patente'>): string | null {
   if (!f.model.trim() || !f.section.trim()) return 'Completá modelo y sección';
   const plate = f.tipo === 'generator' ? '' : plateKey(f.patente);
-  const twin = plate && vehicles.find(v => v.id !== editingId && plateKey(v.patente) === plate);
-  if (twin) return `Ya hay un vehículo con la patente ${plateText(plate)}`;
-  return null;
+  // Editing keeps the plate a unit already had, even when another one shares it (placeholders like "S/P")
+  if (!plate || (editing && plate === plateKey(editing.patente))) return null;
+  const twin = vehicles.find(v => v.id !== editing?.id && plateKey(v.patente) === plate);
+  return twin ? `Ya hay un vehículo con la patente ${plateText(plate)}` : null;
 }

@@ -13,6 +13,7 @@ import { money, num, orDash } from '../lib/format';
 import { loadView } from '../lib/loadView';
 import { useAlertPrefs } from '../lib/useAlertPrefs';
 import { useConfirmStep } from '../lib/useConfirmStep';
+import { deleteAndLeave } from '../lib/deleteFlow';
 import { TYPE_INFO } from '../lib/vehicles';
 import type { VehicleRow, VehicleStatus } from '../types';
 
@@ -43,11 +44,15 @@ function DocCard({ doc, vehicleId, prefs }: { doc: DocStatus; vehicleId: string;
 }
 
 // Baja in two steps; once de baja, reactivate or delete for good after typing BORRAR
-function DangerZone({ vehicle, workCount, onDeleting }: { vehicle: VehicleRow; workCount: number; onDeleting: () => void }) {
+function DangerZone({ vehicle, workCount, onLeaving, onLeft }: {
+  vehicle: VehicleRow;
+  workCount: number;
+  onLeaving: (on: boolean) => void;
+  onLeft: () => void;
+}) {
   const update = useUpdateVehicle();
   const remove = useDeleteVehicle();
   const toast = useToast();
-  const navigate = useNavigate();
   const step = useConfirmStep();
   const [word, setWord] = useState('');
   const busy = update.isPending || remove.isPending;
@@ -56,13 +61,8 @@ function DangerZone({ vehicle, workCount, onDeleting }: { vehicle: VehicleRow; w
   const setStatus = (status: VehicleStatus, message: string) =>
     update.mutate({ id: vehicle.id, patch: { status } }, { onSuccess: () => { toast(message); step.disarm(); }, onError });
 
-  const erase = () => {
-    onDeleting();
-    remove.mutate(vehicle.id, {
-      onSuccess: () => { toast('Unidad eliminada'); navigate('/fleet', { replace: true }); },
-      onError,
-    });
-  };
+  // This zone unmounts before the deletion ends: deleteAndLeave awaits it instead of relying on mutate callbacks
+  const erase = () => void deleteAndLeave(() => remove.mutateAsync(vehicle.id), { setLeaving: onLeaving, toast, leave: onLeft });
 
   if (vehicle.status !== 'Baja') {
     return (
@@ -130,6 +130,7 @@ export default function VehicleDetail() {
   const works = useWorks();
   const alertPrefs = useAlertPrefs();
   const { open } = useSheets();
+  const navigate = useNavigate();
   // Set while the unit is being deleted, so the screen doesn't flash "no encontrado" before leaving
   const [leaving, setLeaving] = useState(false);
 
@@ -215,7 +216,7 @@ export default function VehicleDetail() {
         )}
       </section>
 
-      <DangerZone vehicle={v} workCount={history.length} onDeleting={() => setLeaving(true)} />
+      <DangerZone vehicle={v} workCount={history.length} onLeaving={setLeaving} onLeft={() => navigate('/fleet', { replace: true })} />
     </div>
   );
 }

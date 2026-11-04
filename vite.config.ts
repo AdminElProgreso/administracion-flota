@@ -2,9 +2,7 @@ import path from 'path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
-
-// Same URL as LOGO_URL in components/ui.tsx: the cooperative's logo, until the official file is in /public
-const LOGO_URL = 'https://elprogresocoop.com.ar/public/img/logo_nav.png';
+import { runtimeCaching } from './pwa.config';
 
 export default defineConfig(() => {
   return {
@@ -51,28 +49,8 @@ export default defineConfig(() => {
           cleanupOutdatedCaches: true,
           clientsClaim: true,
           skipWaiting: true,
-          // Fonts and logo come from other origins: cache them so the installed app starts styled offline
-          runtimeCaching: [
-            {
-              urlPattern: ({ url }) => url.origin === 'https://fonts.googleapis.com',
-              handler: 'StaleWhileRevalidate',
-              options: { cacheName: 'google-fonts-css' }
-            },
-            {
-              urlPattern: ({ url }) => url.origin === 'https://fonts.gstatic.com',
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'google-fonts-files',
-                expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
-                cacheableResponse: { statuses: [0, 200] }
-              }
-            },
-            {
-              urlPattern: ({ url }) => url.href === LOGO_URL,
-              handler: 'StaleWhileRevalidate',
-              options: { cacheName: 'logo', cacheableResponse: { statuses: [0, 200] } }
-            }
-          ]
+          // Fonts and logo from other origins (pwa.config.ts, tested in tests/pwaCache.test.ts)
+          runtimeCaching,
         }
       })
     ],

@@ -90,7 +90,12 @@ describe('vehicleFormError', () => {
   });
   it('no repite una patente', () => {
     expect(vehicleFormError({ ...f, patente: 'aa 236 js' }, fleet)).toBe('Ya hay un vehículo con la patente AA 236 JS');
-    expect(vehicleFormError({ ...f, patente: 'AA236JS' }, fleet, 'a')).toBeNull();
+    expect(vehicleFormError({ ...f, patente: 'AA236JS' }, fleet, fleet[0])).toBeNull();
     expect(vehicleFormError({ ...f, tipo: 'generator', patente: 'AA236JS' }, fleet)).toBeNull();
+  });
+  it('editar una unidad que ya compartía patente no la traba', () => {
+    const twins = [vrow('a', { patente: 'SP' }), vrow('b', { patente: 'SP' }), vrow('c', { patente: 'JRS506' })];
+    expect(vehicleFormError({ ...f, patente: 'SP' }, twins, twins[0])).toBeNull();
+    expect(vehicleFormError({ ...f, patente: 'JRS506' }, twins, twins[0])).toBe('Ya hay un vehículo con la patente JRS 506');
   });
 });

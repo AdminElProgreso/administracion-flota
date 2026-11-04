@@ -6,7 +6,7 @@ import { STATE_CLASS, docLabel } from '../lib/docStyles';
 import { plateText } from '../lib/format';
 import { STATUS_INFO } from '../lib/vehicles';
 
-// Same URL as in vite.config.ts (cached by the service worker); replaced by the official file when available
+// Cached by the service worker (pattern in pwa.config.ts); replaced by the official file when available
 export const LOGO_URL = 'https://elprogresocoop.com.ar/public/img/logo_nav.png';
 
 export function Icon({ name, fill = false, className = '' }: { name: string; fill?: boolean; className?: string }) {

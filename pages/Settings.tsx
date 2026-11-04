@@ -5,6 +5,7 @@ import { DEFAULT_PREFS, type AlertPrefs, type DocType } from '../supabase/functi
 import { useToast } from '../components/Toast';
 import { Icon, PageHead, Stepper, Switch } from '../components/ui';
 import { initials, passwordProblem, passwordUpdateMessage, pushSupportNote } from '../lib/account';
+import { createAutosave } from '../lib/autosave';
 import { isDeviceSubscribed, pushSupport, showTestNotification, subscribeDevice, unsubscribeDevice } from '../lib/push';
 import { logout } from '../lib/session';
 import { ALERT_PREFS_KEY, saveAlertPrefs, useAlertPrefs } from '../lib/useAlertPrefs';
@@ -50,15 +51,16 @@ function useEditablePrefs() {
     }
   }, [prefsLoaded, loadState, savedPrefs]);
 
-  const persistPrefs = async (): Promise<boolean> => {
+  // The value comes in as an argument: a save that runs after leaving the screen can't read state
+  const persistPrefs = async (value: AlertPrefs): Promise<boolean> => {
     if (!userId || !prefsLoaded) {
       setSyncError('No se pudo guardar. Revisá la conexión.');
       return false;
     }
     setSaving(true);
     try {
-      await saveAlertPrefs(userId, prefs);
-      lastSaved.current = JSON.stringify(prefs);
+      await saveAlertPrefs(userId, value);
+      lastSaved.current = JSON.stringify(value);
       setSyncError(null);
       setSavedOnce(true);
       void queryClient.invalidateQueries({ queryKey: ALERT_PREFS_KEY });
@@ -72,15 +74,30 @@ function useEditablePrefs() {
     }
   };
 
+  // Saved 1 s after the last change, through the latest persistPrefs (it knows the current user)
+  const persistRef = useRef(persistPrefs);
+  persistRef.current = persistPrefs;
+  const [autosave] = useState(() => createAutosave<AlertPrefs>(value => void persistRef.current(value), 1000));
+
   useEffect(() => {
-    if (!prefsLoaded || !userId || JSON.stringify(prefs) === lastSaved.current) return;
-    const timer = setTimeout(persistPrefs, 1000);
-    return () => clearTimeout(timer);
-    // persistPrefs reads the same prefs this effect depends on
-  }, [prefs, prefsLoaded, userId]);
+    if (!prefsLoaded || !userId) return;
+    // Going back to what is stored drops the pending save
+    if (JSON.stringify(prefs) === lastSaved.current) autosave.cancel();
+    else autosave.schedule(prefs);
+  }, [prefs, prefsLoaded, userId, autosave]);
+
+  // Leaving the screen or closing the app saves right away a change still waiting for its second
+  useEffect(() => {
+    const flush = () => autosave.flush();
+    window.addEventListener('pagehide', flush);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      flush();
+    };
+  }, [autosave]);
 
   // Before loading, retrying reloads; after, it saves again what failed
-  const retry = () => (prefsLoaded ? void persistPrefs() : void refetch());
+  const retry = () => (prefsLoaded ? void persistPrefs(prefs) : void refetch());
 
   return { prefs, setPrefs, prefsLoaded, userId, syncError, saving, savedOnce, retry };
 }
