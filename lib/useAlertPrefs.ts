@@ -6,8 +6,15 @@ import { prefsLoadState, type PrefsLoadState } from './prefsLoadState';
 export const ALERT_PREFS_KEY = ['alertPrefs'] as const;
 
 // Alert thresholds and switches of the logged-in user; user_settings is the source of truth
-export function useAlertPrefs(): { prefs: AlertPrefs; userId: string | null; isLoading: boolean; error: Error | null; loadState: PrefsLoadState } {
-  const { data, isLoading, error } = useQuery({
+export function useAlertPrefs(): {
+  prefs: AlertPrefs;
+  userId: string | null;
+  isLoading: boolean;
+  error: Error | null;
+  loadState: PrefsLoadState;
+  refetch: () => Promise<unknown>;
+} {
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ALERT_PREFS_KEY,
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -28,7 +35,7 @@ export function useAlertPrefs(): { prefs: AlertPrefs; userId: string | null; isL
     staleTime: 5 * 60 * 1000,
   });
 
-  return { prefs: data?.prefs ?? DEFAULT_PREFS, userId: data?.userId ?? null, isLoading, error, loadState: prefsLoadState({ data, error }) };
+  return { prefs: data?.prefs ?? DEFAULT_PREFS, userId: data?.userId ?? null, isLoading, error, loadState: prefsLoadState({ data, error }), refetch };
 }
 
 export async function saveAlertPrefs(userId: string, prefs: AlertPrefs): Promise<void> {

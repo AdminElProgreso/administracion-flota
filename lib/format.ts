@@ -32,6 +32,21 @@ export function greeting(d: Date): string {
   return 'Buenas noches';
 }
 
+// Same day n years later; a 29 February lands on the 28th
+export function addYears(iso: string, n: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const year = y + n;
+  const lastDay = new Date(Date.UTC(year, m, 0)).getUTCDate();
+  const pad = (v: number) => String(v).padStart(2, '0');
+  return `${year}-${pad(m)}-${pad(Math.min(d, lastDay))}`;
+}
+
+// '22/01' within the current year, '30/12/2025' for another one
+export function shortDate(iso: string, today: string): string {
+  const [y, m, d] = iso.split('-');
+  return y === today.slice(0, 4) ? `${d}/${m}` : `${d}/${m}/${y}`;
+}
+
 // 'Miércoles 4 de noviembre'
 export function longDate(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);

@@ -1,404 +1,144 @@
-// @ts-nocheck (temporary: rewritten in Task 8 of the redesign plan)
-import React, { useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
-import { VehicleRow } from '../types';
-import { useAlertPrefs } from '../lib/useAlertPrefs';
 import { attentionList } from '../supabase/functions/_shared/alerts';
 import { todayISO } from '../supabase/functions/_shared/dates';
-import { docLabel, DOC_CHIP_CLASSES, DOC_ICONS, DOC_HEADLINES } from '../lib/docStyles';
+import { AttentionRow, WorkItem } from '../components/rows';
+import { useSheets } from '../components/sheets/SheetsProvider';
+import { EmptyState, ErrorState, Icon, Kpi, Loading, Plate, SectionHead } from '../components/ui';
+import { useVehicles, useWorks } from '../lib/data';
+import { MONTHS, greeting, longDate, money } from '../lib/format';
+import { attentionSummary, nextExpiryLabel } from '../lib/home';
+import { loadView } from '../lib/loadView';
+import { monthlySpend } from '../lib/spend';
+import { useAlertPrefs } from '../lib/useAlertPrefs';
 
-// --- Interfaces & Types ---
-
-interface DashboardStats {
-  total: number;
-  inWorkshop: number;
-  alertsCount: number;
-  monthlyExpenses: number;
-}
-
-interface Appointment {
-  id: string;
-  vehicle: string;
-  plate: string | null;
-  type: string;
-  currentExpiry: string | null;
-  fullData: VehicleRow;
-}
-
-interface RenewalModalState {
-  isOpen: boolean;
-  vehicle: VehicleRow;
-  type: string;
-  currentExpiry: string | null;
-}
-
-interface StatCardProps {
-  title: string;
-  value: number | string;
-  subtext: string;
-  icon: string;
-  colorClass: string;
-  borderClass: string;
-  onClick?: () => void;
-  customValueClass?: string;
-}
-
-interface QuickActionProps {
-  to: string;
-  icon: string;
-  label: string;
-  color: string;
-  className?: string;
-}
-
-// --- Helper Functions ---
-
-const formatLocalDate = (dateStr: string | null) => {
-  if (!dateStr) return '';
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString();
-};
-
-const StatCard: React.FC<StatCardProps> = ({ title, value, subtext, icon, colorClass, borderClass, onClick, customValueClass = "" }) => (
-  <div className={`bg-brand-surface border ${borderClass} rounded-xl p-5 relative overflow-hidden group cursor-pointer transition-all hover:scale-[1.02]`} onClick={onClick}>
-    <div className={`absolute right-0 top-0 w-20 h-20 bg-gradient-to-br ${colorClass} to-transparent rounded-bl-full -mr-4 -mt-4 opacity-10`}></div>
-    <div className="flex justify-between items-start mb-2">
-      <div className={`p-2 rounded-lg bg-brand-dark border border-brand-border ${colorClass.replace('from-', 'text-')}`}>
-        <span className="material-symbols-outlined">{icon}</span>
-      </div>
-      <span className={`font-bold text-white tracking-tight ${customValueClass || "text-3xl"}`}>{value}</span>
-    </div>
-    <h3 className="text-stone-400 text-xs font-bold uppercase tracking-widest">{title}</h3>
-    <p className="text-[10px] text-stone-500 mt-1">{subtext}</p>
-  </div>
-);
-
-const QuickAction: React.FC<QuickActionProps> = ({ to, icon, label, color, className = "" }) => (
-  <Link to={to} className={`flex flex-col items-center justify-center p-4 bg-brand-surface border border-brand-border rounded-xl hover:bg-stone-800 transition-colors active:scale-95 group ${className}`}>
-    <div className={`w-12 h-12 rounded-full ${color} flex items-center justify-center mb-2 group-hover:scale-110 transition-transform`}>
-      <span className="material-symbols-outlined text-xl text-white">{icon}</span>
-    </div>
-    <span className="text-xs font-bold text-stone-300 uppercase tracking-wide text-center">{label}</span>
-  </Link>
-);
-
-const Dashboard = () => {
-  const queryClient = useQueryClient();
-  const [showPasswordAlert, setShowPasswordAlert] = useState(false);
-  const [renewalModal, setRenewalModal] = useState<RenewalModalState | null>(null);
-
-  const currentMonthName = new Date().toLocaleString('es-ES', { month: 'long' });
-  const capitalizedMonth = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
-
-  // --- Queries ---
-
-  // Check user session/metadata
-  useQuery({
-    queryKey: ['userSession'],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user && !user.user_metadata?.password_set) {
-        setShowPasswordAlert(true);
-      }
-      return user;
-    },
-    staleTime: Infinity // User session rarely changes unexpectedly
-  });
-
-  // Fetch Fleet (Only active)
-  const { data: fleet, isLoading: isLoadingFleet } = useQuery({
-    queryKey: ['vehicles', 'all'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('vehiculos').select('*').returns<VehicleRow[]>();
-      if (error) throw error;
-      return data;
-    }
-  });
-
-  // Fetch Monthly Expenses
-  const { data: monthlyExpenses, isLoading: isLoadingExpenses } = useQuery({
-    queryKey: ['expenses', 'currentMonth'],
-    queryFn: async () => {
-      const now = new Date();
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-
-      const { data, error } = await supabase.from('mantenimientos')
-        .select('cost')
-        .gte('date', firstDay)
-        .lte('date', lastDay);
-
-      if (error) throw error;
-      return data?.reduce((acc, curr) => acc + (curr.cost || 0), 0) || 0;
-    }
-  });
-
-  // Alert thresholds of the logged-in user
-  const { prefs, isLoading: isLoadingPrefs } = useAlertPrefs();
-
-  // --- Derived State (Stats & Alerts) ---
-
-  const { stats, attention, todayAppts } = useMemo(() => {
-    if (!fleet) return {
-      stats: { total: 0, inWorkshop: 0, alertsCount: 0, monthlyExpenses: 0 },
-      attention: [],
-      todayAppts: []
-    };
-
-    const today = todayISO();
-
-    const activeFleet = fleet.filter(v => v.status !== 'Baja');
-
-    const apptsForToday: Appointment[] = [];
-    let workshopCount = 0;
-
-    activeFleet.forEach(v => {
-      if (v.status === 'En Taller') workshopCount++;
-
-      // Helper to check for Today's Appointments
-      const checkAppt = (apptStr: string | null, expiryStr: string | null, type: string) => {
-        if (apptStr === today) {
-          apptsForToday.push({
-            id: v.id,
-            vehicle: v.model,
-            plate: v.patente || null,
-            type,
-            currentExpiry: expiryStr,
-            fullData: v
-          });
-        }
-      };
-
-      checkAppt(v.vtv_appointment, v.vtv_expiration, 'VTV');
-      checkAppt(v.insurance_appointment, v.insurance_expiration, 'Seguro');
-      checkAppt(v.patente_appointment, v.patente_expiration, 'Patente');
+// Accounts that came in with an invitation link have no password of their own until they set one
+function usePasswordMissing(): boolean {
+  const [missing, setMissing] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      if (active) setMissing(Boolean(session && !session.user.user_metadata?.password_set));
     });
+    return () => { active = false; };
+  }, []);
+  return missing;
+}
 
-    // Expired, expiring and booked documents with the shared rule (units in Baja are left out)
-    const attention = attentionList(fleet, prefs, today);
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-    return {
-      stats: {
-        total: activeFleet.length,
-        inWorkshop: workshopCount,
-        alertsCount: attention.length,
-        monthlyExpenses: monthlyExpenses || 0
-      },
-      attention,
-      todayAppts: apptsForToday
-    };
-  }, [fleet, monthlyExpenses, prefs]);
+export default function Dashboard() {
+  const vehicles = useVehicles();
+  const works = useWorks();
+  const alertPrefs = useAlertPrefs();
+  const { open } = useSheets();
+  const passwordMissing = usePasswordMissing();
 
+  // The thresholds decide what needs attention: the screen waits for them too
+  const prefsQuery = { data: alertPrefs.loadState === 'ready' ? alertPrefs.prefs : undefined, error: alertPrefs.error };
+  const view = loadView(vehicles, works, prefsQuery);
+  if (view === 'error') {
+    const retry = () => { void vehicles.refetch(); void works.refetch(); void alertPrefs.refetch(); };
+    return <div className="screen"><div className="sec"><ErrorState onRetry={retry} /></div></div>;
+  }
+  if (!vehicles.data || !works.data || view === 'loading') return <Loading />;
 
-  // --- Mutations ---
-
-  const renewalMutation = useMutation({
-    mutationFn: async ({ vehicleId, fields, newDate }: { vehicleId: string, fields: any, newDate: string }) => {
-      const { error } = await supabase.from('vehiculos').update({
-        [fields.exp]: newDate,
-        [fields.appt]: null
-      }).eq('id', vehicleId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      // Invalidate queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
-      setRenewalModal(null);
-    },
-    onError: (error: any) => {
-      alert("Error al actualizar: " + error.message);
-    }
-  });
-
-  const handleConfirmRenewal = (newDate: string) => {
-    if (!renewalModal || !newDate) return;
-
-    const columnMap: Record<string, { exp: keyof VehicleRow; appt: keyof VehicleRow }> = {
-      'VTV': { exp: 'vtv_expiration', appt: 'vtv_appointment' },
-      'Seguro': { exp: 'insurance_expiration', appt: 'insurance_appointment' },
-      'Patente': { exp: 'patente_expiration', appt: 'patente_appointment' }
-    };
-
-    const fields = columnMap[renewalModal.type];
-    if (!fields) return;
-
-    renewalMutation.mutate({ vehicleId: renewalModal.vehicle.id, fields, newDate });
-  };
-
-  if (isLoadingFleet || isLoadingExpenses || isLoadingPrefs) return <div className="h-screen flex items-center justify-center bg-background-dark"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
+  const today = todayISO();
+  const list = vehicles.data;
+  const items = attentionList(list, alertPrefs.prefs, today);
+  const summary = attentionSummary(items);
+  const todays = items.filter(i => i.doc.state === 'appointment' && i.doc.daysToAppointment === 0);
+  const next = items.find(i => i.doc.state === 'expiring');
+  const inFleet = list.filter(v => v.status !== 'Baja').length;
+  const operating = list.filter(v => v.status === 'Activo').length;
+  const inShop = list.filter(v => v.status === 'En Taller');
+  const [month] = monthlySpend(works.data, today, 1);
+  const monthName = MONTHS[Number(today.slice(5, 7)) - 1];
+  const byId = new Map(list.map(v => [v.id, v]));
+  const recent = works.data.slice(0, 4);
+  const docKey = (i: (typeof items)[number]) => `${i.vehicle.id}-${i.doc.type}`;
 
   return (
-    <div className="p-4 md:p-6 pb-20 md:pb-6">
-      <header className="mb-6">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="material-symbols-outlined text-primary">grid_view</span>
-          <h2 className="text-xl font-bold text-white tracking-tight">Panel de Control</h2>
-        </div>
-        <p className="text-sm text-stone-500 font-medium">Estado real de la flota de El Progreso</p>
-      </header>
+    <div className="screen">
+      <div className="hero">
+        <p className="hero-date">{longDate(today)}</p>
+        <h1 className="display hero-title">{greeting(new Date())}</h1>
+        <Link className="hero-status" to="/calendar">
+          <span className="hs-icon"><Icon name={items.length ? 'notifications_active' : 'verified'} fill /></span>
+          <span className="hs-text"><strong>{summary.title}</strong><small>{summary.detail}</small></span>
+          <Icon name="chevron_right" />
+        </Link>
+      </div>
 
-      {/* Notifications: Today's Appointments */}
-      {todayAppts.length > 0 && (
-        <div className="mb-6 space-y-3">
-          {todayAppts.map((appt, idx) => (
-            <div key={idx} className="p-4 rounded-xl border border-blue-500/30 bg-blue-500/5 flex flex-col sm:flex-row items-center gap-4 animate-in slide-in-from-top-4 duration-500">
-              <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-                <span className="material-symbols-outlined text-3xl">notification_important</span>
-              </div>
-              <div className="flex-1 text-center sm:text-left">
-                <h3 className="text-blue-400 font-bold">¡Turno hoy! - {appt.type}</h3>
-                <p className="text-stone-400 text-sm">
-                  {appt.vehicle} ({appt.plate?.toUpperCase()}) tiene un turno para renovar {appt.type} el día de hoy.
-                </p>
-              </div>
-              <button
-                onClick={() => setRenewalModal({ isOpen: true, vehicle: appt.fullData, type: appt.type, currentExpiry: appt.currentExpiry })}
-                className="bg-blue-500 hover:bg-blue-600 text-white font-bold px-6 py-2 rounded-lg text-sm transition-colors shadow-lg shadow-blue-900/20 flex items-center gap-2"
-              >
-                <span className="material-symbols-outlined text-sm">edit_calendar</span>
-                Renovar Ahora
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {showPasswordAlert && (
-        <div className="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 flex flex-col sm:flex-row items-center gap-4">
-          <span className="material-symbols-outlined text-amber-500 text-3xl">lock_open</span>
-          <div className="flex-1 text-center sm:text-left">
-            <h3 className="text-amber-500 font-bold">Seguridad de la cuenta</h3>
-            <p className="text-stone-400 text-sm">Configurá tu contraseña propia por seguridad.</p>
-          </div>
-          <Link to="/settings" className="bg-amber-500 text-brand-dark font-bold px-6 py-2 rounded-lg text-sm shadow-lg">Configurar</Link>
-        </div>
-      )}
-
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
-        <StatCard title="Documentación" value={stats.alertsCount} subtext="Pendientes o turnos" icon="notifications_active" colorClass="from-rose-500" borderClass={stats.alertsCount > 0 ? "border-rose-500/30" : "border-brand-border"} />
-        <StatCard title="En Taller" value={stats.inWorkshop} subtext="Unidades detenidas" icon="build" colorClass="from-amber-500" borderClass="border-brand-border" />
-        <StatCard
-          title="Gasto Mensual"
-          value={new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(stats.monthlyExpenses)}
-          subtext={`Acumulado ${capitalizedMonth}`}
-          icon="payments"
-          colorClass="from-emerald-500"
-          borderClass="border-brand-border"
-          customValueClass="text-xl sm:text-3xl"
+      <div className="kpis">
+        <Kpi icon="directions_car" label="Operativos" value={operating} sub={`de ${inFleet} en la flota`} to="/fleet" />
+        <Kpi icon="build" label="En taller" value={inShop.length} sub={inShop.map(v => v.model).join(', ') || 'Ninguno'} to="/fleet" />
+        <Kpi icon="payments" label={`Gasto de ${monthName}`} value={money(month.total)} sub={plural(month.count, 'trabajo', 'trabajos')} to="/maintenance" />
+        <Kpi
+          icon="event_upcoming"
+          label="Próximo vencimiento"
+          value={nextExpiryLabel(next?.doc.daysToExpiration ?? null)}
+          sub={next ? `${next.doc.type} · ${next.vehicle.model}` : 'Nada en el plazo'}
+          to="/calendar"
         />
-        <StatCard title="Flota Total" value={stats.total} subtext="Vehículos operativos" icon="local_shipping" colorClass="from-primary" borderClass="border-brand-border" />
       </div>
 
-      <h3 className="text-stone-400 text-xs font-bold uppercase tracking-widest mb-3 px-1">Accesos Rápidos</h3>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-        <QuickAction to="/maintenance" icon="handyman" label="Cargar Mantenim." color="bg-blue-600" />
-        <QuickAction to="/fleet" icon="add_circle" label="Nueva Unidad" color="bg-primary-dark" />
-        <QuickAction to="/calendar" icon="calendar_clock" label="Ver Agenda" color="bg-emerald-600" className="col-span-2 sm:col-span-1" />
-      </div>
-
-      {/* Critical Alerts List */}
-      <div className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden flex flex-col shadow-lg">
-        <div className="p-4 border-b border-brand-border flex justify-between items-center bg-brand-dark/30">
-          <h3 className="text-white font-bold flex items-center gap-2"><span className="material-symbols-outlined text-rose-500">warning</span>Atención Requerida</h3>
-          <Link to="/calendar" className="text-xs text-primary hover:underline">Ver Agenda</Link>
-        </div>
-        <div className="divide-y divide-brand-border">
-          {attention.length === 0 ? (
-            <div className="p-8 text-center text-stone-500"><span className="material-symbols-outlined text-4xl mb-2 opacity-50">check_circle</span><p>Todo en orden</p></div>
-          ) : (
-            attention.map(({ vehicle, doc }) => (
-              <div key={`${vehicle.id}-${doc.type}`} className="p-4 flex items-center gap-4 hover:bg-brand-dark/30 transition-colors">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${DOC_CHIP_CLASSES[doc.state]}`}>
-                  <span className="material-symbols-outlined">{DOC_ICONS[doc.type]}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white break-words">{doc.type} • {DOC_HEADLINES[doc.state]}</p>
-                  <p className="text-xs text-stone-400 break-words">
-                    {`${vehicle.model} (${vehicle.patente?.toUpperCase() || 'S/P'})`}{doc.pastAppointment ? ' · Turno pasado' : ''}
-                  </p>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <span className={`text-xs font-bold px-2 py-1 rounded border ${DOC_CHIP_CLASSES[doc.state]}`}>
-                    {docLabel(doc, 'short')}
-                  </span>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Renewal Modal */}
-      {renewalModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setRenewalModal(null)}>
-          <div className="bg-brand-surface border border-brand-border rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-            <div className="h-2 w-full bg-blue-500"></div>
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center border border-blue-500/20">
-                    <span className="material-symbols-outlined text-2xl">autorenew</span>
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-white leading-tight">Renovar {renewalModal.type}</h3>
-                    <p className="text-stone-400 text-sm">Gestión de turno hoy</p>
-                  </div>
-                </div>
-                <button onClick={() => setRenewalModal(null)} className="text-stone-400 hover:text-white"><span className="material-symbols-outlined">close</span></button>
-              </div>
-
-              <div className="space-y-4 mb-6">
-                <div className="bg-brand-dark rounded-lg p-4 border border-brand-border">
-                  <div className="flex justify-between mb-3">
-                    <div>
-                      <p className="text-[10px] text-stone-500 uppercase font-bold mb-1">Unidad</p>
-                      <p className="text-white font-bold text-sm">{renewalModal.vehicle.model}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] text-stone-500 uppercase font-bold mb-1">Patente</p>
-                      <p className="text-primary font-mono text-xs bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded">{renewalModal.vehicle.patente?.toUpperCase() || 'S/P'}</p>
-                    </div>
-                  </div>
-                  <div className="h-px bg-brand-border my-2"></div>
-                  <div>
-                    <p className="text-[10px] text-stone-500 uppercase font-bold mb-1">Vencimiento Actual (Lectura)</p>
-                    <p className="text-stone-400 text-sm font-mono">{formatLocalDate(renewalModal.currentExpiry) || 'Sin fecha'}</p>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-lg bg-stone-900/50 border border-brand-border/50">
-                  <label className="text-[10px] text-stone-500 uppercase font-bold mb-2 block">Nueva Fecha de Vencimiento</label>
-                  <input
-                    type="date"
-                    id="newExpiryDate"
-                    className="w-full bg-brand-dark border border-brand-border rounded-lg h-12 px-3 text-white focus:ring-1 focus:ring-primary outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    const input = document.getElementById('newExpiryDate') as HTMLInputElement;
-                    handleConfirmRenewal(input.value);
-                  }}
-                  className="flex-1 bg-primary hover:bg-primary-dark text-brand-dark font-bold py-3 rounded-lg text-sm transition-colors shadow-lg shadow-primary/10"
-                  disabled={renewalMutation.isPending}
-                >
-                  {renewalMutation.isPending ? 'Procesando...' : 'Confirmar Renovación'}
-                </button>
-                <button onClick={() => setRenewalModal(null)} className="px-4 py-3 border border-brand-border text-stone-300 text-sm rounded-lg">Cerrar</button>
-              </div>
-            </div>
-          </div>
+      {passwordMissing && (
+        <div className="banner">
+          <Icon name="key" />
+          <div><b>Configurá tu contraseña</b><small>Elegí una contraseña propia para entrar a la app.</small></div>
+          <Link className="btn btn-primary btn-sm" to="/settings">Configurar</Link>
         </div>
       )}
+
+      <div className="home-grid">
+        <div>
+          {todays.length > 0 && (
+            <section className="sec">
+              <SectionHead title="Para hoy" />
+              {todays.map(({ vehicle, doc }) => (
+                <div key={`${vehicle.id}-${doc.type}`} className="card row today">
+                  <span className="row-icon st-appt"><Icon name="event_available" fill /></span>
+                  <span className="row-main">
+                    <span className="row-title">Turno de {doc.type} hoy</span>
+                    <span className="row-sub">{vehicle.model} <Plate value={vehicle.patente} /></span>
+                  </span>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => open({ kind: 'renew', vehicleId: vehicle.id, docType: doc.type })}>
+                    <Icon name="task_alt" />Registrar renovación
+                  </button>
+                </div>
+              ))}
+            </section>
+          )}
+
+          <section className="sec">
+            <SectionHead title="Necesitan atención">
+              <Link className="link" to="/calendar">Ver agenda<Icon name="chevron_right" /></Link>
+            </SectionHead>
+            {items.length
+              ? <div className="card list">{items.map(item => <AttentionRow key={docKey(item)} item={item} />)}</div>
+              : <EmptyState icon="check_circle" title="Todo en orden" text="No hay documentos vencidos, por vencer ni turnos." />}
+          </section>
+        </div>
+
+        <div>
+          <section className="sec">
+            <SectionHead title="Últimos trabajos">
+              <Link className="link" to="/maintenance">Ver todos<Icon name="chevron_right" /></Link>
+            </SectionHead>
+            {recent.length ? (
+              <div className="card list">
+                {recent.map(w => <WorkItem key={w.id} work={w} vehicle={byId.get(w.vehicle_id)} onClick={() => open({ kind: 'work', work: w })} />)}
+              </div>
+            ) : (
+              <EmptyState icon="handyman" title="Todavía no hay trabajos" text="Registrá el primer mantenimiento o reparación.">
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => open({ kind: 'work' })}><Icon name="add" />Registrar un trabajo</button>
+              </EmptyState>
+            )}
+          </section>
+        </div>
+      </div>
     </div>
   );
-};
-
-export default Dashboard;
+}

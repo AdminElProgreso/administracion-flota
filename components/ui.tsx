@@ -63,7 +63,8 @@ export function Kpi({ icon, label, value, sub, to }: { icon: string; label: stri
   return (
     <Link className="kpi" to={to}>
       <span className="kpi-icon"><Icon name={icon} /></span>
-      <span className="kpi-value display num">{value}</span>
+      {/* Long amounts ('$ 10.000.000') get a smaller size so they fit a half-width card on the phone */}
+      <span className={`kpi-value display num${typeof value === 'string' && value.length >= 12 ? ' long' : ''}`}>{value}</span>
       <span className="kpi-label">{label}</span>
       <span className="kpi-sub">{sub}</span>
     </Link>

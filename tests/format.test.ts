@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { plateText, orDash, money, num, greeting, longDate } from '../lib/format';
+import { plateText, orDash, money, num, greeting, longDate, addYears, shortDate } from '../lib/format';
 
 describe('format', () => {
   it('patente Mercosur, vieja o vacía', () => {
@@ -30,6 +30,14 @@ describe('format', () => {
     expect(greeting(new Date(2026, 10, 4, 5, 0))).toBe('Buen día');
     expect(greeting(new Date(2026, 10, 4, 12, 0))).toBe('Buenas tardes');
     expect(greeting(new Date(2026, 10, 4, 20, 0))).toBe('Buenas noches');
+  });
+  it('sumar años, sin pasarse de mes en un 29 de febrero', () => {
+    expect(addYears('2026-11-04', 1)).toBe('2027-11-04');
+    expect(addYears('2028-02-29', 1)).toBe('2029-02-28');
+  });
+  it('fecha corta, con el año cuando no es el actual', () => {
+    expect(shortDate('2026-01-22', '2026-11-04')).toBe('22/01');
+    expect(shortDate('2025-12-30', '2026-11-04')).toBe('30/12/2025');
   });
   it('fecha larga', () => {
     expect(longDate('2026-11-04')).toBe('Miércoles 4 de noviembre');

@@ -15,7 +15,13 @@ import Calendar from './pages/Calendar';
 import Maintenance from './pages/Maintenance';
 import Settings from './pages/Settings';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    // Without a connection a request fails and the screen offers to retry, instead of waiting in silence
+    queries: { networkMode: 'always', retry: 2 },
+    mutations: { networkMode: 'always' },
+  },
+});
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
