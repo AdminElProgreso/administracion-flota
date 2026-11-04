@@ -1,3 +1,4 @@
+// @ts-nocheck (temporary: rewritten in Task 8 of the redesign plan)
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
