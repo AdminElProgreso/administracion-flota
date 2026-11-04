@@ -6,8 +6,8 @@ import { STATE_CLASS, docLabel } from '../lib/docStyles';
 import { plateText } from '../lib/format';
 import { STATUS_INFO } from '../lib/vehicles';
 
-// Cached by the service worker (pattern in pwa.config.ts); replaced by the official file when available
-export const LOGO_URL = 'https://elprogresocoop.com.ar/public/img/logo_nav.png';
+// The cooperative's official logo, shipped and precached with the app (public/logo.svg, see pwa.config.ts)
+export const LOGO_URL = '/logo.svg';
 
 export function Icon({ name, fill = false, className = '' }: { name: string; fill?: boolean; className?: string }) {
   return <span className={`ms${fill ? ' fill' : ''}${className ? ` ${className}` : ''}`} aria-hidden="true">{name}</span>;
