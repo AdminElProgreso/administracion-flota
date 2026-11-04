@@ -72,7 +72,10 @@
 select.input{background-image:linear-gradient(45deg,transparent 50%,var(--tinta-3) 50%),linear-gradient(135deg,var(--tinta-3) 50%,transparent 50%);background-position:calc(100% - 20px) 22px,calc(100% - 15px) 22px;background-size:5px 5px;background-repeat:no-repeat;padding-right:36px}
 .input:focus{outline:none;border-color:var(--verde-700);box-shadow:0 0 0 4px rgba(15,122,55,.12)}
 .input.upper{text-transform:uppercase}
+.input.upper::placeholder{text-transform:none}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field-row>*{min-width:0}
+.field-row>:only-child{grid-column:1/-1}
 .form-msg{margin:12px 0 0;padding:11px 12px;border-radius:12px;font-size:14px;font-weight:600}
 .form-msg.error{background:var(--bad-bg);color:var(--bad)}
 .form-msg.ok{background:var(--ok-bg);color:var(--ok)}

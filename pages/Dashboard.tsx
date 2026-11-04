@@ -72,8 +72,8 @@ export default function Dashboard() {
       </div>
 
       <div className="kpis">
-        <Kpi icon="directions_car" label="Operativos" value={operating} sub={`de ${inFleet} en la flota`} to="/fleet" />
-        <Kpi icon="build" label="En taller" value={inShop.length} sub={inShop.map(v => v.model).join(', ') || 'Ninguno'} to="/fleet" />
+        <Kpi icon="directions_car" label="Operativos" value={operating} sub={`de ${inFleet} en la flota`} to="/fleet?filtro=activos" />
+        <Kpi icon="build" label="En taller" value={inShop.length} sub={inShop.map(v => v.model).join(', ') || 'Ninguno'} to="/fleet?filtro=taller" />
         <Kpi icon="payments" label={`Gasto de ${monthName}`} value={money(month.total)} sub={plural(month.count, 'trabajo', 'trabajos')} to="/maintenance" />
         <Kpi
           icon="event_upcoming"

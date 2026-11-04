@@ -4,6 +4,7 @@ import { EmptyState } from '../ui';
 import { SheetsContext, type SheetRequest } from './context';
 import { DocSheet } from './DocSheet';
 import { QuickSheet } from './QuickSheet';
+import { VehicleSheet } from './VehicleSheet';
 
 export { useSheets, type SheetRequest } from './context';
 
@@ -14,6 +15,8 @@ function SheetFor({ request, onClose }: { request: SheetRequest; onClose: () => 
     case 'renew':
     case 'appointment':
       return <DocSheet kind={request.kind} vehicleId={request.vehicleId} docType={request.docType} onClose={onClose} />;
+    case 'vehicle':
+      return <VehicleSheet vehicle={request.vehicle} onClose={onClose} />;
     default:
       return (
         <Sheet open onClose={onClose} title="En preparación">

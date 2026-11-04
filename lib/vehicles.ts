@@ -1,3 +1,4 @@
+import { plateText } from './format';
 import type { VehicleRow, VehicleStatus, VehicleType } from '../types';
 
 export const TYPE_INFO: Record<VehicleType, { label: string; icon: string; unit: 'km' | 'h' }> = {
@@ -96,4 +97,49 @@ export function vehicleFromForm(f: VehicleForm): Omit<VehicleRow, 'id' | 'create
     vtv_expiration: date(f.vtv_expiration),
     patente_expiration: date(f.patente_expiration),
   };
+}
+
+export function emptyVehicleForm(): VehicleForm {
+  return {
+    tipo: 'car', patente: '', model: '', year: '', odometer: '', section: '', manager: '', driver: '',
+    status: 'Activo', insurance_expiration: '', vtv_expiration: '', patente_expiration: '',
+  };
+}
+
+// The edit form carries no dates: documents are renewed from the ficha
+export function formFromVehicle(v: VehicleRow): VehicleForm {
+  return {
+    ...emptyVehicleForm(),
+    tipo: v.tipo,
+    patente: v.patente ?? '',
+    model: v.model,
+    year: v.year === null ? '' : String(v.year),
+    odometer: v.odometer === null ? '' : String(v.odometer),
+    section: v.section ?? '',
+    manager: v.manager ?? '',
+    driver: v.assigned_driver ?? '',
+    status: v.status,
+  };
+}
+
+const NO_DOCUMENTS = {
+  insurance_expiration: null, vtv_expiration: null, patente_expiration: null,
+  insurance_appointment: null, vtv_appointment: null, patente_appointment: null,
+};
+
+// Editing the data leaves the document dates alone, except that a generator carries none:
+// stale dates would keep sending notices for it
+export function vehicleEditPatch(f: VehicleForm): Partial<VehicleRow> {
+  const { insurance_expiration, vtv_expiration, patente_expiration, ...data } = vehicleFromForm(f);
+  return f.tipo === 'generator' ? { ...data, ...NO_DOCUMENTS } : data;
+}
+
+const plateKey = (p: string | null | undefined) => (p ?? '').toUpperCase().replace(/\s+/g, '');
+
+export function vehicleFormError(f: VehicleForm, vehicles: VehicleRow[], editingId?: string): string | null {
+  if (!f.model.trim() || !f.section.trim()) return 'Completá modelo y sección';
+  const plate = f.tipo === 'generator' ? '' : plateKey(f.patente);
+  const twin = plate && vehicles.find(v => v.id !== editingId && plateKey(v.patente) === plate);
+  if (twin) return `Ya hay un vehículo con la patente ${plateText(plate)}`;
+  return null;
 }

@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { filterVehicles, countByFilter, sectionOptions, vehicleFromForm, type VehicleForm } from '../lib/vehicles';
+import {
+  filterVehicles, countByFilter, sectionOptions, vehicleFromForm, formFromVehicle, emptyVehicleForm, vehicleEditPatch, vehicleFormError, type VehicleForm,
+} from '../lib/vehicles';
 import { vrow } from './fixtures';
 
 const list = [
@@ -49,5 +51,46 @@ describe('vehicleFromForm', () => {
   it('un generador no lleva patente, chofer ni fechas', () => {
     const g = vehicleFromForm({ ...base, tipo: 'generator', year: '2006', odometer: '2300', driver: 'JUAN' });
     expect(g).toMatchObject({ tipo: 'generator', patente: null, assigned_driver: null, year: 2006, odometer: 2300, insurance_expiration: null });
+  });
+});
+
+describe('editar un vehículo', () => {
+  it('arma el formulario con los datos guardados', () => {
+    expect(formFromVehicle(vrow('a', { year: null, odometer: 95100, assigned_driver: null }))).toEqual({
+      tipo: 'car', patente: 'AA789XX', model: 'TOYOTA HILUX', year: '', odometer: '95100', section: 'Cereales', manager: 'RAFA', driver: '',
+      status: 'Activo', insurance_expiration: '', vtv_expiration: '', patente_expiration: '',
+    });
+  });
+  it('el alta arranca vacía, como camioneta activa', () => {
+    expect(emptyVehicleForm()).toMatchObject({ tipo: 'car', model: '', section: '', status: 'Activo' });
+  });
+  it('cambiar los datos no toca las fechas de los documentos', () => {
+    const patch = vehicleEditPatch(formFromVehicle(vrow('a', { vtv_expiration: '2027-01-10' })));
+    expect(patch).not.toHaveProperty('vtv_expiration');
+    expect(patch).not.toHaveProperty('vtv_appointment');
+    expect(patch).toMatchObject({ model: 'TOYOTA HILUX', patente: 'AA789XX', status: 'Activo' });
+  });
+  it('al pasar a generador se borran patente, chofer, vencimientos y turnos', () => {
+    const patch = vehicleEditPatch({ ...formFromVehicle(vrow('a')), tipo: 'generator' });
+    expect(patch).toMatchObject({
+      patente: null, assigned_driver: null,
+      insurance_expiration: null, vtv_expiration: null, patente_expiration: null,
+      insurance_appointment: null, vtv_appointment: null, patente_appointment: null,
+    });
+  });
+});
+
+describe('vehicleFormError', () => {
+  const fleet = [vrow('a', { patente: 'AA236JS' }), vrow('b', { patente: 'JRS506' })];
+  const f: VehicleForm = { ...emptyVehicleForm(), model: 'RANGER', section: 'Cereales' };
+  it('modelo y sección son obligatorios', () => {
+    expect(vehicleFormError({ ...f, model: ' ' }, fleet)).toBe('Completá modelo y sección');
+    expect(vehicleFormError({ ...f, section: '' }, fleet)).toBe('Completá modelo y sección');
+    expect(vehicleFormError(f, fleet)).toBeNull();
+  });
+  it('no repite una patente', () => {
+    expect(vehicleFormError({ ...f, patente: 'aa 236 js' }, fleet)).toBe('Ya hay un vehículo con la patente AA 236 JS');
+    expect(vehicleFormError({ ...f, patente: 'AA236JS' }, fleet, 'a')).toBeNull();
+    expect(vehicleFormError({ ...f, tipo: 'generator', patente: 'AA236JS' }, fleet)).toBeNull();
   });
 });
