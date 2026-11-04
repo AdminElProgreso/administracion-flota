@@ -160,6 +160,13 @@
 .login-card .btn{margin-top:20px}
 .login-foot{margin:auto 24px 22px;text-align:center;font-size:12.5px;line-height:1.4;color:var(--tinta-4)}
 
+/* Tablet: the phone layout, using the extra width */
+@media (min-width:720px){
+  .kpis{grid-template-columns:repeat(4,1fr)}
+  .vgrid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+  .facts{grid-template-columns:repeat(4,1fr)}
+}
+
 @media (min-width:900px){
   .hero{border-radius:26px;margin:0;padding:30px 34px 92px}
   .hero-title{font-size:56px}

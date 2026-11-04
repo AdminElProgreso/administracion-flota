@@ -7,7 +7,7 @@ type ShowToast = (message: string, kind?: ToastKind) => void;
 const ToastContext = createContext<ShowToast>(() => undefined);
 const ICON: Record<ToastKind, string> = { ok: 'check_circle', error: 'error', info: 'info' };
 
-// Short messages instead of alert(): confirmations and errors of every action
+// Short messages instead of browser dialogs: confirmations and errors of every action
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<{ message: string; kind: ToastKind } | null>(null);
   const [visible, setVisible] = useState(false);
