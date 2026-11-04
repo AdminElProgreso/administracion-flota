@@ -1,0 +1,1079 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Propuesta de interfaz · Gestión de Flota El Progreso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400..600,0..1,0&display=swap" rel="stylesheet">
+<style>
+/* ---------- Identidad: colores del logo de la Cooperativa ---------- */
+:root{
+  --verde-950:#062A16; --verde-900:#0A3F21; --verde-800:#0C5A2E; --verde-700:#0F7A37; --verde-600:#00A351;
+  --verde-200:#BFE5CB; --verde-100:#E2F3E7; --verde-50:#F1F9F3;
+  --naranja-700:#B43D12; --naranja-600:#E85122; --naranja-100:#FDE6DC;
+  --sol-500:#F2D300; --sol-300:#F8E86B; --sol-100:#FFF7C2;
+  --carbon:#1B1B1B; --tinta-2:#3D403C; --tinta-3:#62675F; --tinta-4:#8A8F86;
+  --linea:#E3E5DF; --linea-2:#EEF0EA; --papel:#F6F5F1; --blanco:#FFFFFF;
+  /* Estados de documentos (siempre con texto, nunca solo color) */
+  --ok:#15803D;   --ok-bg:#E5F4EA;
+  --warn:#8A5A00; --warn-bg:#FFF1C7; --warn-dot:#E0A400;
+  --bad:#B42318;  --bad-bg:#FDEBE9;  --bad-dot:#D92D20;
+  --appt:#1E4FD8; --appt-bg:#E8EEFF; --appt-dot:#3B6BF6;
+  --none:#6B7068; --none-bg:#EFF0EC;
+  --r-lg:20px; --r:14px; --r-sm:10px;
+  --sh-1:0 1px 2px rgba(16,24,16,.06),0 1px 1px rgba(16,24,16,.04);
+  --sh-2:0 8px 24px rgba(16,24,16,.08),0 2px 6px rgba(16,24,16,.05);
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{font-family:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15px;color:var(--carbon);background:#E7EAE3;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid rgba(0,163,81,.45);outline-offset:2px}
+.ms{font-family:'Material Symbols Rounded';font-weight:normal;font-style:normal;font-size:22px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 500,'GRAD' 0,'opsz' 24;flex:none}
+.ms.fill{font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24}
+.display{font-family:'Bebas Neue',sans-serif;font-weight:400;letter-spacing:.02em;line-height:.95}
+.eyebrow{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--tinta-3)}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- Barra de presentación (fuera de la app) ---------- */
+.deck{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:14px;padding:10px 20px;background:rgba(255,255,255,.9);backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--linea)}
+.deck-title{display:flex;flex-direction:column;line-height:1.1}
+.deck-title b{font-family:'Bebas Neue';font-weight:400;font-size:23px;letter-spacing:.03em;color:var(--verde-800)}
+.deck-title span{font-size:12.5px;color:var(--tinta-3)}
+.deck-tag{font:600 11px 'Barlow Condensed';letter-spacing:.08em;text-transform:uppercase;background:var(--sol-100);color:#6B5700;border:1px solid #F1E08A;border-radius:999px;padding:3px 9px;white-space:nowrap}
+.deck-spacer{flex:1}
+.seg{display:inline-flex;background:var(--linea-2);border:1px solid var(--linea);border-radius:999px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;padding:7px 14px;border-radius:999px;font-weight:600;font-size:13.5px;color:var(--tinta-3);display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.seg button .ms{font-size:18px}
+.seg button[aria-pressed="true"]{background:#fff;color:var(--verde-800);box-shadow:var(--sh-1)}
+.deck-btn{border:1px solid var(--linea);background:#fff;border-radius:999px;padding:7px 14px;font-weight:600;font-size:13.5px;color:var(--tinta-2);display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.deck-btn .ms{font-size:18px}
+
+/* ---------- Escenario: celular o escritorio ---------- */
+.stage{display:flex;justify-content:center;align-items:flex-start;padding:28px 20px 56px}
+.device{position:relative;background:var(--papel);overflow:hidden;container-type:inline-size;container-name:app}
+.stage[data-mode="phone"] .device{width:390px;height:844px;border-radius:46px;box-shadow:0 0 0 10px #121412,0 0 0 11px #2b2f2b,0 40px 90px rgba(20,30,20,.28)}
+.stage[data-mode="desktop"] .device{width:min(1360px,100%);height:max(640px,min(880px,calc(100vh - 120px)));border-radius:16px;box-shadow:0 0 0 1px var(--linea),0 30px 80px rgba(20,30,20,.18)}
+.sb{display:none;position:absolute;top:0;left:0;right:0;height:44px;padding:0 28px 0 34px;align-items:center;justify-content:space-between;font-weight:700;font-size:15px;background:#fff;z-index:30}
+.sb .ms{font-size:18px}
+.stage[data-mode="phone"] .sb{display:flex}
+.stage[data-mode="phone"] .app,.stage[data-mode="phone"] .login{top:44px}
+@media (max-width:560px){
+  .deck{padding:8px 12px;gap:8px}.deck-title span,.deck .seg{display:none}
+  .stage{padding:0}
+  .stage .device{width:100%!important;height:calc(100dvh - 50px)!important;border-radius:0!important;box-shadow:none!important}
+  .stage .sb{display:none!important}
+  .stage .app,.stage .login{top:0!important}
+  .stage .push{top:10px!important}
+}
+
+/* ---------- Estructura de la app ---------- */
+.app{position:absolute;inset:0;display:grid;grid-template-columns:1fr}
+.sidebar{display:none}
+.main{position:relative;overflow-y:auto;overflow-x:hidden;height:100%;overscroll-behavior:contain}
+.screen{display:none;padding-bottom:120px}
+.screen.is-active{display:block;animation:fade .28s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.topbar{position:sticky;top:0;z-index:15;display:flex;align-items:center;gap:4px;height:58px;padding:0 8px 0 16px;background:rgba(255,255,255,.93);backdrop-filter:blur(10px);border-bottom:1px solid var(--linea-2)}
+.logo{height:34px;width:auto;display:block}
+.logo-fallback{font-family:'Bebas Neue';font-size:24px;color:var(--verde-800);letter-spacing:.03em}
+.topbar .spacer{flex:1}
+.icon-btn{width:44px;height:44px;border-radius:12px;border:0;background:transparent;display:grid;place-items:center;color:var(--tinta-2);position:relative}
+.icon-btn:hover{background:var(--linea-2)}
+.icon-btn .dot{position:absolute;top:6px;right:5px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:var(--bad-dot);color:#fff;font:700 11px 'Barlow';display:grid;place-items:center;border:2px solid #fff}
+
+/* Barra inferior (celular) */
+.tabbar{position:absolute;left:12px;right:12px;bottom:12px;height:68px;background:rgba(255,255,255,.95);backdrop-filter:blur(14px);border:1px solid var(--linea);border-radius:24px;box-shadow:var(--sh-2);display:grid;grid-template-columns:repeat(5,1fr);align-items:center;z-index:20}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-weight:600;font-size:12px;color:var(--tinta-4);background:none;border:0;padding:8px 0}
+.tab .ms{font-size:25px}
+.tab.is-active{color:var(--verde-700)}
+.tab.is-active .ms{font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24}
+.fab{justify-self:center;width:58px;height:58px;border-radius:20px;background:var(--naranja-600);color:#fff;border:0;display:grid;place-items:center;box-shadow:0 10px 22px rgba(232,81,34,.38);transform:translateY(-16px);transition:transform .15s}
+.fab:active{transform:translateY(-14px) scale(.96)}
+.fab .ms{font-size:30px}
+
+/* Barra lateral (escritorio) */
+.sidebar{flex-direction:column;background:#fff;border-right:1px solid var(--linea);padding:22px 14px 16px;gap:4px;overflow-y:auto}
+.sb-brand{padding:4px 10px 16px;border-bottom:1px solid var(--linea-2);margin-bottom:10px}
+.sb-brand .logo{height:50px}
+.sb-brand span{display:block;margin-top:10px;font:600 12px 'Barlow Condensed';letter-spacing:.14em;text-transform:uppercase;color:var(--tinta-3)}
+.nav-item{display:flex;align-items:center;gap:12px;height:46px;padding:0 12px;border-radius:12px;border:0;background:none;color:var(--tinta-2);font-weight:600;font-size:15.5px;text-align:left;width:100%}
+.nav-item:hover{background:var(--linea-2)}
+.nav-item.is-active{background:var(--verde-100);color:var(--verde-800)}
+.nav-item.is-active .ms{font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24}
+.nav-item .count{margin-left:auto;background:var(--bad-dot);color:#fff;border-radius:999px;font-size:12px;font-weight:700;padding:1px 8px}
+.sb-new{margin:14px 2px 10px;height:48px;border-radius:14px;border:0;background:var(--naranja-600);color:#fff;font-weight:700;font-size:15.5px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 8px 18px rgba(232,81,34,.25)}
+.sb-bottom{margin-top:auto;border-top:1px solid var(--linea-2);padding-top:10px;display:flex;flex-direction:column;gap:4px}
+.sb-coop{margin:12px 10px 0;font-size:12px;line-height:1.35;color:var(--tinta-4)}
+
+/* ---------- Inicio ---------- */
+.hero{position:relative;overflow:hidden;color:#fff;padding:20px 20px 78px;border-radius:0 0 30px 30px;
+  background:radial-gradient(90% 120% at 108% -10%,rgba(242,211,0,.42) 0,rgba(242,211,0,.12) 34%,rgba(242,211,0,0) 52%),linear-gradient(165deg,var(--verde-700) 0%,var(--verde-800) 100%)}
+.hero::after{content:"";position:absolute;left:-30%;right:-30%;bottom:-48%;height:80%;pointer-events:none;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.075) 0 2px,transparent 2px 26px);transform:perspective(260px) rotateX(62deg);transform-origin:bottom}
+.hero>*{position:relative;z-index:1}
+.hero-date{margin:2px 0 0;font-weight:600;font-size:14.5px;color:rgba(255,255,255,.82)}
+.hero-title{margin:6px 0 18px;font-size:46px}
+.hero-status{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.12);backdrop-filter:blur(6px);color:#fff;border-radius:18px;padding:14px 12px 14px 14px}
+.hero-status:hover{background:rgba(255,255,255,.18)}
+.hs-icon{width:42px;height:42px;border-radius:13px;background:var(--sol-500);color:var(--verde-900);display:grid;place-items:center;flex:none}
+.hs-text{flex:1;min-width:0}
+.hs-text strong{display:block;font-size:17px;font-weight:700;line-height:1.2}
+.hs-text small{display:block;margin-top:3px;font-size:13.5px;color:rgba(255,255,255,.85)}
+.kpis{position:relative;z-index:2;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:-56px 16px 0}
+.kpi{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;background:#fff;border:1px solid var(--linea-2);border-radius:18px;box-shadow:var(--sh-2);padding:14px 14px 13px;min-width:0}
+.kpi:hover{border-color:var(--verde-200)}
+.kpi-icon{width:34px;height:34px;border-radius:11px;background:var(--verde-50);color:var(--verde-700);display:grid;place-items:center;margin-bottom:8px}
+.kpi-icon .ms{font-size:20px}
+.kpi-value{font-size:31px;color:var(--carbon);white-space:nowrap}
+.kpi-label{font-weight:700;font-size:13.5px;color:var(--tinta-2);margin-top:3px}
+.kpi-sub{font-size:12.5px;color:var(--tinta-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+
+/* ---------- Bloques comunes ---------- */
+.sec{margin:26px 16px 0}
+.sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 4px 10px}
+.sec-head h2{margin:0;font:700 13.5px 'Barlow Condensed';letter-spacing:.1em;text-transform:uppercase;color:var(--tinta-3)}
+.sec-note{font-weight:600;font-size:13.5px;color:var(--tinta-3)}
+.link{border:0;background:none;color:var(--verde-700);font-weight:700;font-size:14px;display:inline-flex;align-items:center;gap:0;padding:4px 0 4px 6px}
+.link .ms{font-size:20px}
+.card{background:#fff;border-radius:var(--r-lg);box-shadow:var(--sh-1);border:1px solid var(--linea-2)}
+.list{overflow:hidden}
+.row{display:flex;gap:12px;align-items:center;width:100%;padding:13px 14px;border:0;border-top:1px solid var(--linea-2);background:none;text-align:left}
+.row:first-child{border-top:0}
+.row:hover{background:var(--verde-50)}
+.row-icon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;flex:none}
+.row-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.row-title{font-weight:700;font-size:15.5px;line-height:1.2}
+.row-sub{font-size:13.5px;color:var(--tinta-3);display:flex;align-items:center;gap:6px;flex-wrap:wrap;line-height:1.2}
+.row-money{font-weight:700;font-size:15px;white-space:nowrap}
+.row.today{cursor:default;flex-wrap:wrap;border:1.5px solid #D3DDFB;border-radius:var(--r-lg);margin-bottom:8px;background:#fff}
+.row.today:hover{background:#fff}
+.row.today .btn{margin-left:auto}
+.tone-green{background:var(--verde-50);color:var(--verde-700)}
+.tone-orange{background:var(--naranja-100);color:var(--naranja-700)}
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:28px 20px;color:var(--tinta-3)}
+.empty .ms{font-size:38px;color:var(--verde-600)}
+.empty b{color:var(--carbon);font-size:16px}
+.empty p{margin:0;font-size:14px}
+
+/* Estados */
+.badge{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-weight:700;font-size:12.5px;white-space:nowrap;flex:none}
+.badge::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+.st-ok{color:var(--ok);background:var(--ok-bg)}
+.st-warn{color:var(--warn);background:var(--warn-bg)}
+.st-bad{color:var(--bad);background:var(--bad-bg)}
+.st-appt{color:var(--appt);background:var(--appt-bg)}
+.st-none{color:var(--none);background:var(--none-bg)}
+.st-warn.badge::before{background:var(--warn-dot)}
+.pill{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-weight:700;font-size:12.5px;white-space:nowrap}
+.pill.s-active{color:var(--ok);background:var(--ok-bg)}
+.pill.s-shop{color:var(--naranja-700);background:var(--naranja-100)}
+.pill.s-off{color:var(--none);background:var(--none-bg)}
+
+/* Patente estilo Mercosur */
+.plate{position:relative;display:inline-flex;align-items:center;height:23px;padding:5px 7px 2px;border:1.5px solid var(--carbon);border-radius:5px;background:#fff;color:var(--carbon);font:700 13px 'Barlow Condensed';letter-spacing:.09em;line-height:1;white-space:nowrap}
+.plate::before{content:"";position:absolute;left:-1.5px;right:-1.5px;top:-1.5px;height:5px;background:#1F4FA0;border-radius:4px 4px 0 0}
+.plate.lg{height:36px;padding:9px 12px 4px;font-size:21px;border-width:2px;border-radius:7px}
+.plate.lg::before{height:8px;left:-2px;right:-2px;top:-2px;border-radius:6px 6px 0 0}
+.noplate{font-size:13px;color:var(--tinta-4);font-style:italic}
+
+/* Botones y formularios */
+.btn{height:48px;border-radius:14px;border:0;font-weight:700;font-size:15.5px;padding:0 18px;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;transition:background .15s,transform .1s}
+.btn:active{transform:scale(.98)}
+.btn .ms{font-size:20px}
+.btn-sm{height:38px;border-radius:11px;font-size:14px;padding:0 13px}
+.btn-primary{background:var(--verde-700);color:#fff}
+.btn-primary:hover{background:var(--verde-800)}
+.btn-ghost{background:var(--verde-50);color:var(--verde-800);border:1px solid var(--verde-100)}
+.btn-ghost:hover{background:var(--verde-100)}
+.btn-danger{background:#fff;color:var(--bad);border:1.5px solid #F3C4BF}
+.btn-danger:hover{background:var(--bad-bg)}
+.btn-block{width:100%}
+.field{display:block;margin-top:14px}
+.field>span{display:block;font-weight:700;font-size:13.5px;color:var(--tinta-2);margin-bottom:6px}
+.input{width:100%;height:50px;border:1.5px solid var(--linea);border-radius:13px;padding:0 14px;font-weight:500;font-size:16px;background:#fff;color:var(--carbon);appearance:none}
+select.input{background-image:linear-gradient(45deg,transparent 50%,var(--tinta-3) 50%),linear-gradient(135deg,var(--tinta-3) 50%,transparent 50%);background-position:calc(100% - 20px) 22px,calc(100% - 15px) 22px;background-size:5px 5px;background-repeat:no-repeat;padding-right:36px}
+.input:focus{outline:none;border-color:var(--verde-700);box-shadow:0 0 0 4px rgba(15,122,55,.12)}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.seg-block{display:grid;grid-template-columns:1fr 1fr;width:100%;border-radius:14px}
+.seg-block button{border-radius:11px;padding:11px 10px;font-size:14.5px}
+.note{display:flex;gap:8px;align-items:flex-start;margin:14px 0 0;padding:11px 12px;border-radius:12px;background:var(--appt-bg);color:#1B3E9E;font-size:14px;line-height:1.35}
+.note .ms{font-size:19px;margin-top:1px}
+
+/* ---------- Encabezado de página ---------- */
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:22px 16px 0}
+.page-title{margin:4px 0 0;font-size:44px}
+.tools{margin:16px 16px 0;display:flex;flex-direction:column;gap:12px}
+.search{display:flex;align-items:center;gap:10px;height:50px;padding:0 14px;background:#fff;border:1.5px solid var(--linea);border-radius:14px;color:var(--tinta-3)}
+.search:focus-within{border-color:var(--verde-700);box-shadow:0 0 0 4px rgba(15,122,55,.12)}
+.search input{flex:1;min-width:0;border:0;outline:0;background:none;font-size:16px;font-weight:500;color:var(--carbon)}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:999px;border:1.5px solid var(--linea);background:#fff;font-weight:700;font-size:14px;color:var(--tinta-2)}
+.chip small{font-weight:700;font-size:12px;color:var(--tinta-4)}
+.chip[aria-pressed="true"]{background:var(--verde-800);border-color:var(--verde-800);color:#fff}
+.chip[aria-pressed="true"] small{color:rgba(255,255,255,.75)}
+
+/* ---------- Vehículos ---------- */
+.vgrid{display:grid;gap:12px;margin:16px 16px 0}
+.vcard{display:flex;flex-direction:column;gap:14px;text-align:left;padding:16px;width:100%;transition:border-color .15s,box-shadow .15s}
+.vcard:hover{border-color:var(--verde-200);box-shadow:var(--sh-2)}
+.vc-top{display:flex;align-items:flex-start;gap:12px}
+.vtype{width:46px;height:46px;border-radius:14px;background:var(--verde-50);color:var(--verde-700);display:grid;place-items:center;flex:none}
+.vtype .ms{font-size:26px}
+.vtype.xl{width:72px;height:72px;border-radius:20px}
+.vtype.xl .ms{font-size:40px}
+.vc-id{flex:1;min-width:0}
+.vc-name{font-weight:700;font-size:17px;line-height:1.15}
+.vc-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:7px;font-size:13.5px;color:var(--tinta-3)}
+.vc-docs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.vdoc{display:flex;flex-direction:column;gap:3px;padding:9px 10px;border-radius:12px;min-width:0}
+.vdoc-name{font:700 11.5px 'Barlow Condensed';letter-spacing:.1em;text-transform:uppercase;opacity:.85}
+.vdoc-state{font-weight:700;font-size:13px;line-height:1.15}
+.vc-nodocs{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:var(--none-bg);color:var(--tinta-3);font-size:13.5px;font-weight:600}
+.vc-nodocs .ms{font-size:19px}
+.vc-foot{display:flex;gap:16px;flex-wrap:wrap;font-size:13.5px;font-weight:600;color:var(--tinta-3)}
+.vc-foot span{display:inline-flex;align-items:center;gap:6px}
+.vc-foot .ms{font-size:18px}
+
+/* ---------- Ficha ---------- */
+.back{display:inline-flex;align-items:center;gap:6px;margin:16px 0 0 10px;padding:8px 10px;border:0;background:none;border-radius:10px;font-weight:700;color:var(--verde-700);font-size:15px}
+.back:hover{background:var(--verde-50)}
+.vhead{margin:8px 16px 0;padding:18px}
+.vh-main{display:flex;gap:14px;align-items:flex-start}
+.vh-id{min-width:0}
+.vh-title{margin:6px 0 10px;font-size:38px}
+.vh-tags{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0 0}
+.facts div{background:var(--papel);border-radius:13px;padding:11px 12px}
+.facts dt{font:600 12px 'Barlow Condensed';letter-spacing:.1em;text-transform:uppercase;color:var(--tinta-3)}
+.facts dd{margin:3px 0 0;font-weight:700;font-size:16px}
+.vh-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.vh-actions .btn{flex:1}
+.docs{display:grid;gap:12px}
+.doc{padding:16px;border-left:5px solid transparent}
+.doc.st-ok,.doc.st-warn,.doc.st-bad,.doc.st-appt,.doc.st-none{background:#fff;color:var(--carbon)}
+.doc.st-ok{border-left-color:var(--ok)}.doc.st-warn{border-left-color:var(--warn-dot)}.doc.st-bad{border-left-color:var(--bad-dot)}.doc.st-appt{border-left-color:var(--appt-dot)}.doc.st-none{border-left-color:var(--linea)}
+.doc-head{display:flex;align-items:center;gap:10px}
+.doc-head h3{margin:0;flex:1;font-size:18px;font-weight:700}
+.doc-icon{width:36px;height:36px;border-radius:11px;background:var(--papel);display:grid;place-items:center;color:var(--tinta-2)}
+.doc-icon .ms{font-size:20px}
+.doc-when{margin:14px 0 2px;font-size:15.5px}
+.doc-hint{margin:0;font-size:13.5px;color:var(--tinta-3)}
+.doc-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.danger{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px;flex-wrap:wrap}
+.danger h3{margin:0;font-size:16px}
+.danger p{margin:4px 0 0;font-size:13.5px;color:var(--tinta-3);max-width:420px}
+
+/* ---------- Agenda ---------- */
+.seg-sm button{padding:6px 12px;font-size:13.5px}
+.agenda-grid{margin:16px 16px 0}
+.agenda-grid.view-lista .agenda-month,.agenda-grid.view-mes .agenda-list{display:none}
+.group{margin-top:18px}
+.group:first-child{margin-top:0}
+.group-head{display:flex;align-items:center;gap:8px;margin:0 4px 8px;font:700 13.5px 'Barlow Condensed';letter-spacing:.1em;text-transform:uppercase;color:var(--tinta-3)}
+.group-head.st-bad{background:none;color:var(--bad)}
+.ev-date{width:46px;height:50px;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none}
+.ev-date b{font-size:24px;line-height:.9}
+.ev-date span{font:700 11px 'Barlow Condensed';letter-spacing:.1em}
+.month{padding:14px}
+.month-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.month-head b{font-family:'Bebas Neue';font-weight:400;font-size:26px;letter-spacing:.03em}
+.dow,.days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.dow span{font:700 12px 'Barlow Condensed';letter-spacing:.08em;color:var(--tinta-4);padding:4px 0}
+.day{aspect-ratio:1/1.05;border:0;background:none;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-weight:600;font-size:15px;color:var(--tinta-2)}
+.day:hover{background:var(--linea-2)}
+.day.is-today{background:var(--verde-700);color:#fff}
+.day.is-sel{box-shadow:inset 0 0 0 2px var(--verde-700)}
+.day.is-today.is-sel{box-shadow:inset 0 0 0 2px var(--sol-500)}
+.dots{display:flex;gap:3px;height:6px}
+.dots i{width:6px;height:6px;border-radius:50%}
+.dots .st-ok{background:var(--ok)}.dots .st-warn{background:var(--warn-dot)}.dots .st-bad{background:var(--bad-dot)}.dots .st-appt{background:var(--appt-dot)}
+.day.is-today .dots i{box-shadow:0 0 0 1.5px #fff}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;font-size:12.5px;font-weight:600;color:var(--tinta-3)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:8px;height:8px;border-radius:50%}
+.day-list{margin-top:14px}
+.day-list h3{margin:0 4px 8px;font-size:15px}
+
+/* ---------- Taller ---------- */
+.spend{margin:16px 16px 0;padding:18px;display:flex;gap:18px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap}
+.spend-value{font-size:44px;margin-top:6px;color:var(--verde-800)}
+.spend-sub{margin:6px 0 0;font-size:13.5px;color:var(--tinta-3)}
+.bars{display:flex;align-items:flex-end;gap:8px;height:96px}
+.bar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:100%;width:26px}
+.bar span{display:block;width:100%;border-radius:7px 7px 3px 3px;background:var(--verde-200)}
+.bar.is-cur span{background:var(--verde-700)}
+.bar small{font:700 11px 'Barlow Condensed';letter-spacing:.08em;color:var(--tinta-4)}
+.taller-tools{margin:16px 16px 0}
+.taller-list{margin:0 16px}
+
+/* ---------- Ajustes ---------- */
+.settings-grid{display:grid;gap:14px;margin:16px 16px 0}
+.set{padding:18px}
+.set-title{display:flex;align-items:center;gap:10px;margin:0;font-size:18px;font-weight:700}
+.set-title .ms{color:var(--verde-700)}
+.set-help{margin:8px 0 6px;font-size:14px;line-height:1.4;color:var(--tinta-3)}
+.set-sub{margin:16px 0 2px;font:700 12.5px 'Barlow Condensed';letter-spacing:.1em;text-transform:uppercase;color:var(--tinta-3)}
+.set-row{display:flex;align-items:center;gap:12px;min-height:56px;border-top:1px solid var(--linea-2);padding:8px 0}
+.set-row:first-of-type{border-top:0}
+.set-label{flex:1;display:flex;align-items:center;gap:10px;font-weight:600;font-size:15.5px}
+.set-label .ms{font-size:20px;color:var(--tinta-3)}
+.set-unit{font-size:13px;color:var(--tinta-3);width:62px}
+.stepper{display:inline-flex;align-items:center;border:1.5px solid var(--linea);border-radius:12px;overflow:hidden}
+.stepper button{width:38px;height:38px;border:0;background:#fff;font-size:20px;font-weight:600;color:var(--verde-800)}
+.stepper button:hover{background:var(--verde-50)}
+.stepper output{min-width:42px;text-align:center;font-family:'Bebas Neue';font-size:24px;padding-top:3px}
+.switch{width:50px;height:30px;border-radius:999px;background:#CDD1C8;position:relative;border:0;flex:none;transition:background .2s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.switch[aria-checked="true"]{background:var(--verde-700)}
+.switch[aria-checked="true"]::after{transform:translateX(20px)}
+.set-account{display:flex;align-items:center;gap:12px;margin-top:12px}
+.avatar{width:46px;height:46px;border-radius:50%;background:var(--verde-100);color:var(--verde-800);display:grid;place-items:center;font-weight:700}
+.set-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+
+/* ---------- Hojas (bottom sheet / diálogo) ---------- */
+.scrim{position:absolute;inset:0;background:rgba(8,24,12,.42);opacity:0;pointer-events:none;transition:opacity .22s;z-index:40}
+.scrim.open{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:90%;overflow-y:auto;background:#fff;border-radius:26px 26px 0 0;padding:10px 20px 26px;transform:translateY(105%);transition:transform .3s cubic-bezier(.2,.8,.2,1);z-index:41;box-shadow:0 -10px 40px rgba(0,0,0,.12)}
+.sheet.open{transform:none}
+.grab{width:42px;height:5px;border-radius:999px;background:var(--linea);margin:0 auto 14px}
+.sheet-title{margin:0;font-family:'Bebas Neue';font-weight:400;font-size:32px;letter-spacing:.02em}
+.sheet-sub{margin:6px 0 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--tinta-3);font-weight:600}
+.sheet-actions{display:flex;gap:10px;margin-top:22px}
+.sheet-actions .btn{flex:1}
+.quick{display:grid;gap:10px;margin-top:16px}
+.qa{display:flex;align-items:center;gap:14px;padding:14px;border-radius:16px;border:1.5px solid var(--linea);background:#fff;text-align:left}
+.qa:hover{border-color:var(--verde-200);background:var(--verde-50)}
+.qa .row-icon{background:var(--verde-50);color:var(--verde-700)}
+.qa b{display:block;font-size:16px}
+.qa small{display:block;color:var(--tinta-3);font-size:13.5px;margin-top:2px}
+.types{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.type-opt{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border-radius:14px;border:1.5px solid var(--linea);background:#fff;font-weight:700;font-size:12.5px;color:var(--tinta-2)}
+.type-opt .ms{font-size:28px;color:var(--verde-700)}
+.type-opt[aria-pressed="true"]{border-color:var(--verde-700);background:var(--verde-50);color:var(--verde-800)}
+
+/* ---------- Notificación de muestra y aviso breve ---------- */
+.push{position:absolute;left:10px;right:10px;top:10px;z-index:70;background:rgba(250,250,248,.97);backdrop-filter:blur(12px);border-radius:20px;box-shadow:0 14px 40px rgba(0,0,0,.22);padding:12px 14px;display:grid;grid-template-columns:40px 1fr;gap:2px 12px;transform:translateY(-140%);transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.push{visibility:hidden}
+.push.show{transform:none;visibility:visible}
+.stage[data-mode="phone"] .push{top:52px}
+.push-icon{grid-row:span 3;width:40px;height:40px;border-radius:11px;background:var(--verde-700);color:#fff;display:grid;place-items:center}
+.push-app{font-size:12.5px;color:var(--tinta-3);font-weight:600}
+.push b{font-size:15px}
+.push span.body{font-size:14px;color:var(--tinta-2);line-height:1.3}
+.toast{position:absolute;left:50%;bottom:98px;z-index:60;transform:translate(-50%,16px);opacity:0;pointer-events:none;background:var(--carbon);color:#fff;padding:11px 16px;border-radius:13px;font-weight:600;font-size:14px;display:flex;gap:8px;align-items:center;white-space:nowrap;transition:.25s}
+.toast .ms{color:var(--sol-300);font-size:20px}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- Ingreso ---------- */
+.login{position:absolute;inset:0;z-index:50;background:var(--papel);display:flex;flex-direction:column;overflow-y:auto}
+.login[hidden]{display:none}
+.login-art{position:relative;flex:none;height:300px;overflow:hidden;background:linear-gradient(180deg,#139148 0%,var(--verde-700) 55%,var(--verde-800) 100%)}
+.login-art::before{content:"";position:absolute;width:210px;height:210px;border-radius:50%;right:-40px;top:-60px;background:radial-gradient(circle,var(--sol-300) 0,var(--sol-500) 55%,rgba(242,211,0,0) 72%)}
+.login-art::after{content:"";position:absolute;left:-40%;right:-40%;bottom:-30%;height:75%;background:repeating-linear-gradient(90deg,rgba(255,255,255,.09) 0 2px,transparent 2px 24px);transform:perspective(220px) rotateX(60deg);transform-origin:bottom}
+.login-art p{position:absolute;left:24px;bottom:92px;margin:0;color:#fff;font-family:'Bebas Neue';font-size:30px;line-height:1;letter-spacing:.03em;z-index:1;max-width:240px}
+.login-card{position:relative;z-index:2;margin:-70px 16px 24px;background:#fff;border-radius:24px;box-shadow:var(--sh-2);padding:22px 20px 20px}
+.login-card .logo{height:52px;margin-bottom:14px}
+.login-card h1{margin:0;font-size:36px}
+.login-card>p{margin:6px 0 4px;color:var(--tinta-3)}
+.login-card .btn{margin-top:20px}
+.login-foot{margin:auto 24px 22px;text-align:center;font-size:12.5px;line-height:1.4;color:var(--tinta-4)}
+
+/* ---------- Escritorio (cuando la app tiene 900 px o más) ---------- */
+@container app (min-width:900px){
+  .app{grid-template-columns:260px 1fr}
+  .sidebar{display:flex}
+  .topbar,.tabbar{display:none}
+  .screen{padding:30px 40px 48px;max-width:1240px}
+  .sec,.page-head,.tools,.vgrid,.vhead,.agenda-grid,.spend,.taller-tools,.taller-list,.settings-grid{margin-left:0;margin-right:0}
+  .back{margin-left:-10px;margin-top:0}
+  .hero{border-radius:26px;padding:30px 34px 92px}
+  .hero-title{font-size:56px}
+  .hero-status{max-width:560px}
+  .kpis{grid-template-columns:repeat(4,1fr);gap:14px;margin:-62px 24px 0}
+  .home-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:28px;align-items:start}
+  .tools{flex-direction:row;align-items:center}
+  .tools .search{flex:1;max-width:460px}
+  .vgrid{grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+  .vhead{padding:24px}
+  .vh-title{font-size:48px}
+  .facts{grid-template-columns:repeat(4,1fr)}
+  .vh-actions .btn{flex:none}
+  .docs{grid-template-columns:repeat(3,1fr)}
+  .agenda-switch{display:none}
+  .agenda-grid{display:grid;grid-template-columns:1fr 400px;gap:28px;align-items:start}
+  .agenda-grid.view-lista .agenda-month,.agenda-grid.view-mes .agenda-list{display:block}
+  .settings-grid{grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+  .sheet{left:50%;right:auto;bottom:auto;top:50%;width:540px;max-height:86%;border-radius:22px;padding:24px 26px 26px;opacity:0;pointer-events:none;transform:translate(-50%,-46%) scale(.98);transition:opacity .2s,transform .25s cubic-bezier(.2,.8,.2,1)}
+  .sheet.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}
+  .grab{display:none}
+  .toast{bottom:30px}
+  .push{left:auto;right:24px;top:20px;width:380px}
+  .login{flex-direction:row;background:#fff}
+  .login-art{height:auto;flex:1.1}
+  .login-art::before{width:420px;height:420px;right:-90px;top:-120px}
+  .login-art p{left:56px;bottom:120px;font-size:52px;max-width:460px}
+  .login-card{flex:none;width:460px;margin:auto 64px;box-shadow:none;padding:0}
+  .login-foot{position:absolute;right:64px;bottom:28px;margin:0;width:460px;text-align:left}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="deck">
+  <div class="deck-title"><b>Gestión de Flota · Propuesta</b><span>Cooperativa Agropecuaria El Progreso de Henderson Ltda.</span></div>
+  <span class="deck-tag">Datos de ejemplo</span>
+  <div class="deck-spacer"></div>
+  <div class="seg" role="group" aria-label="Vista">
+    <button data-mode="phone" aria-pressed="true"><span class="ms">smartphone</span>Celular</button>
+    <button data-mode="desktop" aria-pressed="false"><span class="ms">computer</span>Escritorio</button>
+  </div>
+  <button class="deck-btn" id="show-login"><span class="ms">login</span>Ingreso</button>
+</header>
+
+<main class="stage" id="stage" data-mode="phone">
+  <div class="device" id="device">
+    <div class="sb"><span>9:41</span><span><span class="ms">signal_cellular_alt</span> <span class="ms">wifi</span> <span class="ms">battery_full</span></span></div>
+
+    <div class="app">
+      <aside class="sidebar" aria-label="Navegación">
+        <div class="sb-brand"><img class="logo" data-logo alt="Cooperativa Agropecuaria El Progreso de Henderson Ltda."><span>Gestión de Flota</span></div>
+        <button class="nav-item" data-go="inicio"><span class="ms">home</span>Inicio</button>
+        <button class="nav-item" data-go="vehiculos"><span class="ms">directions_car</span>Vehículos</button>
+        <button class="nav-item" data-go="agenda"><span class="ms">calendar_month</span>Agenda<span class="count" data-count></span></button>
+        <button class="nav-item" data-go="taller"><span class="ms">build</span>Taller</button>
+        <button class="sb-new" data-action="quick"><span class="ms">add</span>Nuevo registro</button>
+        <div class="sb-bottom">
+          <button class="nav-item" data-go="ajustes"><span class="ms">settings</span>Ajustes</button>
+          <button class="nav-item" data-action="logout"><span class="ms">logout</span>Salir</button>
+          <p class="sb-coop">Desde 1948 al servicio del productor y la comunidad.</p>
+        </div>
+      </aside>
+
+      <div class="main" id="main">
+        <header class="topbar">
+          <img class="logo" data-logo alt="Cooperativa Agropecuaria El Progreso de Henderson Ltda.">
+          <span class="spacer"></span>
+          <button class="icon-btn" data-go="agenda" aria-label="Avisos"><span class="ms">notifications</span><span class="dot" data-count></span></button>
+          <button class="icon-btn" data-go="ajustes" aria-label="Ajustes"><span class="ms">settings</span></button>
+        </header>
+        <section class="screen" id="s-inicio"></section>
+        <section class="screen" id="s-vehiculos"></section>
+        <section class="screen" id="s-ficha"></section>
+        <section class="screen" id="s-agenda"></section>
+        <section class="screen" id="s-taller"></section>
+        <section class="screen" id="s-ajustes"></section>
+      </div>
+
+      <nav class="tabbar" aria-label="Secciones">
+        <button class="tab" data-go="inicio"><span class="ms">home</span>Inicio</button>
+        <button class="tab" data-go="vehiculos"><span class="ms">directions_car</span>Vehículos</button>
+        <button class="fab" data-action="quick" aria-label="Nuevo registro"><span class="ms">add</span></button>
+        <button class="tab" data-go="agenda"><span class="ms">calendar_month</span>Agenda</button>
+        <button class="tab" data-go="taller"><span class="ms">build</span>Taller</button>
+      </nav>
+    </div>
+
+    <section class="login" id="login" hidden aria-label="Ingreso">
+      <div class="login-art"><p>Desde 1948 al servicio del productor y la comunidad</p></div>
+      <div class="login-card">
+        <img class="logo" data-logo alt="Cooperativa Agropecuaria El Progreso de Henderson Ltda.">
+        <h1 class="display">Gestión de Flota</h1>
+        <p>Ingresá con tu cuenta de la Cooperativa.</p>
+        <label class="field"><span>Email</span><input class="input" type="email" placeholder="nombre@elprogresocoop.com.ar" autocomplete="off"></label>
+        <label class="field"><span>Contraseña</span><input class="input" type="password" placeholder="••••••••" autocomplete="off"></label>
+        <button class="btn btn-primary btn-block" data-action="login">Ingresar<span class="ms">arrow_forward</span></button>
+      </div>
+      <p class="login-foot">Cooperativa Agropecuaria "El Progreso" de Henderson Ltda.<br>Prototipo: este formulario no envía nada.</p>
+    </section>
+
+    <div class="scrim" id="scrim" data-action="close"></div>
+    <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Formulario"></div>
+    <div class="push" id="push" aria-live="polite"></div>
+    <div class="toast" id="toast" role="status"></div>
+  </div>
+</main>
+
+<script>
+/* ---------- Fechas (las mismas reglas de la app) ---------- */
+const p2 = n => String(n).padStart(2, '0');
+const parse = iso => iso.split('-').map(Number);
+const utc = iso => { const [y, m, d] = parse(iso); return Date.UTC(y, m - 1, d); };
+const daysBetween = (a, b) => Math.round((utc(b) - utc(a)) / 864e5);
+const NOW = new Date();
+const TODAY = `${NOW.getFullYear()}-${p2(NOW.getMonth() + 1)}-${p2(NOW.getDate())}`;
+// Las fechas de ejemplo se cuentan desde hoy, así los estados se ven igual cualquier día que se abra
+const rel = n => new Date(utc(TODAY) + n * 864e5).toISOString().slice(0, 10);
+
+/* ---------- Datos de ejemplo ---------- */
+const LOGO = 'https://elprogresocoop.com.ar/public/img/logo_nav.png';
+const PREFS = { thresholds: { Seguro: 15, VTV: 30, Patente: 10, appointments: 3 }, enabled: { Seguro: true, VTV: true, Patente: true, appointments: true }, device: true };
+const LIMITS = { Seguro: 60, VTV: 90, Patente: 60, appointments: 30 };
+const DOC_TYPES = ['Seguro', 'VTV', 'Patente'];
+const DOC_ICON = { Seguro: 'shield', VTV: 'fact_check', Patente: 'receipt_long' };
+const FEM = { Seguro: false, VTV: true, Patente: true };
+const ARTICLE = { Seguro: 'El seguro', VTV: 'La VTV', Patente: 'La patente' };
+const TYPE = {
+  car: { icon: 'directions_car', label: 'Camioneta', unit: 'km' },
+  truck: { icon: 'local_shipping', label: 'Camión', unit: 'km' },
+  tractor: { icon: 'agriculture', label: 'Tractor', unit: 'h' },
+  generator: { icon: 'bolt', label: 'Generador', unit: 'h' },
+};
+const SECTIONS = ['Administración', 'Agronomía', 'Balanceado', 'Cereales', 'Estación de Servicio', 'Ferretería', 'Hacienda', 'Logística', 'Miel', 'Supermercado', 'Veterinaria'];
+
+let VEHICLES = [
+  { id: 'v1', model: 'RANGER', type: 'car', plate: 'AA236JS', year: 2016, section: 'Agronomía', manager: 'RAFA', driver: 'NICO', usage: 95100, status: 'Activo',
+    docs: { Seguro: { exp: rel(141) }, VTV: { exp: rel(81) }, Patente: { exp: rel(109) } } },
+  { id: 'v2', model: 'HILUX SRV', type: 'car', plate: 'JRS506', year: 2018, section: 'Cereales', manager: 'MARTÍN', driver: 'JUAN', usage: 125000, status: 'Activo',
+    docs: { Seguro: { exp: rel(109) }, VTV: { exp: rel(87) }, Patente: { exp: rel(111) } } },
+  { id: 'v3', model: 'GENERADOR ADM', type: 'generator', plate: null, year: 2006, section: 'Administración', manager: 'LAURA', driver: null, usage: 2300, status: 'Activo', docs: null },
+  { id: 'v4', model: 'IVECO TECTOR 170E22', type: 'truck', plate: 'AC418KD', year: 2019, section: 'Logística', manager: 'JUAN', driver: 'PEDRO', usage: 210400, status: 'Activo',
+    docs: { Seguro: { exp: rel(9) }, VTV: { exp: rel(-6), appt: rel(3) }, Patente: { exp: rel(188) } } },
+  { id: 'v5', model: 'JOHN DEERE 6110J', type: 'tractor', plate: null, year: 2020, section: 'Agronomía', manager: 'RAFA', driver: 'LUCAS', usage: 3450, status: 'Activo',
+    docs: { Seguro: { exp: rel(2) }, VTV: {}, Patente: {} } },
+  { id: 'v6', model: 'FORD F-4000', type: 'truck', plate: 'OMK291', year: 2013, section: 'Hacienda', manager: 'CARLOS', driver: 'JOSÉ', usage: 310000, status: 'En taller',
+    docs: { Seguro: { exp: rel(88) }, VTV: { exp: rel(17) }, Patente: { exp: rel(42) } } },
+  { id: 'v7', model: 'FIAT STRADA', type: 'car', plate: 'AE902TR', year: 2021, section: 'Supermercado', manager: 'LAURA', driver: 'MATÍAS', usage: 64200, status: 'Activo',
+    docs: { Seguro: { exp: rel(211) }, VTV: { exp: rel(166) }, Patente: { exp: rel(127) } } },
+  { id: 'v8', model: 'VW AMAROK', type: 'car', plate: 'AD117PL', year: 2020, section: 'Veterinaria', manager: 'SOFÍA', driver: 'DIEGO', usage: 88900, status: 'Activo',
+    docs: { Seguro: { exp: rel(66) }, VTV: { exp: rel(0), appt: rel(0) }, Patente: { exp: rel(-3) } } },
+];
+let WORKS = [
+  { id: 'w1', date: rel(-1), vehicle: 'v4', type: 'Reparación', desc: 'Cambio de embrague', provider: 'Taller Sosa', cost: 385000 },
+  { id: 'w2', date: rel(-2), vehicle: 'v1', type: 'Mantenimiento', desc: 'Service 95.000 km: aceite y filtros', provider: 'Lubricentro El Ombú', cost: 98500 },
+  { id: 'w3', date: rel(-4), vehicle: 'v6', type: 'Reparación', desc: 'Diagnóstico de caja de cambios', provider: 'Mecánica Henderson', cost: 45000 },
+  { id: 'w4', date: rel(-13), vehicle: 'v5', type: 'Mantenimiento', desc: 'Service 3.400 horas', provider: 'Agro Servicios', cost: 210000 },
+  { id: 'w5', date: rel(-20), vehicle: 'v2', type: 'Mantenimiento', desc: 'Rotación y alineación', provider: 'Gomería Centro', cost: 36000 },
+  { id: 'w6', date: rel(-31), vehicle: 'v7', type: 'Mantenimiento', desc: 'Pastillas de freno delanteras', provider: 'Lubricentro El Ombú', cost: 62000 },
+  { id: 'w7', date: rel(-46), vehicle: 'v1', type: 'Mantenimiento', desc: 'Cuatro cubiertas nuevas', provider: 'Gomería Centro', cost: 520000 },
+  { id: 'w8', date: rel(-88), vehicle: 'v4', type: 'Mantenimiento', desc: 'Service 200.000 km', provider: 'Taller Sosa', cost: 260000 },
+  { id: 'w9', date: rel(-104), vehicle: 'v2', type: 'Reparación', desc: 'Batería nueva', provider: 'Electricidad Ruta 5', cost: 145000 },
+  { id: 'w10', date: rel(-144), vehicle: 'v6', type: 'Reparación', desc: 'Frenos traseros', provider: 'Mecánica Henderson', cost: 190000 },
+];
+
+const state = { screen: 'inicio', vehicleId: 'v4', q: '', vfilter: 'todos', wfilter: 'todos', agendaView: 'lista', month: parse(TODAY).slice(0, 2), selDay: parse(TODAY)[2], sheet: null };
+
+/* ---------- Formatos y reglas ---------- */
+const addYears = (iso, n) => { const [y, m, d] = parse(iso); return `${y + n}-${p2(m)}-${p2(d)}`; };
+const fShort = iso => { const [, m, d] = parse(iso); return `${p2(d)}/${p2(m)}`; };
+const fLong = iso => { const [y, m, d] = parse(iso); return `${p2(d)}/${p2(m)}/${y}`; };
+const MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const MES_C = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const money = n => '$ ' + new Intl.NumberFormat('es-AR').format(Math.round(n));
+const num = n => new Intl.NumberFormat('es-AR').format(n);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const byId = id => VEHICLES.find(v => v.id === id);
+const active = () => VEHICLES.filter(v => v.status !== 'Baja');
+
+function docStatus(type, d) {
+  const exp = (d && d.exp) || null, appt = (d && d.appt) || null;
+  const de = exp ? daysBetween(TODAY, exp) : null;
+  const da = appt ? daysBetween(TODAY, appt) : null;
+  let s;
+  if (da !== null && da >= 0) s = 'appt';            // el turno vigente siempre gana
+  else if (de === null) s = 'none';
+  else if (de < 0) s = 'bad';
+  else if (de <= PREFS.thresholds[type]) s = 'warn';
+  else s = 'ok';
+  return { type, s, exp, appt, de, da };
+}
+const docsOf = v => (v.docs ? DOC_TYPES.map(t => docStatus(t, v.docs[t])) : []);
+function label(doc) {
+  if (doc.s === 'appt') return doc.da === 0 ? 'Turno hoy' : doc.da === 1 ? 'Turno mañana' : `Turno el ${fShort(doc.appt)}`;
+  if (doc.s === 'bad') { const n = -doc.de; return n === 1 ? 'Venció ayer' : `Venció hace ${n} días`; }
+  if (doc.s === 'warn') return doc.de === 0 ? 'Vence hoy' : doc.de === 1 ? 'Vence mañana' : `Vence en ${doc.de} días`;
+  return doc.s === 'ok' ? 'Al día' : 'Sin fecha';
+}
+function docTitle(doc) {
+  if (doc.s === 'bad') return `${doc.type} ${FEM[doc.type] ? 'vencida' : 'vencido'}`;
+  if (doc.s === 'warn') return `${doc.type} por vencer`;
+  if (doc.s === 'appt') return `Turno de ${doc.type}`;
+  return doc.type;
+}
+function attention() {
+  const order = { bad: 0, warn: 1, appt: 2 };
+  const key = i => (i.doc.s === 'appt' ? i.doc.da : i.doc.de);
+  return active().flatMap(v => docsOf(v).filter(d => d.s in order).map(doc => ({ v, doc })))
+    .sort((a, b) => order[a.doc.s] - order[b.doc.s] || key(a) - key(b));
+}
+
+/* ---------- Piezas ---------- */
+function plateTxt(p) {
+  if (/^[A-Z]{2}\d{3}[A-Z]{2}$/.test(p)) return `${p.slice(0, 2)} ${p.slice(2, 5)} ${p.slice(5)}`;
+  const m = p.match(/^([A-Z]{3})\s?(\d{3})$/);
+  return m ? `${m[1]} ${m[2]}` : p;
+}
+const plate = (p, cls = '') => (p ? `<span class="plate ${cls}" title="Patente">${plateTxt(p)}</span>` : `<span class="noplate">Sin patente</span>`);
+const STATUS_CLS = { 'Activo': 's-active', 'En taller': 's-shop', 'Baja': 's-off' };
+const statusPill = s => `<span class="pill ${STATUS_CLS[s]}">${s === 'Baja' ? 'De baja' : s}</span>`;
+const badge = doc => `<span class="badge st-${doc.s}">${label(doc)}</span>`;
+const empty = (icon, title, text) => `<div class="card empty"><span class="ms">${icon}</span><b>${title}</b><p>${text}</p></div>`;
+const secHead = (title, extra = '') => `<div class="sec-head"><h2>${title}</h2>${extra}</div>`;
+const link = (to, text) => `<button class="link" data-go="${to}">${text}<span class="ms">chevron_right</span></button>`;
+
+function attRow({ v, doc }) {
+  return `<button class="row" data-go="ficha" data-id="${v.id}">
+    <span class="row-icon st-${doc.s}"><span class="ms">${DOC_ICON[doc.type]}</span></span>
+    <span class="row-main"><span class="row-title">${docTitle(doc)}</span><span class="row-sub">${esc(v.model)} ${plate(v.plate)}</span></span>
+    ${badge(doc)}</button>`;
+}
+function workRow(w, withVehicle = true) {
+  const v = byId(w.vehicle), rep = w.type === 'Reparación';
+  return `<button class="row" data-action="soon" data-msg="Editar el trabajo">
+    <span class="row-icon ${rep ? 'tone-orange' : 'tone-green'}"><span class="ms">${rep ? 'car_repair' : 'handyman'}</span></span>
+    <span class="row-main"><span class="row-title">${esc(w.desc)}</span>
+      <span class="row-sub">${withVehicle ? `${esc(v.model)} · ` : ''}${fShort(w.date)} · ${esc(w.provider)}</span></span>
+    <span class="row-money num">${money(w.cost)}</span></button>`;
+}
+const kpi = (icon, labelTxt, value, sub, to) => `<button class="kpi" data-go="${to}">
+  <span class="kpi-icon"><span class="ms">${icon}</span></span><span class="kpi-value display num">${value}</span>
+  <span class="kpi-label">${labelTxt}</span><span class="kpi-sub">${esc(sub)}</span></button>`;
+
+/* ---------- Inicio ---------- */
+function renderInicio() {
+  const att = attention();
+  const c = { bad: 0, warn: 0, appt: 0 };
+  att.forEach(i => c[i.doc.s]++);
+  const shop = VEHICLES.filter(v => v.status === 'En taller');
+  const monthKey = TODAY.slice(0, 7);
+  const mw = WORKS.filter(w => w.date.startsWith(monthKey));
+  const total = mw.reduce((a, w) => a + w.cost, 0);
+  const todays = att.filter(i => i.doc.s === 'appt' && i.doc.da === 0);
+  const next = att.filter(i => i.doc.s === 'warn').sort((a, b) => a.doc.de - b.doc.de)[0];
+  const [y, m, d] = parse(TODAY);
+  const weekday = DIAS[new Date(utc(TODAY)).getUTCDay()];
+  const parts = [c.bad && `${c.bad} ${c.bad === 1 ? 'vencido' : 'vencidos'}`, c.warn && `${c.warn} por vencer`, c.appt && `${c.appt} con turno`].filter(Boolean).join(' · ');
+  const status = att.length
+    ? `<strong>${att.length} ${att.length === 1 ? 'documento necesita' : 'documentos necesitan'} atención</strong><small>${parts}</small>`
+    : `<strong>Toda la documentación está al día</strong><small>Te avisamos cuando algo se acerque a su vencimiento</small>`;
+  const nextVal = next ? (next.doc.de === 0 ? 'Hoy' : next.doc.de === 1 ? 'Mañana' : `${next.doc.de} días`) : '—';
+  return `
+  <div class="hero">
+    <p class="hero-date">${cap(weekday)} ${d} de ${MES[m - 1]}</p>
+    <h1 class="display hero-title">Buen día</h1>
+    <button class="hero-status" data-go="agenda">
+      <span class="hs-icon"><span class="ms fill">${att.length ? 'notifications_active' : 'verified'}</span></span>
+      <span class="hs-text">${status}</span><span class="ms">chevron_right</span>
+    </button>
+  </div>
+  <div class="kpis">
+    ${kpi('directions_car', 'Operativos', VEHICLES.filter(v => v.status === 'Activo').length, `de ${VEHICLES.length} en la flota`, 'vehiculos')}
+    ${kpi('build', 'En taller', shop.length, shop.map(v => v.model).join(', ') || 'Ninguno', 'vehiculos')}
+    ${kpi('payments', `Gasto de ${MES[m - 1]}`, money(total), `${mw.length} ${mw.length === 1 ? 'trabajo' : 'trabajos'}`, 'taller')}
+    ${kpi('event_upcoming', 'Próximo vencimiento', nextVal, next ? `${next.doc.type} · ${next.v.model}` : 'Nada en el plazo', 'agenda')}
+  </div>
+  <div class="home-grid">
+    <div>
+      ${todays.length ? `<section class="sec">${secHead('Para hoy')}${todays.map(todayCard).join('')}</section>` : ''}
+      <section class="sec">${secHead('Necesitan atención', link('agenda', 'Ver agenda'))}
+        ${att.length ? `<div class="card list">${att.map(attRow).join('')}</div>` : empty('check_circle', 'Todo en orden', 'No hay documentos vencidos, por vencer ni turnos.')}
+      </section>
+    </div>
+    <div>
+      <section class="sec">${secHead('Últimos trabajos', link('taller', 'Ver todos'))}
+        <div class="card list">${[...WORKS].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4).map(w => workRow(w)).join('')}</div>
+      </section>
+    </div>
+  </div>`;
+}
+const todayCard = ({ v, doc }) => `<div class="card row today">
+  <span class="row-icon st-appt"><span class="ms fill">event_available</span></span>
+  <span class="row-main"><span class="row-title">Turno de ${doc.type} hoy</span><span class="row-sub">${esc(v.model)} ${plate(v.plate)}</span></span>
+  <button class="btn btn-primary btn-sm" data-action="renew" data-id="${v.id}" data-doc="${doc.type}"><span class="ms">task_alt</span>Registrar renovación</button>
+</div>`;
+
+/* ---------- Vehículos ---------- */
+function vehicleList() {
+  const q = state.q.trim().toLowerCase().replace(/\s/g, '');
+  const match = { todos: () => true, activos: v => v.status === 'Activo', taller: v => v.status === 'En taller', baja: v => v.status === 'Baja' }[state.vfilter];
+  return VEHICLES.filter(match).filter(v => !q || [v.model, v.plate, v.driver, v.manager, v.section]
+    .filter(Boolean).some(x => x.toLowerCase().replace(/\s/g, '').includes(q)));
+}
+function vcard(v) {
+  const t = TYPE[v.type], docs = docsOf(v);
+  return `<button class="vcard card" data-go="ficha" data-id="${v.id}">
+    <div class="vc-top"><span class="vtype"><span class="ms">${t.icon}</span></span>
+      <div class="vc-id"><div class="vc-name">${esc(v.model)}</div>
+        <div class="vc-meta">${plate(v.plate)}<span>${v.year}</span><span>·</span><span>${esc(v.section)}</span></div></div>
+      ${statusPill(v.status)}</div>
+    ${docs.length
+      ? `<div class="vc-docs">${docs.map(d => `<div class="vdoc st-${d.s}"><span class="vdoc-name">${d.type}</span><span class="vdoc-state">${label(d)}</span></div>`).join('')}</div>`
+      : `<div class="vc-nodocs"><span class="ms">info</span>No lleva seguro, VTV ni patente</div>`}
+    <div class="vc-foot"><span><span class="ms">${t.unit === 'km' ? 'speed' : 'schedule'}</span>${num(v.usage)} ${t.unit}</span><span><span class="ms">person</span>${esc(v.driver || 'Sin chofer')}</span></div>
+  </button>`;
+}
+const vehicleGrid = () => {
+  const list = vehicleList();
+  return list.length ? list.map(vcard).join('') : empty('search_off', 'Sin resultados', 'Probá con otra patente, modelo o chofer.');
+};
+function renderVehiculos() {
+  const count = f => VEHICLES.filter({ todos: () => true, activos: v => v.status === 'Activo', taller: v => v.status === 'En taller', baja: v => v.status === 'Baja' }[f]).length;
+  const chip = (f, txt) => `<button class="chip" data-action="vfilter" data-f="${f}" aria-pressed="${state.vfilter === f}">${txt}<small>${count(f)}</small></button>`;
+  return `
+  <div class="page-head"><div><p class="eyebrow">Flota de la Cooperativa</p><h1 class="display page-title">Vehículos</h1></div>
+    <button class="btn btn-primary btn-sm" data-action="new-vehicle"><span class="ms">add</span>Agregar</button></div>
+  <div class="tools">
+    <label class="search"><span class="ms">search</span><input id="q" type="search" placeholder="Buscar por patente, modelo o chofer" value="${esc(state.q)}" autocomplete="off"></label>
+    <div class="chips">${chip('todos', 'Todos')}${chip('activos', 'Activos')}${chip('taller', 'En taller')}${chip('baja', 'De baja')}</div>
+  </div>
+  <div class="vgrid" id="vgrid">${vehicleGrid()}</div>`;
+}
+
+/* ---------- Ficha del vehículo ---------- */
+function docCard(v, d) {
+  const th = PREFS.thresholds[d.type];
+  let when, hint;
+  if (d.s === 'appt') {
+    when = `Turno ${d.da === 0 ? '<strong>hoy</strong>' : d.da === 1 ? '<strong>mañana</strong>' : `el <strong>${fLong(d.appt)}</strong>`}`;
+    hint = (d.exp ? `${d.de < 0 ? 'Venció' : 'Vence'} el ${fLong(d.exp)} · ` : '') + `te recordamos el turno ${PREFS.thresholds.appointments} días antes`;
+  } else if (d.s === 'none') {
+    when = 'Sin fecha cargada'; hint = 'Cargá la fecha de vencimiento para recibir avisos.';
+  } else {
+    when = `${d.de < 0 ? 'Venció' : 'Vence'} el <strong>${fLong(d.exp)}</strong>`;
+    hint = d.s === 'ok' ? `Te empezamos a avisar ${th} días antes` : d.s === 'warn' ? `Te avisamos todos los días hasta que lo renueves` : 'Aviso diario hasta que se renueve o cargues un turno';
+  }
+  const primary = d.s === 'bad' || d.s === 'warn' || (d.s === 'appt' && d.da === 0);
+  return `<article class="doc card st-${d.s}">
+    <header class="doc-head"><span class="doc-icon"><span class="ms">${DOC_ICON[d.type]}</span></span><h3>${d.type}</h3>${badge(d)}</header>
+    <p class="doc-when">${when}</p><p class="doc-hint">${hint}</p>
+    <div class="doc-actions">
+      <button class="btn btn-sm ${primary ? 'btn-primary' : 'btn-ghost'}" data-action="renew" data-id="${v.id}" data-doc="${d.type}"><span class="ms">${d.s === 'none' ? 'edit_calendar' : 'autorenew'}</span>${d.s === 'none' ? 'Cargar fecha' : 'Renovar'}</button>
+      <button class="btn btn-sm btn-ghost" data-action="appt" data-id="${v.id}" data-doc="${d.type}"><span class="ms">event</span>${d.s === 'appt' ? 'Cambiar turno' : 'Cargar turno'}</button>
+    </div></article>`;
+}
+function renderFicha() {
+  const v = byId(state.vehicleId) || VEHICLES[0], t = TYPE[v.type], docs = docsOf(v);
+  const works = WORKS.filter(w => w.vehicle === v.id).sort((a, b) => b.date.localeCompare(a.date));
+  const year = TODAY.slice(0, 4), yearTotal = works.filter(w => w.date.startsWith(year)).reduce((a, w) => a + w.cost, 0);
+  const fact = (k, val) => `<div><dt>${k}</dt><dd>${esc(val)}</dd></div>`;
+  return `
+  <button class="back" data-go="vehiculos"><span class="ms">arrow_back</span>Vehículos</button>
+  <div class="vhead card">
+    <div class="vh-main"><span class="vtype xl"><span class="ms">${t.icon}</span></span>
+      <div class="vh-id"><p class="eyebrow">${t.label} · ${esc(v.section)}</p><h1 class="display vh-title">${esc(v.model)}</h1>
+        <div class="vh-tags">${plate(v.plate, 'lg')}${statusPill(v.status)}</div></div></div>
+    <dl class="facts">${fact('Año', v.year)}${fact(t.unit === 'km' ? 'Kilometraje' : 'Horas de uso', `${num(v.usage)} ${t.unit}`)}${fact('Encargado', v.manager)}${fact('Chofer', v.driver || '—')}</dl>
+    <div class="vh-actions">
+      <button class="btn btn-primary" data-action="work" data-id="${v.id}"><span class="ms">add</span>Registrar trabajo</button>
+      <button class="btn btn-ghost" data-action="soon" data-msg="Editar los datos del vehículo"><span class="ms">edit</span>Editar datos</button>
+    </div>
+  </div>
+  ${docs.length ? `<section class="sec">${secHead('Documentación')}<div class="docs">${docs.map(d => docCard(v, d)).join('')}</div></section>` : ''}
+  <section class="sec">${secHead('Historial técnico', works.length ? `<span class="sec-note num">${money(yearTotal)} en ${year}</span>` : '')}
+    ${works.length ? `<div class="card list">${works.map(w => workRow(w, false)).join('')}</div>` : empty('history', 'Todavía no hay trabajos', 'Registrá el primer mantenimiento o reparación de esta unidad.')}
+  </section>
+  <section class="sec card danger">
+    <div><h3>Dar de baja la unidad</h3><p>Deja de aparecer en la flota activa y no genera más avisos. El historial se conserva.</p></div>
+    <button class="btn btn-danger btn-sm" data-action="soon" data-msg="Dar de baja la unidad"><span class="ms">do_not_disturb_on</span>Dar de baja</button>
+  </section>`;
+}
+
+/* ---------- Agenda ---------- */
+function events() {
+  const list = [];
+  active().forEach(v => docsOf(v).forEach(d => {
+    if (d.s === 'appt') list.push({ date: d.appt, v, d, kind: 'appt' });
+    else if (d.exp) list.push({ date: d.exp, v, d, kind: 'exp' });
+  }));
+  return list.sort((a, b) => a.date.localeCompare(b.date));
+}
+function evTone(e) { return e.kind === 'appt' ? 'appt' : e.d.s; }
+function evLabel(e) {
+  const n = e.kind === 'appt' ? e.d.da : e.d.de;
+  if (n < 0) return -n === 1 ? 'Ayer' : `Hace ${-n} días`;
+  return n === 0 ? 'Hoy' : n === 1 ? 'Mañana' : `En ${n} días`;
+}
+function evRow(e) {
+  const [, m, d] = parse(e.date), tone = evTone(e);
+  const title = e.kind === 'appt' ? `Turno de ${e.d.type}` : e.d.s === 'bad' ? docTitle(e.d) : `Vence ${e.d.type === 'VTV' ? 'la VTV' : ARTICLE[e.d.type].toLowerCase()}`;
+  return `<button class="row" data-go="ficha" data-id="${e.v.id}">
+    <span class="ev-date st-${tone}"><b class="display">${d}</b><span>${MES_C[m - 1]}</span></span>
+    <span class="row-main"><span class="row-title">${title}</span><span class="row-sub">${esc(e.v.model)} ${plate(e.v.plate)}</span></span>
+    <span class="badge st-${tone}">${evLabel(e)}</span></button>`;
+}
+function agendaList() {
+  const evs = events();
+  const overdue = evs.filter(e => e.kind === 'exp' && e.d.s === 'bad');
+  const upcoming = evs.filter(e => !(e.kind === 'exp' && e.d.s === 'bad'));
+  const groups = {};
+  upcoming.forEach(e => { (groups[e.date.slice(0, 7)] ||= []).push(e); });
+  let html = '';
+  if (overdue.length) html += `<div class="group"><div class="group-head st-bad"><span class="ms">error</span>Vencidos</div><div class="card list">${overdue.map(evRow).join('')}</div></div>`;
+  Object.entries(groups).forEach(([k, list]) => {
+    const [y, m] = k.split('-').map(Number);
+    html += `<div class="group"><div class="group-head">${cap(MES[m - 1])} ${y}</div><div class="card list">${list.map(evRow).join('')}</div></div>`;
+  });
+  return html || empty('event_available', 'Nada en la agenda', 'Cargá las fechas de vencimiento de cada vehículo.');
+}
+function monthView() {
+  const [y, m] = state.month;
+  const first = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
+  const start = (first + 6) % 7, days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const byDay = {};
+  events().forEach(e => { if (e.date.startsWith(`${y}-${p2(m)}`)) (byDay[+e.date.slice(8)] ||= []).push(e); });
+  const [ty, tm, td] = parse(TODAY);
+  let cells = '';
+  for (let i = 0; i < start; i++) cells += '<span></span>';
+  for (let dd = 1; dd <= days; dd++) {
+    const evs = byDay[dd] || [];
+    const cls = [y === ty && m === tm && dd === td ? 'is-today' : '', dd === state.selDay ? 'is-sel' : ''].join(' ');
+    cells += `<button class="day ${cls}" data-action="pick-day" data-d="${dd}" aria-label="${dd} de ${MES[m - 1]}${evs.length ? `, ${evs.length} eventos` : ''}">${dd}<span class="dots">${evs.slice(0, 3).map(e => `<i class="st-${evTone(e)}"></i>`).join('')}</span></button>`;
+  }
+  const sel = byDay[state.selDay] || [];
+  return `<div class="card month">
+      <div class="month-head"><button class="icon-btn" data-action="month" data-d="-1" aria-label="Mes anterior"><span class="ms">chevron_left</span></button>
+        <b>${cap(MES[m - 1])} ${y}</b><button class="icon-btn" data-action="month" data-d="1" aria-label="Mes siguiente"><span class="ms">chevron_right</span></button></div>
+      <div class="dow">${['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(x => `<span>${x}</span>`).join('')}</div>
+      <div class="days">${cells}</div>
+      <div class="legend"><span><i style="background:var(--bad-dot)"></i>Vencido</span><span><i style="background:var(--warn-dot)"></i>Por vencer</span><span><i style="background:var(--appt-dot)"></i>Turno</span><span><i style="background:var(--ok)"></i>Al día</span></div>
+    </div>
+    <div class="day-list"><h3>${state.selDay} de ${MES[m - 1]}</h3>${sel.length ? `<div class="card list">${sel.map(evRow).join('')}</div>` : `<div class="card empty"><span class="ms">event_available</span><p>Sin vencimientos ni turnos este día.</p></div>`}</div>`;
+}
+function renderAgenda() {
+  const segBtn = (v, txt, icon) => `<button data-action="agenda-view" data-v="${v}" aria-pressed="${state.agendaView === v}"><span class="ms">${icon}</span>${txt}</button>`;
+  return `
+  <div class="page-head"><div><p class="eyebrow">Vencimientos y turnos</p><h1 class="display page-title">Agenda</h1></div>
+    <div class="seg seg-sm agenda-switch">${segBtn('lista', 'Lista', 'view_agenda')}${segBtn('mes', 'Mes', 'calendar_month')}</div></div>
+  <div class="agenda-grid view-${state.agendaView}"><div class="agenda-list">${agendaList()}</div><div class="agenda-month">${monthView()}</div></div>`;
+}
+
+/* ---------- Taller ---------- */
+function renderTaller() {
+  const [ty, tm] = parse(TODAY);
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    const dt = new Date(Date.UTC(ty, tm - 1 - i, 1)), key = `${dt.getUTCFullYear()}-${p2(dt.getUTCMonth() + 1)}`;
+    const ws = WORKS.filter(w => w.date.startsWith(key));
+    months.push({ key, label: MES_C[dt.getUTCMonth()], total: ws.reduce((a, w) => a + w.cost, 0), count: ws.length });
+  }
+  const max = Math.max(...months.map(x => x.total), 1), cur = months[months.length - 1];
+  const avg = months.reduce((a, x) => a + x.total, 0) / months.length;
+  const filter = { todos: () => true, mant: w => w.type === 'Mantenimiento', rep: w => w.type === 'Reparación' }[state.wfilter];
+  const list = WORKS.filter(filter).sort((a, b) => b.date.localeCompare(a.date));
+  const groups = {};
+  list.forEach(w => { (groups[w.date.slice(0, 7)] ||= []).push(w); });
+  const chip = (f, txt) => `<button class="chip" data-action="wfilter" data-f="${f}" aria-pressed="${state.wfilter === f}">${txt}</button>`;
+  return `
+  <div class="page-head"><div><p class="eyebrow">Mantenimiento y reparaciones</p><h1 class="display page-title">Taller</h1></div>
+    <button class="btn btn-primary btn-sm" data-action="work"><span class="ms">add</span>Registrar</button></div>
+  <div class="spend card">
+    <div><p class="eyebrow">Gasto de ${MES[tm - 1]}</p><div class="display spend-value num">${money(cur.total)}</div>
+      <p class="spend-sub">${cur.count} ${cur.count === 1 ? 'trabajo' : 'trabajos'} · promedio de los últimos 6 meses ${money(avg)}</p></div>
+    <div class="bars" aria-label="Gasto por mes">${months.map(x => `<div class="bar${x.key === cur.key ? ' is-cur' : ''}" title="${money(x.total)}"><span style="height:${Math.max(4, Math.round(x.total / max * 100))}%"></span><small>${x.label}</small></div>`).join('')}</div>
+  </div>
+  <div class="taller-tools"><div class="chips">${chip('todos', 'Todos')}${chip('mant', 'Mantenimiento')}${chip('rep', 'Reparación')}</div></div>
+  <div class="taller-list">${Object.entries(groups).map(([k, ws]) => {
+    const [y, m] = k.split('-').map(Number);
+    return `<div class="group" style="margin-top:18px"><div class="group-head">${cap(MES[m - 1])} ${y}<span style="margin-left:auto" class="num">${money(ws.reduce((a, w) => a + w.cost, 0))}</span></div><div class="card list">${ws.map(w => workRow(w)).join('')}</div></div>`;
+  }).join('') || empty('handyman', 'Sin trabajos', 'Todavía no hay registros con este filtro.')}</div>`;
+}
+
+/* ---------- Ajustes ---------- */
+function renderAjustes() {
+  const step = (k, icon, name) => `<div class="set-row"><span class="set-label"><span class="ms">${icon}</span>${name}</span>
+    <div class="stepper"><button data-action="step" data-k="${k}" data-d="-1" aria-label="Un día menos">−</button><output class="num">${PREFS.thresholds[k]}</output><button data-action="step" data-k="${k}" data-d="1" aria-label="Un día más">+</button></div>
+    <span class="set-unit">días antes</span></div>`;
+  const sw = (k, txt, on) => `<div class="set-row"><span class="set-label">${txt}</span><button class="switch" role="switch" aria-checked="${on}" data-action="toggle" data-k="${k}" aria-label="${txt}"></button></div>`;
+  return `
+  <div class="page-head"><div><p class="eyebrow">Tu cuenta y tus avisos</p><h1 class="display page-title">Ajustes</h1></div></div>
+  <div class="settings-grid">
+    <section class="card set">
+      <h2 class="set-title"><span class="ms">notifications_active</span>Avisos de vencimiento</h2>
+      <p class="set-help">Desde cuántos días antes te avisamos. Desde ese día te llega un aviso diario hasta que el documento se renueve. Si cargás un turno, solo te recordamos el turno.</p>
+      ${step('Seguro', 'shield', 'Seguro')}${step('VTV', 'fact_check', 'VTV')}${step('Patente', 'receipt_long', 'Patente')}${step('appointments', 'event', 'Turnos')}
+    </section>
+    <section class="card set">
+      <h2 class="set-title"><span class="ms">smartphone</span>Notificaciones en este celular</h2>
+      ${sw('device', 'Recibir avisos en este celular', PREFS.device)}
+      <div class="set-row"><span class="set-label">Ver cómo llega un aviso</span><button class="btn btn-ghost btn-sm" data-action="test-push"><span class="ms">send</span>Probar</button></div>
+      <p class="set-sub">Qué avisos querés recibir</p>
+      ${sw('Seguro', 'Vencimiento de seguros', PREFS.enabled.Seguro)}${sw('VTV', 'Vencimiento de VTV', PREFS.enabled.VTV)}${sw('Patente', 'Vencimiento de patentes', PREFS.enabled.Patente)}${sw('appointments', 'Recordatorio de turnos', PREFS.enabled.appointments)}
+    </section>
+    <section class="card set">
+      <h2 class="set-title"><span class="ms">person</span>Cuenta</h2>
+      <div class="set-account"><span class="avatar">AD</span><div><b>Administración</b><div style="color:var(--tinta-3);font-size:14px">Sesión iniciada</div></div></div>
+      <div class="set-actions"><button class="btn btn-ghost btn-sm" data-action="soon" data-msg="Cambiar la contraseña"><span class="ms">key</span>Cambiar contraseña</button>
+        <button class="btn btn-danger btn-sm" data-action="logout"><span class="ms">logout</span>Cerrar sesión</button></div>
+    </section>
+    <section class="card set">
+      <h2 class="set-title"><span class="ms">install_mobile</span>La app en tu celular</h2>
+      <p class="set-help">Instalala para abrirla como una app y recibir los avisos aunque no la tengas abierta.</p>
+      <div class="set-actions"><button class="btn btn-primary btn-sm" data-action="soon" data-msg="Instalar la app"><span class="ms">download</span>Instalar</button></div>
+    </section>
+  </div>`;
+}
+
+/* ---------- Hojas ---------- */
+const docVehicles = () => active().filter(v => v.docs);
+function vehicleSelect(id, onlyDocs = false) {
+  const list = onlyDocs ? docVehicles() : active();
+  return `<label class="field"><span>Vehículo</span><select class="input" id="f-v">${list.map(v => `<option value="${v.id}"${v.id === id ? ' selected' : ''}>${esc(v.model)}${v.plate ? ` · ${plateTxt(v.plate)}` : ''}</option>`).join('')}</select></label>`;
+}
+function docPicker(docType) {
+  return `<div class="field"><span>Documento</span><div class="seg" style="width:100%;display:grid;grid-template-columns:repeat(3,1fr)" id="f-doc">${DOC_TYPES.map(t => `<button type="button" data-action="pick" data-group="f-doc" data-val="${t}" aria-pressed="${t === docType}">${t}</button>`).join('')}</div></div>`;
+}
+function sheetQuick() {
+  const qa = (icon, title, sub, action) => `<button class="qa" data-action="${action}"><span class="row-icon"><span class="ms">${icon}</span></span><span><b>${title}</b><small>${sub}</small></span></button>`;
+  return `<h2 class="sheet-title">¿Qué querés hacer?</h2><div class="quick">
+    ${qa('handyman', 'Registrar un trabajo', 'Mantenimiento o reparación', 'work')}
+    ${qa('autorenew', 'Renovar un documento', 'Seguro, VTV o patente', 'renew')}
+    ${qa('event', 'Cargar un turno', 'Para renovar un documento', 'appt')}
+    ${qa('add_circle', 'Agregar un vehículo', 'Camioneta, camión, tractor o generador', 'new-vehicle')}</div>`;
+}
+function sheetDoc(kind, id, docType) {
+  const v = byId(id) || docVehicles()[0], t = docType || 'VTV';
+  const d = docStatus(t, v.docs ? v.docs[t] : null);
+  const fixed = Boolean(id && docType);
+  const head = fixed ? `<p class="sheet-sub">${esc(v.model)} ${plate(v.plate)} · ${t}</p>` : '';
+  if (kind === 'renew') {
+    const suggested = addYears(d.exp && d.exp >= TODAY ? d.exp : TODAY, 1);
+    return `<h2 class="sheet-title">${fixed ? `Renovar ${t}` : 'Renovar un documento'}</h2>${head}
+      ${fixed ? '' : vehicleSelect(v.id, true) + docPicker(t)}
+      <label class="field"><span>Nueva fecha de vencimiento</span><input class="input" type="date" id="f-date" value="${suggested}"></label>
+      ${d.appt ? `<p class="note"><span class="ms">info</span>Al guardar se borra el turno del ${fLong(d.appt)}.</p>` : ''}
+      <div class="sheet-actions"><button class="btn btn-ghost" data-action="close">Cancelar</button><button class="btn btn-primary" data-action="save-renew" data-id="${fixed ? v.id : ''}" data-doc="${fixed ? t : ''}">Guardar</button></div>`;
+  }
+  return `<h2 class="sheet-title">${fixed ? `Turno de ${t}` : 'Cargar un turno'}</h2>${head}
+    ${fixed ? '' : vehicleSelect(v.id, true) + docPicker(t)}
+    <label class="field"><span>Fecha del turno</span><input class="input" type="date" id="f-date" value="${d.appt && d.da >= 0 ? d.appt : TODAY}"></label>
+    <p class="note"><span class="ms">notifications</span>Mientras el turno esté cargado no llegan avisos de vencimiento: te recordamos el turno ${PREFS.thresholds.appointments} días antes.</p>
+    <div class="sheet-actions"><button class="btn btn-ghost" data-action="close">Cancelar</button><button class="btn btn-primary" data-action="save-appt" data-id="${fixed ? v.id : ''}" data-doc="${fixed ? t : ''}">Guardar turno</button></div>`;
+}
+function sheetWork(id) {
+  return `<h2 class="sheet-title">Registrar un trabajo</h2>
+    ${vehicleSelect(id || state.vehicleId)}
+    <div class="field"><span>Tipo</span><div class="seg seg-block" id="f-type">
+      <button type="button" data-action="pick" data-group="f-type" data-val="Mantenimiento" aria-pressed="true"><span class="ms">handyman</span>Mantenimiento</button>
+      <button type="button" data-action="pick" data-group="f-type" data-val="Reparación" aria-pressed="false"><span class="ms">car_repair</span>Reparación</button></div></div>
+    <label class="field"><span>Qué se hizo</span><input class="input" id="f-desc" placeholder="Ej.: cambio de aceite y filtros"></label>
+    <div class="field-row"><label class="field"><span>Fecha</span><input class="input" type="date" id="f-date" value="${TODAY}"></label>
+      <label class="field"><span>Costo</span><input class="input num" id="f-cost" inputmode="numeric" placeholder="$ 0"></label></div>
+    <label class="field"><span>Taller o proveedor</span><input class="input" id="f-prov" placeholder="Ej.: Lubricentro"></label>
+    <div class="sheet-actions"><button class="btn btn-ghost" data-action="close">Cancelar</button><button class="btn btn-primary" data-action="save-work">Guardar</button></div>`;
+}
+function sheetVehicle() {
+  return `<h2 class="sheet-title">Agregar un vehículo</h2>
+    <div class="field"><span>Tipo</span><div class="types" id="f-vtype">${Object.entries(TYPE).map(([k, t], i) => `<button type="button" class="type-opt" data-action="pick" data-group="f-vtype" data-val="${k}" aria-pressed="${i === 0}"><span class="ms">${t.icon}</span>${t.label}</button>`).join('')}</div></div>
+    <div class="field-row"><label class="field"><span>Modelo</span><input class="input" placeholder="Ej.: HILUX SRV"></label><label class="field"><span>Patente</span><input class="input" placeholder="AA 123 BC" style="text-transform:uppercase"></label></div>
+    <div class="field-row"><label class="field"><span>Año</span><input class="input" inputmode="numeric" placeholder="2024"></label>
+      <label class="field"><span>Sección</span><select class="input">${SECTIONS.map(s => `<option>${s}</option>`).join('')}</select></label></div>
+    <div class="field-row"><label class="field"><span>Encargado</span><input class="input"></label><label class="field"><span>Chofer</span><input class="input" placeholder="Opcional"></label></div>
+    <p class="note"><span class="ms">info</span>Después de guardarlo cargás los vencimientos de seguro, VTV y patente desde su ficha.</p>
+    <div class="sheet-actions"><button class="btn btn-ghost" data-action="close">Cancelar</button><button class="btn btn-primary" data-action="save-vehicle">Guardar</button></div>`;
+}
+
+/* ---------- Comportamiento ---------- */
+const $ = s => document.querySelector(s);
+const device = $('#device'), main = $('#main'), sheet = $('#sheet'), scrim = $('#scrim');
+const RENDER = { inicio: renderInicio, vehiculos: renderVehiculos, ficha: renderFicha, agenda: renderAgenda, taller: renderTaller, ajustes: renderAjustes };
+
+function render(resetScroll) {
+  const scr = state.screen;
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('is-active', s.id === `s-${scr}`));
+  $(`#s-${scr}`).innerHTML = RENDER[scr]();
+  const navKey = scr === 'ficha' ? 'vehiculos' : scr;
+  document.querySelectorAll('.tab[data-go], .nav-item[data-go]').forEach(b => b.classList.toggle('is-active', b.dataset.go === navKey));
+  const n = attention().length;
+  document.querySelectorAll('[data-count]').forEach(el => { el.textContent = n; el.style.display = n ? '' : 'none'; });
+  if (resetScroll) main.scrollTop = 0;
+}
+function go(screen, params = {}) { Object.assign(state, params, { screen }); render(true); }
+function openSheet(html) { sheet.innerHTML = `<div class="grab"></div>${html}`; sheet.scrollTop = 0; sheet.classList.add('open'); scrim.classList.add('open'); }
+function closeSheet() { sheet.classList.remove('open'); scrim.classList.remove('open'); }
+let toastTimer;
+function toast(msg, icon = 'check_circle') {
+  const el = $('#toast'); el.innerHTML = `<span class="ms fill">${icon}</span>${msg}`; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+const picked = group => document.querySelector(`#${group} [aria-pressed="true"]`)?.dataset.val;
+function testPush() {
+  const it = attention()[0];
+  const plateLabel = v => (v.plate ? plateTxt(v.plate).replace(/\s/g, '') : 'sin patente');
+  let title = 'Gestión de Flota', body = 'No hay vencimientos en el plazo que elegiste.';
+  if (it) {
+    const subject = `${ARTICLE[it.doc.type]} del ${it.v.model} (${plateLabel(it.v)})`;
+    const name = it.doc.type === 'VTV' ? 'VTV' : it.doc.type.toLowerCase();
+    if (it.doc.s === 'bad') { title = `${it.doc.type} ${FEM[it.doc.type] ? 'vencida' : 'vencido'}`; body = `${subject} venció ${-it.doc.de === 1 ? 'ayer' : `hace ${-it.doc.de} días`}.`; }
+    else if (it.doc.s === 'warn') { title = `Vencimiento de ${name}`; body = `${subject} vence ${it.doc.de === 0 ? 'hoy' : it.doc.de === 1 ? 'mañana' : `en ${it.doc.de} días`}.`; }
+    else { title = `Turno de ${name}`; body = `Turno de ${name} del ${it.v.model} (${plateLabel(it.v)}) ${it.doc.da === 0 ? 'hoy' : it.doc.da === 1 ? 'mañana' : `en ${it.doc.da} días`}.`; }
+  }
+  const el = $('#push');
+  el.innerHTML = `<span class="push-icon"><span class="ms fill">local_shipping</span></span><span class="push-app">El Progreso · ahora</span><b>${esc(title)}</b><span class="body">${esc(body)}</span>`;
+  el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 4200);
+}
+
+device.addEventListener('click', e => {
+  const a = e.target.closest('[data-action]');
+  if (a) {
+    const { action } = a.dataset, ds = a.dataset;
+    switch (action) {
+      case 'quick': openSheet(sheetQuick()); break;
+      case 'close': closeSheet(); break;
+      case 'renew': case 'appt': openSheet(sheetDoc(action, ds.id, ds.doc)); break;
+      case 'work': openSheet(sheetWork(ds.id)); break;
+      case 'new-vehicle': openSheet(sheetVehicle()); break;
+      case 'pick': a.parentElement.querySelectorAll('[aria-pressed]').forEach(b => b.setAttribute('aria-pressed', String(b === a))); break;
+      case 'save-renew': case 'save-appt': {
+        const id = ds.id || $('#f-v').value, t = ds.doc || picked('f-doc') || 'VTV', date = $('#f-date').value, v = byId(id);
+        if (!date) { toast('Elegí una fecha', 'error'); break; }
+        v.docs = v.docs || {};
+        v.docs[t] = action === 'save-renew' ? { exp: date } : { ...(v.docs[t] || {}), appt: date };
+        closeSheet(); render();
+        toast(action === 'save-renew' ? `${t} ${FEM[t] ? 'renovada' : 'renovado'} hasta el ${fLong(date)}` : `Turno cargado para el ${fLong(date)}`);
+        break;
+      }
+      case 'save-work': {
+        const desc = $('#f-desc').value.trim(), cost = Number(($('#f-cost').value || '').replace(/\D/g, ''));
+        if (!desc) { toast('Contá qué se hizo', 'error'); $('#f-desc').focus(); break; }
+        WORKS.push({ id: `w${Date.now()}`, date: $('#f-date').value || TODAY, vehicle: $('#f-v').value, type: picked('f-type') || 'Mantenimiento', desc, provider: $('#f-prov').value.trim() || 'Sin proveedor', cost });
+        closeSheet(); render(); toast('Trabajo registrado');
+        break;
+      }
+      case 'save-vehicle': closeSheet(); toast('En la app real queda guardado', 'info'); break;
+      case 'vfilter': state.vfilter = ds.f; render(); break;
+      case 'wfilter': state.wfilter = ds.f; render(); break;
+      case 'agenda-view': state.agendaView = ds.v; render(); break;
+      case 'pick-day': state.selDay = Number(ds.d); render(); break;
+      case 'month': { const [y, m] = state.month, dt = new Date(Date.UTC(y, m - 1 + Number(ds.d), 1)); state.month = [dt.getUTCFullYear(), dt.getUTCMonth() + 1]; state.selDay = 1; render(); break; }
+      case 'step': { const k = ds.k; PREFS.thresholds[k] = Math.min(LIMITS[k], Math.max(1, PREFS.thresholds[k] + Number(ds.d))); render(); break; }
+      case 'toggle': { if (ds.k === 'device') PREFS.device = !PREFS.device; else PREFS.enabled[ds.k] = !PREFS.enabled[ds.k]; render(); break; }
+      case 'test-push': testPush(); break;
+      case 'logout': $('#login').hidden = false; break;
+      case 'login': $('#login').hidden = true; go('inicio'); break;
+      case 'soon': toast(`${ds.msg}: en la app real`, 'info'); break;
+    }
+    return;
+  }
+  const g = e.target.closest('[data-go]');
+  if (g) { closeSheet(); go(g.dataset.go, g.dataset.id ? { vehicleId: g.dataset.id } : {}); }
+});
+device.addEventListener('input', e => { if (e.target.id === 'q') { state.q = e.target.value; $('#vgrid').innerHTML = vehicleGrid(); } });
+document.querySelectorAll('.deck [data-mode]').forEach(b => b.addEventListener('click', () => {
+  $('#stage').dataset.mode = b.dataset.mode;
+  document.querySelectorAll('.deck [data-mode]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+}));
+$('#show-login').addEventListener('click', () => { const l = $('#login'); l.hidden = !l.hidden; });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+
+// Logo de la web de la Cooperativa; si no carga, el nombre en tipografía de marca
+document.querySelectorAll('[data-logo]').forEach(img => {
+  img.addEventListener('error', () => { const s = document.createElement('span'); s.className = 'logo-fallback'; s.textContent = 'El Progreso'; img.replaceWith(s); }, { once: true });
+  img.src = LOGO;
+});
+if (matchMedia('(min-width: 1100px)').matches) {
+  $('#stage').dataset.mode = 'desktop';
+  document.querySelectorAll('.deck [data-mode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.mode === 'desktop')));
+}
+render(true);
+</script>
+</body>
+</html>
