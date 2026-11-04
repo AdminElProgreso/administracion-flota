@@ -138,6 +138,14 @@
 .avatar{width:46px;height:46px;border-radius:50%;background:var(--verde-100);color:var(--verde-800);display:grid;place-items:center;font-weight:700;flex:none}
 .set-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
 .ios-steps{margin:10px 0 0;padding-left:20px;font-size:14px;line-height:1.5;color:var(--tinta-2)}
+.ios-steps .ms{font-size:18px;vertical-align:-4px}
+.set-status{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:10px 0 0;font-size:13px;font-weight:600;color:var(--tinta-3)}
+.set-status .ms{font-size:18px;color:var(--verde-700)}
+.set-status.error{color:var(--bad)}
+.set-status.error .ms{color:var(--bad)}
+.set-account-sub{color:var(--tinta-3);font-size:14px}
+.set-form{margin-top:4px}
+.set-help .ok{color:var(--verde-700);font-size:20px;vertical-align:-5px}
 
 /* Ingreso */
 .login{min-height:100dvh;background:var(--papel);display:flex;flex-direction:column}

@@ -1,639 +1,308 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
-import { useAlertPrefs, saveAlertPrefs, ALERT_PREFS_KEY } from '../lib/useAlertPrefs';
-import { DEFAULT_PREFS, type AlertPrefs } from '../supabase/functions/_shared/alerts';
+import { DEFAULT_PREFS, type AlertPrefs, type DocType } from '../supabase/functions/_shared/alerts';
+import { useToast } from '../components/Toast';
+import { Icon, PageHead, Stepper, Switch } from '../components/ui';
+import { initials, passwordProblem, passwordUpdateMessage, pushSupportNote } from '../lib/account';
+import { isDeviceSubscribed, pushSupport, showTestNotification, subscribeDevice, unsubscribeDevice } from '../lib/push';
+import { logout } from '../lib/session';
+import { ALERT_PREFS_KEY, saveAlertPrefs, useAlertPrefs } from '../lib/useAlertPrefs';
+import { useInstallPrompt } from '../lib/useInstallPrompt';
 
-// Funciones auxiliares para detección de dispositivo
-const isIos = () => {
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    return /iphone|ipad|ipod/.test(userAgent);
-};
+type PrefKey = DocType | 'appointments';
 
-const isInStandaloneMode = () =>
-    ('standalone' in window.navigator && (window.navigator as any).standalone) ||
-    window.matchMedia('(display-mode: standalone)').matches;
+const STEPS: { key: PrefKey; icon: string; label: string; max: number }[] = [
+  { key: 'Seguro', icon: 'shield', label: 'Seguro', max: 60 },
+  { key: 'VTV', icon: 'fact_check', label: 'VTV', max: 90 },
+  { key: 'Patente', icon: 'receipt_long', label: 'Patente', max: 60 },
+  { key: 'appointments', icon: 'event', label: 'Turnos', max: 30 },
+];
 
-const Settings = () => {
-    const [activeTab, setActiveTab] = useState<'general' | 'alerts' | 'notifications' | 'security' | 'data'>('general');
+const KINDS: { key: PrefKey; label: string }[] = [
+  { key: 'Seguro', label: 'Vencimiento de seguros' },
+  { key: 'VTV', label: 'Vencimiento de VTV' },
+  { key: 'Patente', label: 'Vencimiento de patentes' },
+  { key: 'appointments', label: 'Recordatorio de turnos' },
+];
 
-    // --- PUSH NOTIFICATION CONFIG ---
-    const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+// Thresholds and switches of the alerts: loaded once from user_settings and saved 1 s after the last change.
+// Nothing is saved before they arrive, so the defaults never overwrite what is stored.
+function useEditablePrefs() {
+  const queryClient = useQueryClient();
+  const { prefs: savedPrefs, userId, loadState, refetch } = useAlertPrefs();
+  const [prefs, setPrefs] = useState<AlertPrefs>(DEFAULT_PREFS);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const lastSaved = useRef('');
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedOnce, setSavedOnce] = useState(false);
 
+  useEffect(() => {
+    if (prefsLoaded) return;
+    if (loadState === 'ready') {
+      setPrefs(savedPrefs);
+      lastSaved.current = JSON.stringify(savedPrefs);
+      setSyncError(null);
+      setPrefsLoaded(true);
+    } else if (loadState === 'error') {
+      setSyncError('No se pudieron cargar tus ajustes. Revisá la conexión.');
+    }
+  }, [prefsLoaded, loadState, savedPrefs]);
 
-    const urlBase64ToUint8Array = (base64String: string) => {
-        if (!base64String) {
-            throw new Error('La clave pública VAPID no está configurada.');
-        }
-        const padding = '='.repeat((4 - base64String.length % 4) % 4);
-        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-        const rawData = window.atob(base64);
-        const outputArray = new Uint8Array(rawData.length);
-        for (let i = 0; i < rawData.length; ++i) {
-            outputArray[i] = rawData.charCodeAt(i);
-        }
-        return outputArray;
-    };
+  const persistPrefs = async (): Promise<boolean> => {
+    if (!userId || !prefsLoaded) {
+      setSyncError('No se pudo guardar. Revisá la conexión.');
+      return false;
+    }
+    setSaving(true);
+    try {
+      await saveAlertPrefs(userId, prefs);
+      lastSaved.current = JSON.stringify(prefs);
+      setSyncError(null);
+      setSavedOnce(true);
+      void queryClient.invalidateQueries({ queryKey: ALERT_PREFS_KEY });
+      return true;
+    } catch (e) {
+      console.error('Alert prefs save error', e);
+      setSyncError('No se pudo guardar. Revisá la conexión.');
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
 
-    const subscribeUser = async () => {
-        if (!('serviceWorker' in navigator)) {
-            console.error('Service Worker not supported');
-            return false;
-        }
+  useEffect(() => {
+    if (!prefsLoaded || !userId || JSON.stringify(prefs) === lastSaved.current) return;
+    const timer = setTimeout(persistPrefs, 1000);
+    return () => clearTimeout(timer);
+    // persistPrefs reads the same prefs this effect depends on
+  }, [prefs, prefsLoaded, userId]);
 
-        try {
-            const registration = await navigator.serviceWorker.ready;
+  // Before loading, retrying reloads; after, it saves again what failed
+  const retry = () => (prefsLoaded ? void persistPrefs() : void refetch());
 
-            // FORZAR NUEVA SUSCRIPCIÓN:
-            // Desuscribimos la anterior para asegurar que se use la llave VAPID actual
-            const oldSubscription = await registration.pushManager.getSubscription();
-            if (oldSubscription) {
-                console.log('Cleaning old subscription...');
-                await oldSubscription.unsubscribe();
-            }
+  return { prefs, setPrefs, prefsLoaded, userId, syncError, saving, savedOnce, retry };
+}
 
+function Section({ icon, title, children }: { icon: string; title: string; children: ReactNode }) {
+  return (
+    <section className="card set">
+      <h2 className="set-title"><Icon name={icon} />{title}</h2>
+      {children}
+    </section>
+  );
+}
 
-            const subscription = await registration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-            });
-
-
-
-            // GUARDAR SUSCRIPCIÓN EN SUPABASE
-            const { data: { session } } = await supabase.auth.getSession();
-            const user = session?.user;
-
-            // Si no hay usuario, usamos un ID persistente basado en el dispositivo o permitimos nulo si la DB lo deja
-            // Pero lo ideal es que estén logueados.
-            const subscriptionData = {
-                user_id: user?.id || '00000000-0000-0000-0000-000000000000', // ID de sistema si no hay login
-                subscription: subscription,
-                updated_at: new Date()
-            };
-
-
-
-            const { error } = await supabase
-                .from('push_subscriptions')
-                .upsert(subscriptionData, { onConflict: 'subscription' });
-
-            if (error) {
-                console.error('Push registration error');
-                alert('No se pudo registrar el dispositivo. Intenta nuevamente.');
-                return false;
-            }
-
-            alert('¡Dispositivo registrado correctamente!');
-            return true;
-
-        } catch (error: any) {
-            console.error('Failed to subscribe: ', error);
-            if (error.name === 'NotAllowedError') {
-                alert('Permiso denegado. Por favor, habilita las notificaciones en la configuración de la App o del navegador.');
-            } else {
-                alert('Error técnico: ' + error.message);
-            }
-            return false;
-        }
-    };
-
-    const handlePushToggle = async () => {
-        const newState = !notificationState.masterToggle;
-
-        if (newState) {
-
-            const currentPermission = Notification.permission;
-
-            if (currentPermission === 'denied') {
-                alert('Las notificaciones están bloqueadas. Debes habilitarlas manualmente en los ajustes de tu navegador/sistema.');
-                return;
-            }
-
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-                const success = await subscribeUser();
-                if (success) {
-                    const updatedState = { ...notificationState, masterToggle: true };
-                    setNotificationState(updatedState);
-                    localStorage.setItem('fleet_notifications', JSON.stringify(updatedState));
-                }
-            }
-        } else {
-
-
-            try {
-                const registration = await navigator.serviceWorker.getRegistration();
-                const subscription = await registration?.pushManager.getSubscription();
-
-                if (subscription) {
-                    // 1. Borrar de la base de datos
-                    await supabase.from('push_subscriptions').delete().filter('subscription', 'cs', JSON.stringify(subscription));
-                    // 2. Desuscribir del navegador
-                    await subscription.unsubscribe();
-                }
-            } catch (e) {
-
-            }
-
-            const updatedState = { ...notificationState, masterToggle: false };
-            setNotificationState(updatedState);
-            localStorage.setItem('fleet_notifications', JSON.stringify(updatedState));
-            alert('Notificaciones desactivadas para este dispositivo.');
-        }
-    };
-
-    const sendTestNotification = async () => {
-        if ('serviceWorker' in navigator && notificationState.masterToggle) {
-            try {
-                const registration = await navigator.serviceWorker.ready;
-                await registration.showNotification('Prueba de Notificación', {
-                    body: '¡El sistema de alertas funciona correctamente!',
-                    icon: '/pwa-192x192.png',
-                    badge: '/pwa-192x192.png',
-                    vibrate: [200, 100, 200],
-                    data: {
-                        url: window.location.href
-                    }
-                } as any);
-            } catch (error) {
-                console.error('Error sending test notification:', error);
-                alert('Error al enviar la notificación de prueba.');
-            }
-        } else {
-            alert('Asegúrate de activar las notificaciones primero y permitir permisos.');
-        }
-    };
-
-
-    // --- ESTADOS PARA PWA ---
-    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-    const [isInstalled, setIsInstalled] = useState(false);
-
-    // --- ESTADOS PARA CONTRASEÑA ---
-    const [newPassword, setNewPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [passwordLoading, setPasswordLoading] = useState(false);
-    const [passwordMessage, setPasswordMessage] = useState({ type: '', text: '' });
-
-    // --- OTROS ESTADOS ---
-    const [notificationState, setNotificationState] = useState({
-        masterToggle: false, // Default to false, will sync on load
-    });
-
-    // --- UMBRALES E INTERRUPTORES DE AVISOS (la base es la fuente de verdad) ---
-    const queryClient = useQueryClient();
-    const { prefs: savedPrefs, userId, loadState: prefsLoadStatus } = useAlertPrefs();
-    const [prefs, setPrefs] = useState<AlertPrefs>(DEFAULT_PREFS);
-    const [prefsLoaded, setPrefsLoaded] = useState(false);
-    const lastSaved = useRef('');
-    const [syncError, setSyncError] = useState<string | null>(null);
-
-    const [purgeFrom, setPurgeFrom] = useState('');
-    const [purgeTo, setPurgeTo] = useState('');
-    const [isSyncing, setIsSyncing] = useState(false);
-
-    // 1. CARGAR ESTADO DEL DISPOSITIVO (SUSCRIPCIÓN PUSH + INSTALACIÓN PWA)
-    useEffect(() => {
-        const loadInitialSettings = async () => {
-            // Verificar estado real de suscripción en el dispositivo
-            let isSubscribed = false;
-            if ('serviceWorker' in navigator) {
-                const registration = await navigator.serviceWorker.getRegistration();
-                const subscription = await registration?.pushManager.getSubscription();
-                isSubscribed = !!subscription;
-            }
-            setNotificationState(prev => ({ ...prev, masterToggle: isSubscribed }));
-        };
-
-        loadInitialSettings();
-
-        const handler = (e: any) => {
-            e.preventDefault();
-            setDeferredPrompt(e);
-        };
-        window.addEventListener('beforeinstallprompt', handler);
-
-        if (isInStandaloneMode()) setIsInstalled(true);
-
-        return () => window.removeEventListener('beforeinstallprompt', handler);
-    }, []);
-
-    // 2. CARGAR UMBRALES E INTERRUPTORES DE LA BASE (una sola vez, y solo cuando llegaron los datos:
-    //    sin conexión o con error no se guarda nada, para no pisar los valores guardados con los de defecto)
-    useEffect(() => {
-        if (prefsLoaded) return;
-        if (prefsLoadStatus === 'ready') {
-            setPrefs(savedPrefs);
-            lastSaved.current = JSON.stringify(savedPrefs);
-            setSyncError(null);
-            setPrefsLoaded(true);
-        } else if (prefsLoadStatus === 'error') {
-            setSyncError('No se pudieron cargar tus ajustes. Revisá la conexión.');
-        }
-    }, [prefsLoaded, prefsLoadStatus, savedPrefs]);
-
-    const persistPrefs = async (): Promise<boolean> => {
-        if (!userId || !prefsLoaded) {
-            setSyncError('No se pudo guardar. Revisá la conexión.');
-            return false;
-        }
-        setIsSyncing(true);
-        try {
-            await saveAlertPrefs(userId, prefs);
-            lastSaved.current = JSON.stringify(prefs);
-            setSyncError(null);
-            queryClient.invalidateQueries({ queryKey: ALERT_PREFS_KEY });
-            return true;
-        } catch {
-            setSyncError('No se pudo guardar. Revisá la conexión.');
-            return false;
-        } finally {
-            setIsSyncing(false);
-        }
-    };
-
-    // 3. GUARDAR AUTOMÁTICAMENTE 1 SEGUNDO DESPUÉS DEL ÚLTIMO CAMBIO
-    useEffect(() => {
-        if (!prefsLoaded || !userId || JSON.stringify(prefs) === lastSaved.current) return;
-        const timer = setTimeout(persistPrefs, 1000);
-        return () => clearTimeout(timer);
-    }, [prefs, prefsLoaded, userId]);
-
-    const handleInstallClick = () => {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            deferredPrompt.userChoice.then((choiceResult: any) => {
-                if (choiceResult.outcome === 'accepted') {
-                    setDeferredPrompt(null);
-                }
-            });
-        }
-    };
-
-    const handleUpdatePassword = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (newPassword !== confirmPassword) {
-            setPasswordMessage({ type: 'error', text: 'Las contraseñas no coinciden' });
-            return;
-        }
-
-        setPasswordLoading(true);
-        setPasswordMessage({ type: '', text: '' });
-
-        // ACTUALIZACIÓN: Cambiamos la contraseña y marcamos 'password_set' como true
-        const { error } = await supabase.auth.updateUser({
-            password: newPassword,
-            data: { password_set: true }
-        });
-
-        if (error) {
-            setPasswordMessage({ type: 'error', text: error.message });
-        } else {
-            setPasswordMessage({ type: 'success', text: '¡Contraseña establecida correctamente!' });
-            setNewPassword('');
-            setConfirmPassword('');
-        }
-        setPasswordLoading(false);
-    };
-
-    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
-
-    const handleSaveGeneral = async () => {
-        setSaveStatus('saving');
-        const ok = await persistPrefs();
-        setSaveStatus(ok ? 'success' : 'error');
-        setTimeout(() => setSaveStatus('idle'), 2000);
-    };
-
-    const TabButton = ({ id, label, icon }: { id: string; label: string; icon: string }) => (
-        <button
-            onClick={() => setActiveTab(id as any)}
-            className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-all ${activeTab === id
-                ? 'bg-brand-surface border border-brand-border text-white shadow-lg'
-                : 'text-stone-400 hover:text-stone-200 hover:bg-brand-surface/50'
-                }`}
-        >
-            <span className={`material-symbols-outlined ${activeTab === id ? 'text-primary' : ''}`}>{icon}</span>
-            <span className="font-medium text-sm">{label}</span>
-        </button>
-    );
-
-    const Toggle = ({ label, checked, onChange, disabled = false }: { label: string; checked: boolean; onChange: () => void; disabled?: boolean }) => (
-        <div className="flex items-center justify-between py-3 border-b border-brand-border last:border-0">
-            <span className="text-stone-300 text-sm">{label}</span>
-            <button
-                onClick={onChange}
-                disabled={disabled}
-                className={`w-12 h-6 rounded-full relative transition-colors disabled:opacity-40 ${checked ? 'bg-primary' : 'bg-stone-700'}`}
-            >
-                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${checked ? 'left-7' : 'left-1'}`}></div>
-            </button>
-        </div>
-    );
-
-    const getTabTitle = () => {
-        switch (activeTab) {
-            case 'general': return 'Información General';
-            case 'alerts': return 'Configuración de Alertas';
-            case 'notifications': return 'Preferencias de Notificación';
-            case 'security': return 'Seguridad y Acceso';
-            case 'data': return 'Gestión de Datos';
-            default: return 'Configuración';
-        }
-    };
-
+function SaveStatus({ saving, error, savedOnce, onRetry }: { saving: boolean; error: string | null; savedOnce: boolean; onRetry: () => void }) {
+  if (saving) return <p className="set-status" role="status">Guardando…</p>;
+  if (error) {
     return (
-        <div className="p-4 md:p-6 max-w-6xl mx-auto pb-24">
-            <header className="mb-8">
-                <h1 className="text-3xl font-bold text-white tracking-tight">Configuración</h1>
-                <p className="text-stone-400 text-sm mt-1">Preferencias del sistema, alertas y seguridad.</p>
-            </header>
-
-            <div className="flex flex-col lg:flex-row gap-8">
-                <div className="w-full lg:w-64 flex-shrink-0 space-y-1">
-                    <h3 className="px-4 text-xs font-bold text-stone-500 uppercase tracking-widest mb-2">Cuenta</h3>
-                    <TabButton id="general" label="General" icon="tune" />
-                    <TabButton id="security" label="Seguridad" icon="lock" />
-                    <h3 className="px-4 text-xs font-bold text-stone-500 uppercase tracking-widest mt-6 mb-2">Sistema</h3>
-                    <TabButton id="alerts" label="Umbrales de Alerta" icon="notifications_active" />
-                    <TabButton id="notifications" label="Notificaciones" icon="mail" />
-                    <TabButton id="data" label="Gestión de Datos" icon="database" />
-                </div>
-
-                <div className="flex-1 bg-brand-surface border border-brand-border rounded-xl shadow-2xl overflow-hidden flex flex-col min-h-[500px]">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-8 py-6 border-b border-brand-border bg-brand-dark/20">
-                        <h2 className="text-xl font-bold text-white">{getTabTitle()}</h2>
-                        {activeTab !== 'security' && (
-                            <button
-                                id="save-btn"
-                                onClick={handleSaveGeneral}
-                                disabled={saveStatus !== 'idle'}
-                                className={`font-bold text-sm px-6 py-2 rounded-lg shadow-lg transition-all flex items-center gap-2 ${saveStatus === 'success'
-                                    ? 'bg-emerald-500 text-white'
-                                    : saveStatus === 'error'
-                                        ? 'bg-rose-600 text-white'
-                                        : 'bg-primary hover:bg-primary-dark text-brand-dark'
-                                    }`}
-                            >
-                                <span className="material-symbols-outlined text-[18px]">
-                                    {saveStatus === 'success' ? 'check' : saveStatus === 'error' ? 'error' : saveStatus === 'saving' ? 'sync' : 'save'}
-                                </span>
-                                {saveStatus === 'success' ? 'Guardado!' : saveStatus === 'error' ? 'Error al guardar' : saveStatus === 'saving' ? 'Guardando...' : 'Guardar Cambios'}
-                            </button>
-                        )}
-                    </div>
-
-                    <div className="p-8">
-                        {activeTab === 'general' && (
-                            <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-
-                                {/* PANEL DE INSTALACIÓN INTELIGENTE */}
-                                {!isInstalled && (
-                                    <div className="mb-8 p-5 rounded-xl border border-primary/30 bg-primary/5 shadow-inner">
-                                        <h3 className="text-primary font-bold text-lg mb-3 flex items-center gap-2">
-                                            <span className="material-symbols-outlined">install_mobile</span> Instalar en este dispositivo
-                                        </h3>
-
-                                        {deferredPrompt && (
-                                            <button onClick={handleInstallClick} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg shadow-lg flex items-center justify-center gap-2 animate-pulse transition-all">
-                                                <span className="material-symbols-outlined">download</span> Instalar App Ahora
-                                            </button>
-                                        )}
-
-                                        {isIos() && (
-                                            <div className="text-sm text-stone-300 bg-brand-dark/50 p-4 rounded-lg border border-brand-border">
-                                                <p className="mb-3 font-bold text-white flex items-center gap-2">
-                                                    <span className="material-symbols-outlined text-sm text-primary">apple</span> Instrucciones para iPhone:
-                                                </p>
-                                                <ol className="space-y-3">
-                                                    <li className="flex items-start gap-2">
-                                                        <span className="bg-stone-800 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0 mt-0.5">1</span>
-                                                        <span>Toca el botón <strong>Compartir</strong> <span className="material-symbols-outlined text-sm align-middle bg-stone-700 p-1 rounded ml-1">ios_share</span> en Safari.</span>
-                                                    </li>
-                                                    <li className="flex items-start gap-2">
-                                                        <span className="bg-stone-800 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0 mt-0.5">2</span>
-                                                        <span>Busca y elige <strong>"Agregar a Inicio"</strong> <span className="material-symbols-outlined text-sm align-middle bg-stone-700 p-1 rounded ml-1">add_box</span>.</span>
-                                                    </li>
-                                                </ol>
-                                            </div>
-                                        )}
-
-                                        {!deferredPrompt && !isIos() && (
-                                            <div className="text-xs text-stone-500 mt-2 italic">
-                                                Si no ves el botón, usa la opción "Instalar aplicación" desde el menú de tu navegador.
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                <div className="flex items-center gap-6 mb-8">
-                                    <div className="w-24 h-24 rounded-full bg-stone-800 border-2 border-brand-border flex items-center justify-center text-stone-600">
-                                        <span className="material-symbols-outlined text-4xl">local_shipping</span>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-white font-bold text-lg">El Progreso S.A.</h3>
-                                        <p className="text-stone-400 text-sm italic">Sistema de Gestión de Flota</p>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Empresa</label>
-                                        <input type="text" defaultValue="Transporte El Progreso" className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none" />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Email Administrador</label>
-                                        <input type="email" defaultValue="admin@elprogreso.com" className="w-full bg-brand-dark border-brand-border rounded-lg h-10 px-3 text-white focus:ring-1 focus:ring-primary outline-none" />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* --- TAB: SECURITY (ACTUALIZADA) --- */}
-                        {activeTab === 'security' && (
-                            <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                                <div className="max-w-md">
-                                    <form onSubmit={handleUpdatePassword} className="space-y-6">
-                                        <div>
-                                            <h3 className="text-white font-bold mb-2 text-lg">Definir Contraseña</h3>
-                                            <p className="text-stone-400 text-sm mb-6 leading-relaxed">
-                                                Has accedido mediante una invitación segura. Por favor, establece una contraseña para tus próximos ingresos.
-                                            </p>
-
-                                            {passwordMessage.text && (
-                                                <div className={`mb-6 p-4 rounded-xl text-sm font-bold border ${passwordMessage.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                                                    } flex items-center gap-3`}>
-                                                    <span className="material-symbols-outlined">
-                                                        {passwordMessage.type === 'error' ? 'report' : 'check_circle'}
-                                                    </span>
-                                                    {passwordMessage.text}
-                                                </div>
-                                            )}
-
-                                            <div className="space-y-4">
-                                                <div>
-                                                    <label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Nueva Contraseña</label>
-                                                    <input
-                                                        type="password"
-                                                        placeholder="Mínimo 6 caracteres"
-                                                        required
-                                                        value={newPassword}
-                                                        onChange={(e) => setNewPassword(e.target.value)}
-                                                        className="w-full bg-brand-dark border-brand-border rounded-xl h-12 px-4 text-white focus:ring-2 focus:ring-primary outline-none transition-all"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs font-bold text-stone-500 uppercase mb-1 block">Confirmar Contraseña</label>
-                                                    <input
-                                                        type="password"
-                                                        placeholder="Repite la contraseña"
-                                                        required
-                                                        value={confirmPassword}
-                                                        onChange={(e) => setConfirmPassword(e.target.value)}
-                                                        className="w-full bg-brand-dark border-brand-border rounded-xl h-12 px-4 text-white focus:ring-2 focus:ring-primary outline-none transition-all"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <button
-                                            type="submit"
-                                            disabled={passwordLoading}
-                                            className="w-full bg-primary hover:bg-primary-dark text-brand-dark font-bold h-12 rounded-xl transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            {passwordLoading ? (
-                                                <span className="w-5 h-5 border-2 border-brand-dark border-t-transparent rounded-full animate-spin"></span>
-                                            ) : (
-                                                <>
-                                                    <span>Guardar Contraseña</span>
-                                                    <span className="material-symbols-outlined">lock_reset</span>
-                                                </>
-                                            )}
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* --- TAB: ALERTS --- */}
-                        {activeTab === 'alerts' && (
-                            <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                                <div className="flex justify-between items-center mb-6">
-                                    <p className="text-stone-400 text-sm">Configura con cuánta antelación quieres recibir avisos de vencimientos.</p>
-                                    {isSyncing && (
-                                        <div className="flex items-center gap-2 text-xs text-primary animate-pulse">
-                                            <span className="material-symbols-outlined text-sm">sync</span> Sincronizando...
-                                        </div>
-                                    )}
-                                    {!isSyncing && syncError && <p className="text-rose-500 text-xs">{syncError}</p>}
-                                </div>
-                                <div className="space-y-8 max-w-xl">
-                                    <div>
-                                        <div className="flex justify-between mb-2">
-                                            <label className="text-white font-bold text-sm flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-blue-500">security</span> Seguros
-                                            </label>
-                                            <span className="text-primary font-mono font-bold">{prefs.thresholds.Seguro} días</span>
-                                        </div>
-                                        <input type="range" min="1" max="60" disabled={!prefsLoaded} value={prefs.thresholds.Seguro} onChange={(e) => setPrefs({ ...prefs, thresholds: { ...prefs.thresholds, Seguro: parseInt(e.target.value) } })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary disabled:opacity-40 disabled:cursor-not-allowed" />
-                                    </div>
-                                    <div>
-                                        <div className="flex justify-between mb-2">
-                                            <label className="text-white font-bold text-sm flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-amber-500">verified</span> VTV
-                                            </label>
-                                            <span className="text-primary font-mono font-bold">{prefs.thresholds.VTV} días</span>
-                                        </div>
-                                        <input type="range" min="1" max="90" disabled={!prefsLoaded} value={prefs.thresholds.VTV} onChange={(e) => setPrefs({ ...prefs, thresholds: { ...prefs.thresholds, VTV: parseInt(e.target.value) } })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary disabled:opacity-40 disabled:cursor-not-allowed" />
-                                    </div>
-                                    <div>
-                                        <div className="flex justify-between mb-2">
-                                            <label className="text-white font-bold text-sm flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-white">badge</span> Patente / Impuestos
-                                            </label>
-                                            <span className="text-primary font-mono font-bold">{prefs.thresholds.Patente} días</span>
-                                        </div>
-                                        <input type="range" min="1" max="60" disabled={!prefsLoaded} value={prefs.thresholds.Patente} onChange={(e) => setPrefs({ ...prefs, thresholds: { ...prefs.thresholds, Patente: parseInt(e.target.value) } })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary disabled:opacity-40 disabled:cursor-not-allowed" />
-                                    </div>
-                                    <div>
-                                        <div className="flex justify-between mb-2">
-                                            <label className="text-white font-bold text-sm flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-purple-500">event</span> Turnos Programados
-                                            </label>
-                                            <span className="text-primary font-mono font-bold">{prefs.thresholds.appointments} días</span>
-                                        </div>
-                                        <input type="range" min="1" max="30" disabled={!prefsLoaded} value={prefs.thresholds.appointments} onChange={(e) => setPrefs({ ...prefs, thresholds: { ...prefs.thresholds, appointments: parseInt(e.target.value) } })} className="w-full h-2 bg-brand-dark rounded-lg appearance-none cursor-pointer accent-primary disabled:opacity-40 disabled:cursor-not-allowed" />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* --- TAB: NOTIFICATIONS --- */}
-                        {activeTab === 'notifications' && (
-                            <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                                <div className="space-y-6 max-w-xl">
-                                    <div className="bg-brand-dark/30 p-4 rounded-xl border border-brand-border">
-                                        <Toggle
-                                            label="Activar Notificaciones Push"
-                                            checked={notificationState.masterToggle}
-                                            onChange={handlePushToggle}
-                                        />
-                                        <p className="text-xs text-stone-500 mt-2 px-1">Al desactivar esta opción, no recibirás ninguna notificación en tu dispositivo.</p>
-
-                                        {notificationState.masterToggle && (
-                                            <div className="mt-4 flex justify-end">
-                                                <button
-                                                    onClick={sendTestNotification}
-                                                    className="bg-brand-dark hover:bg-stone-800 text-stone-300 hover:text-primary text-xs font-bold py-2 px-4 rounded-lg border border-stone-700 transition-all flex items-center gap-2"
-                                                >
-                                                    <span className="material-symbols-outlined text-[18px]">notifications_active</span>
-                                                    Probar Notificación
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {notificationState.masterToggle && (
-                                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-                                            {syncError && <p className="text-rose-500 text-xs px-1">{syncError}</p>}
-                                            <h4 className="text-xs font-bold text-stone-500 uppercase tracking-widest mb-3 px-1">Tipos de Alerta</h4>
-                                            <Toggle label="Vencimiento de Seguros" disabled={!prefsLoaded} checked={prefs.enabled.Seguro} onChange={() => setPrefs({ ...prefs, enabled: { ...prefs.enabled, Seguro: !prefs.enabled.Seguro } })} />
-                                            <Toggle label="Vencimiento de VTV" disabled={!prefsLoaded} checked={prefs.enabled.VTV} onChange={() => setPrefs({ ...prefs, enabled: { ...prefs.enabled, VTV: !prefs.enabled.VTV } })} />
-                                            <Toggle label="Vencimiento de Patentes" disabled={!prefsLoaded} checked={prefs.enabled.Patente} onChange={() => setPrefs({ ...prefs, enabled: { ...prefs.enabled, Patente: !prefs.enabled.Patente } })} />
-                                            <Toggle label="Recordatorio de Turnos" disabled={!prefsLoaded} checked={prefs.enabled.appointments} onChange={() => setPrefs({ ...prefs, enabled: { ...prefs.enabled, appointments: !prefs.enabled.appointments } })} />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* --- TAB: DATA --- */}
-                        {activeTab === 'data' && (
-                            <div className="animate-in fade-in slide-in-from-right-4 duration-300 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="p-4 bg-brand-dark border border-brand-border rounded-xl flex flex-col justify-between h-40">
-                                    <span className="material-symbols-outlined text-emerald-500 text-3xl">table_view</span>
-                                    <div>
-                                        <p className="text-white font-bold">Exportar Excel</p>
-                                        <p className="text-stone-500 text-xs mt-1">Listado completo de flota.</p>
-                                    </div>
-                                    <button className="text-emerald-500 text-xs font-bold text-left hover:underline uppercase">Descargar</button>
-                                </div>
-                                <div className="p-4 bg-brand-dark border border-brand-border rounded-xl flex flex-col justify-between h-40">
-                                    <span className="material-symbols-outlined text-blue-500 text-3xl">picture_as_pdf</span>
-                                    <div>
-                                        <p className="text-white font-bold">Reporte Mensual</p>
-                                        <p className="text-stone-500 text-xs mt-1">Resumen ejecutivo de gastos.</p>
-                                    </div>
-                                    <button className="text-blue-500 text-xs font-bold text-left hover:underline uppercase">Generar</button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-        </div>
+      <p className="set-status error" role="alert">
+        <Icon name="error" />{error}
+        <button type="button" className="link" onClick={onRetry}>Reintentar</button>
+      </p>
     );
-};
+  }
+  return <p className="set-status" role="status">{savedOnce ? <><Icon name="check_circle" />Cambios guardados</> : 'Los cambios se guardan solos.'}</p>;
+}
 
-export default Settings;
+function DeviceSwitch({ userId }: { userId: string | null }) {
+  const toast = useToast();
+  const support = pushSupport();
+  const note = pushSupportNote(support);
+  const [subscribed, setSubscribed] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    isDeviceSubscribed().then(s => { if (alive) setSubscribed(s); }, () => { if (alive) setSubscribed(false); });
+    return () => { alive = false; };
+  }, []);
+
+  const toggle = async (next: boolean) => {
+    if (!userId) return;
+    setBusy(true);
+    try {
+      if (next) {
+        await subscribeDevice(userId);
+        toast('Listo: este celular recibe los avisos');
+      } else {
+        await unsubscribeDevice();
+        toast('Este celular ya no recibe avisos', 'info');
+      }
+      setSubscribed(next);
+    } catch (e) {
+      console.error('Push toggle error', e);
+      // lib/push explains its own failures; the browser's come in English
+      const ours = e instanceof Error && !(e instanceof DOMException);
+      toast(ours ? e.message : next ? 'No se pudo activar en este celular. Probá de nuevo.' : 'No se pudo desactivar. Probá de nuevo.', 'error');
+      setSubscribed(await isDeviceSubscribed().catch(() => false));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const test = () => showTestNotification().catch(e => {
+    console.error('Test notification error', e);
+    toast('No se pudo mostrar la prueba.', 'error');
+  });
+
+  return <>
+    <div className="set-row">
+      <span className="set-label">Recibir avisos en este celular</span>
+      <Switch
+        checked={subscribed === true}
+        disabled={support !== 'ok' || subscribed === null || busy || !userId}
+        label="Recibir avisos en este celular"
+        onChange={next => void toggle(next)}
+      />
+    </div>
+    {note && <p className="note warn"><Icon name="info" />{note}</p>}
+    <div className="set-row">
+      <span className="set-label">Ver cómo llega un aviso</span>
+      <button type="button" className="btn btn-ghost btn-sm" disabled={subscribed !== true} onClick={() => void test()}><Icon name="send" />Probar</button>
+    </div>
+  </>;
+}
+
+function PasswordForm({ onDone }: { onDone: () => void }) {
+  const toast = useToast();
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    const problem = passwordProblem(password, confirm);
+    if (problem) { toast(problem, 'error'); return; }
+    setSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password, data: { password_set: true } });
+      if (error) {
+        console.error('Password update error', error);
+        toast(passwordUpdateMessage(error), 'error');
+        return;
+      }
+      toast('Contraseña guardada');
+      onDone();
+    } catch (err) {
+      console.error('Password update error', err);
+      toast(passwordUpdateMessage({}), 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form className="set-form" onSubmit={submit}>
+      <label className="field"><span>Contraseña nueva</span><input className="input" type="password" autoComplete="new-password" placeholder="Al menos 6 caracteres" value={password} onChange={e => setPassword(e.target.value)} /></label>
+      <label className="field"><span>Repetila</span><input className="input" type="password" autoComplete="new-password" value={confirm} onChange={e => setConfirm(e.target.value)} /></label>
+      <div className="set-actions">
+        <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>{saving ? 'Guardando…' : 'Guardar contraseña'}</button>
+      </div>
+    </form>
+  );
+}
+
+function InstallCard() {
+  const { canInstall, install, installed, ios } = useInstallPrompt();
+  return (
+    <Section icon="install_mobile" title="La app en tu celular">
+      {installed ? (
+        <p className="set-help"><Icon name="check_circle" className="ok" /> Ya está instalada en este dispositivo.</p>
+      ) : <>
+        <p className="set-help">Instalala para abrirla como una app y recibir los avisos aunque no la tengas abierta.</p>
+        {canInstall && <div className="set-actions"><button type="button" className="btn btn-primary btn-sm" onClick={() => void install()}><Icon name="download" />Instalar</button></div>}
+        {!canInstall && ios && (
+          <ol className="ios-steps">
+            <li>En Safari, tocá <b>Compartir</b> <Icon name="ios_share" />.</li>
+            <li>Elegí <b>Agregar a inicio</b> <Icon name="add_box" />.</li>
+          </ol>
+        )}
+        {!canInstall && !ios && <p className="set-help">Si no aparece el botón, usá "Instalar aplicación" en el menú del navegador.</p>}
+      </>}
+    </Section>
+  );
+}
+
+export default function Settings() {
+  const { prefs, setPrefs, prefsLoaded, userId, syncError, saving, savedOnce, retry } = useEditablePrefs();
+  const [email, setEmail] = useState<string | null>(null);
+  const [needsPassword, setNeedsPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!alive) return;
+      setEmail(session?.user.email ?? null);
+      // Accounts that came in with an invitation link still have no password of their own
+      const missing = Boolean(session && !session.user.user_metadata?.password_set);
+      setNeedsPassword(missing);
+      if (missing) setShowPassword(true);
+    });
+    return () => { alive = false; };
+  }, []);
+
+  const setThreshold = (key: PrefKey, value: number) => setPrefs(p => ({ ...p, thresholds: { ...p.thresholds, [key]: value } }));
+  const setEnabled = (key: PrefKey, on: boolean) => setPrefs(p => ({ ...p, enabled: { ...p.enabled, [key]: on } }));
+
+  const alerts = (
+    <Section key="alerts" icon="notifications_active" title="Avisos de vencimiento">
+      <p className="set-help">Desde cuántos días antes te avisamos. Desde ese día te llega un aviso diario hasta que el documento se renueve. Si cargás un turno, solo te recordamos el turno.</p>
+      {STEPS.map(s => {
+        const value = prefs.thresholds[s.key];
+        return (
+          <div key={s.key} className="set-row">
+            <span className="set-label"><Icon name={s.icon} />{s.label}</span>
+            <Stepper value={value} min={1} max={s.max} disabled={!prefsLoaded} label={`Días de aviso: ${s.label}`} onChange={n => setThreshold(s.key, n)} />
+            <span className="set-unit">{value === 1 ? 'día antes' : 'días antes'}</span>
+          </div>
+        );
+      })}
+      <SaveStatus saving={saving} error={syncError} savedOnce={savedOnce} onRetry={retry} />
+    </Section>
+  );
+
+  const device = (
+    <Section key="device" icon="smartphone" title="Notificaciones en este celular">
+      <DeviceSwitch userId={userId} />
+      <p className="set-sub">Qué avisos querés recibir</p>
+      {KINDS.map(k => (
+        <div key={k.key} className="set-row">
+          <span className="set-label">{k.label}</span>
+          <Switch checked={prefs.enabled[k.key]} disabled={!prefsLoaded} label={k.label} onChange={on => setEnabled(k.key, on)} />
+        </div>
+      ))}
+    </Section>
+  );
+
+  const account = (
+    <Section key="account" icon="person" title="Cuenta">
+      <div className="set-account">
+        <span className="avatar">{initials(email) || <Icon name="person" />}</span>
+        <div><b>{email ?? '—'}</b><div className="set-account-sub">Sesión iniciada</div></div>
+      </div>
+      {needsPassword && <p className="note warn"><Icon name="key" />Entraste con una invitación: elegí una contraseña para los próximos ingresos.</p>}
+      {showPassword && <PasswordForm onDone={() => { setShowPassword(false); setNeedsPassword(false); }} />}
+      <div className="set-actions">
+        {!showPassword && <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowPassword(true)}><Icon name="key" />Cambiar contraseña</button>}
+        <button type="button" className="btn btn-danger btn-sm" onClick={() => void logout()}><Icon name="logout" />Cerrar sesión</button>
+      </div>
+    </Section>
+  );
+
+  // Coming from the "Configurá tu contraseña" notice, the account goes first
+  const sections = needsPassword ? [account, alerts, device] : [alerts, device, account];
+
+  return (
+    <div className="screen">
+      <PageHead eyebrow="Tu cuenta y tus avisos" title="Ajustes" />
+      <div className="settings-grid">
+        {sections}
+        <InstallCard />
+      </div>
+    </div>
+  );
+}
