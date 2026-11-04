@@ -57,7 +57,7 @@ describe('vehicleFromForm', () => {
 describe('editar un vehículo', () => {
   it('arma el formulario con los datos guardados', () => {
     expect(formFromVehicle(vrow('a', { year: null, odometer: 95100, assigned_driver: null }))).toEqual({
-      tipo: 'car', patente: 'AA789XX', model: 'TOYOTA HILUX', year: '', odometer: '95100', section: 'Cereales', manager: 'RAFA', driver: '',
+      tipo: 'car', patente: 'AA 789 XX', model: 'TOYOTA HILUX', year: '', odometer: '95.100', section: 'Cereales', manager: 'RAFA', driver: '',
       status: 'Activo', insurance_expiration: '', vtv_expiration: '', patente_expiration: '',
     });
   });

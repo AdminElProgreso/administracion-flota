@@ -72,6 +72,10 @@
 .danger h3{margin:0;font-size:16px}
 .danger p{margin:4px 0 0;font-size:13.5px;color:var(--tinta-3);max-width:420px}
 .danger-actions{display:flex;gap:8px;flex-wrap:wrap}
+.danger-confirm{flex:1 1 100%}
+.danger-confirm .field{margin-top:0}
+.danger-confirm .danger-actions{margin-top:10px}
+.doc-note{margin:0 0 12px}
 
 /* Agenda */
 .agenda-grid{margin:16px 16px 0}

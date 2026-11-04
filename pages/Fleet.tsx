@@ -18,7 +18,7 @@ const FILTERS: { value: VehicleFilter; label: string }[] = [
   { value: 'baja', label: 'De baja' },
 ];
 
-function VehicleCard({ v, prefs, today }: { v: VehicleRow; prefs: AlertPrefs; today: string }) {
+function VehicleCard({ v, prefs, today, back }: { v: VehicleRow; prefs: AlertPrefs; today: string; back: string }) {
   const info = TYPE_INFO[v.tipo] ?? TYPE_INFO.car;
   const meta = [v.year, v.section].filter(Boolean);
   let docs;
@@ -39,7 +39,7 @@ function VehicleCard({ v, prefs, today }: { v: VehicleRow; prefs: AlertPrefs; to
     );
   }
   return (
-    <Link className="vcard card" to={`/fleet/${v.id}`}>
+    <Link className="vcard card" to={`/fleet/${v.id}`} state={{ back }}>
       <div className="vc-top">
         <span className="vtype"><Icon name={info.icon} /></span>
         <div className="vc-id">
@@ -110,7 +110,8 @@ export default function Fleet() {
   } else if (!found.length) {
     body = <EmptyState icon="search_off" title="Sin resultados" text="Probá con otra patente, modelo o chofer." />;
   } else {
-    body = found.map(v => <VehicleCard key={v.id} v={v} prefs={alertPrefs.prefs} today={today} />);
+    const back = params.toString() ? `/fleet?${params}` : '/fleet';
+    body = found.map(v => <VehicleCard key={v.id} v={v} prefs={alertPrefs.prefs} today={today} back={back} />);
   }
 
   return (

@@ -18,6 +18,11 @@ describe('hoja de documentos', () => {
     expect(renewedMessage('VTV', '2027-11-04')).toBe('VTV renovada hasta el 04/11/2027');
     expect(renewedMessage('Patente', '2027-11-04')).toBe('Patente renovada hasta el 04/11/2027');
   });
+  it('primera fecha de un documento que no tenía', () => {
+    expect(renewedMessage('Seguro', '2027-11-04', false)).toBe('Vencimiento del seguro cargado: 04/11/2027');
+    expect(renewedMessage('VTV', '2027-11-04', false)).toBe('Vencimiento de la VTV cargado: 04/11/2027');
+    expect(renewedMessage('Patente', '2027-11-04', false)).toBe('Vencimiento de la patente cargado: 04/11/2027');
+  });
   it('pide una fecha y no acepta un turno en el pasado', () => {
     expect(dateError('renew', '', '2026-11-04')).toBe('Elegí una fecha');
     expect(dateError('appointment', '', '2026-11-04')).toBe('Elegí una fecha');

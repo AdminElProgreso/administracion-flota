@@ -14,7 +14,12 @@ export function appointmentProposal(appointment: string | null, today: string): 
   return appointment && appointment >= today ? appointment : today;
 }
 
-export function renewedMessage(type: DocType, date: string): string {
+// "del seguro", "de la VTV": for titles like "Vencimiento de la VTV"
+export const DOC_OF: Record<DocType, string> = { Seguro: 'del seguro', VTV: 'de la VTV', Patente: 'de la patente' };
+
+// A document without a previous date gets its first expiration, not a renewal
+export function renewedMessage(type: DocType, date: string, hadDate = true): string {
+  if (!hadDate) return `Vencimiento ${DOC_OF[type]} cargado: ${formatDateLong(date)}`;
   return `${type} ${type === 'Seguro' ? 'renovado' : 'renovada'} hasta el ${formatDateLong(date)}`;
 }
 

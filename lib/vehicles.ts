@@ -1,4 +1,4 @@
-import { plateText } from './format';
+import { num, plateText } from './format';
 import type { VehicleRow, VehicleStatus, VehicleType } from '../types';
 
 export const TYPE_INFO: Record<VehicleType, { label: string; icon: string; unit: 'km' | 'h' }> = {
@@ -111,10 +111,10 @@ export function formFromVehicle(v: VehicleRow): VehicleForm {
   return {
     ...emptyVehicleForm(),
     tipo: v.tipo,
-    patente: v.patente ?? '',
+    patente: plateText(v.patente) ?? '',
     model: v.model,
     year: v.year === null ? '' : String(v.year),
-    odometer: v.odometer === null ? '' : String(v.odometer),
+    odometer: v.odometer === null ? '' : num(v.odometer),
     section: v.section ?? '',
     manager: v.manager ?? '',
     driver: v.assigned_driver ?? '',

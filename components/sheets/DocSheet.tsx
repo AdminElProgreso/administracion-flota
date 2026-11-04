@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { DOC_COLUMNS, DOC_TYPES, attentionList, docStatus, type DocType } from '../../supabase/functions/_shared/alerts';
 import { formatDateLong, todayISO } from '../../supabase/functions/_shared/dates';
 import { useUpdateVehicle, useVehicles } from '../../lib/data';
-import { appointmentNote, appointmentProposal, dateError, renewProposal, renewedMessage } from '../../lib/docForm';
+import { DOC_OF, appointmentNote, appointmentProposal, dateError, renewProposal, renewedMessage } from '../../lib/docForm';
 import { plateText } from '../../lib/format';
 import { appointmentPatch, renewPatch } from '../../lib/patches';
 import { useAlertPrefs } from '../../lib/useAlertPrefs';
@@ -61,6 +61,9 @@ export function DocSheet({ kind, vehicleId, docType, onClose }: { kind: Kind; ve
   const doc = docStatus(type, vehicle[columns.expiration], vehicle[columns.appointment], prefs.thresholds[type], today);
   const value = date ?? (renew ? renewProposal(doc.expiration, today) : appointmentProposal(doc.appointment, today));
   const busy = update.isPending;
+  // "Cargar fecha" in the ficha: a document without a date gets its first expiration, not a renewal
+  const firstTime = renew && !doc.expiration;
+  const sheetTitle = fixed && firstTime ? `Vencimiento ${DOC_OF[type]}` : title;
 
   const save = (patch: Record<string, string | null>, message: string) =>
     update.mutate({ id: vehicle.id, patch }, {
@@ -71,7 +74,7 @@ export function DocSheet({ kind, vehicleId, docType, onClose }: { kind: Kind; ve
   const submit = () => {
     const problem = dateError(kind, value, today);
     if (problem) { toast(problem, 'error'); return; }
-    if (renew) save(renewPatch(type, value), renewedMessage(type, value));
+    if (renew) save(renewPatch(type, value), renewedMessage(type, value, !firstTime));
     else save(appointmentPatch(type, value), `Turno cargado para el ${formatDateLong(value)}`);
   };
 
@@ -85,7 +88,7 @@ export function DocSheet({ kind, vehicleId, docType, onClose }: { kind: Kind; ve
     <Sheet
       open
       onClose={onClose}
-      title={title}
+      title={sheetTitle}
       subtitle={fixed && <>{vehicle.model} <Plate value={vehicle.patente} /> · {type}</>}
       footer={<>
         <button type="button" className="btn btn-ghost" onClick={onClose}>Cancelar</button>
@@ -110,7 +113,7 @@ export function DocSheet({ kind, vehicleId, docType, onClose }: { kind: Kind; ve
       </>}
 
       <label className="field">
-        <span>{renew ? 'Nueva fecha de vencimiento' : 'Fecha del turno'}</span>
+        <span>{renew ? (firstTime ? 'Fecha de vencimiento' : 'Nueva fecha de vencimiento') : 'Fecha del turno'}</span>
         <input className="input" type="date" value={value} min={renew ? undefined : today} onChange={e => setDate(e.target.value)} />
       </label>
 
