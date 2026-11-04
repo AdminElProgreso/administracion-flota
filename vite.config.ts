@@ -1,10 +1,12 @@
 import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, '.', '');
+// Same URL as LOGO_URL in components/ui.tsx: the cooperative's logo, until the official file is in /public
+const LOGO_URL = 'https://elprogresocoop.com.ar/public/img/logo_nav.png';
+
+export default defineConfig(() => {
   return {
     server: {
       port: 3000,
@@ -19,8 +21,8 @@ export default defineConfig(({ mode }) => {
           name: 'El Progreso - Gestión de Flota',
           short_name: 'El Progreso',
           description: 'Sistema de gestión de flota y mantenimiento',
-          theme_color: '#0c0a09',
-          background_color: '#0c0a09',
+          theme_color: '#0F7A37',
+          background_color: '#F6F5F1',
           display: 'standalone',
           orientation: 'portrait',
           scope: '/',
@@ -48,14 +50,32 @@ export default defineConfig(({ mode }) => {
           importScripts: ['/sw-push.js'],
           cleanupOutdatedCaches: true,
           clientsClaim: true,
-          skipWaiting: true
+          skipWaiting: true,
+          // Fonts and logo come from other origins: cache them so the installed app starts styled offline
+          runtimeCaching: [
+            {
+              urlPattern: ({ url }) => url.origin === 'https://fonts.googleapis.com',
+              handler: 'StaleWhileRevalidate',
+              options: { cacheName: 'google-fonts-css' }
+            },
+            {
+              urlPattern: ({ url }) => url.origin === 'https://fonts.gstatic.com',
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'google-fonts-files',
+                expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                cacheableResponse: { statuses: [0, 200] }
+              }
+            },
+            {
+              urlPattern: ({ url }) => url.href === LOGO_URL,
+              handler: 'StaleWhileRevalidate',
+              options: { cacheName: 'logo', cacheableResponse: { statuses: [0, 200] } }
+            }
+          ]
         }
       })
     ],
-    define: {
-      'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

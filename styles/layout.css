@@ -1,0 +1,48 @@
+/* Estructura de la app: barra superior y tabbar en el celular, barra lateral desde 900 px */
+.app{min-height:100dvh;display:grid;grid-template-columns:1fr}
+.sidebar{display:none}
+.main{min-width:0}
+.screen{padding-bottom:calc(120px + env(safe-area-inset-bottom));animation:fade .28s ease}
+
+.topbar{position:sticky;top:0;z-index:15;display:flex;align-items:center;gap:4px;height:58px;padding:0 8px 0 16px;background:rgba(255,255,255,.93);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--linea-2)}
+.topbar .spacer{flex:1}
+
+.tabbar{position:fixed;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));height:68px;background:rgba(255,255,255,.95);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--linea);border-radius:24px;box-shadow:var(--sh-2);display:grid;grid-template-columns:repeat(5,1fr);align-items:center;z-index:20}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-weight:600;font-size:12px;color:var(--tinta-4);background:none;border:0;padding:8px 0}
+.tab .ms{font-size:25px}
+.tab.is-active{color:var(--verde-700)}
+.tab.is-active .ms{font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24}
+.fab{justify-self:center;width:58px;height:58px;border-radius:20px;background:var(--naranja-600);color:#fff;border:0;display:grid;place-items:center;box-shadow:0 10px 22px rgba(232,81,34,.38);transform:translateY(-16px);transition:transform .15s}
+.fab:active{transform:translateY(-14px) scale(.96)}
+.fab .ms{font-size:30px}
+
+.sidebar{position:sticky;top:0;height:100dvh;flex-direction:column;background:#fff;border-right:1px solid var(--linea);padding:22px 14px 16px;gap:4px;overflow-y:auto}
+.sb-brand{padding:4px 10px 16px;border-bottom:1px solid var(--linea-2);margin-bottom:10px}
+.sb-brand .logo{height:50px}
+.sb-brand span{display:block;margin-top:10px;font:600 12px 'Barlow Condensed';letter-spacing:.14em;text-transform:uppercase;color:var(--tinta-3)}
+.nav-item{display:flex;align-items:center;gap:12px;height:46px;padding:0 12px;border-radius:12px;border:0;background:none;color:var(--tinta-2);font-weight:600;font-size:15.5px;text-align:left;width:100%}
+.nav-item:hover{background:var(--linea-2)}
+.nav-item.is-active{background:var(--verde-100);color:var(--verde-800)}
+.nav-item.is-active .ms{font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24}
+.nav-item .count{margin-left:auto;background:var(--bad-dot);color:#fff;border-radius:999px;font-size:12px;font-weight:700;padding:1px 8px}
+.sb-new{margin:14px 2px 10px;height:48px;border-radius:14px;border:0;background:var(--naranja-600);color:#fff;font-weight:700;font-size:15.5px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 8px 18px rgba(232,81,34,.25)}
+.sb-bottom{margin-top:auto;border-top:1px solid var(--linea-2);padding-top:10px;display:flex;flex-direction:column;gap:4px}
+.sb-coop{margin:12px 10px 0;font-size:12px;line-height:1.35;color:var(--tinta-4)}
+
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:22px 16px 0}
+.page-title{margin:4px 0 0;font-size:44px}
+.tools{margin:16px 16px 0;display:flex;flex-direction:column;gap:12px}
+.sec{margin:26px 16px 0}
+.sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 4px 10px}
+.sec-head h2{margin:0;font:700 13.5px 'Barlow Condensed';letter-spacing:.1em;text-transform:uppercase;color:var(--tinta-3)}
+.sec-note{font-weight:600;font-size:13.5px;color:var(--tinta-3)}
+
+@media (min-width:900px){
+  .app{grid-template-columns:260px 1fr}
+  .sidebar{display:flex}
+  .topbar,.tabbar{display:none}
+  .screen{padding:30px 40px 48px;max-width:1240px}
+  .sec,.page-head,.tools{margin-left:0;margin-right:0}
+  .tools{flex-direction:row;align-items:center}
+  .tools .search{flex:1;max-width:460px}
+}
