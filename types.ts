@@ -1,32 +1,16 @@
-export interface Vehicle {
-  id: string;
-  type: 'car' | 'truck' | 'generator' | 'tractor';
-  patente?: string;
-  model: string;
-  year: number;
-  section: string;
-  status: 'Activo' | 'En Taller' | 'Baja';
-  odometer: number;
-  manager: string;
-  assignedDriver?: string;
+export type VehicleType = 'car' | 'truck' | 'generator' | 'tractor';
+export type VehicleStatus = 'Activo' | 'En Taller' | 'Baja';
 
-  insuranceExpiration?: string;
-  vtvExpiration?: string;
-  patenteExpiration?: string;
-
-  alerts: string[];
-}
-
-// Raw Database Row Interface
+// Row of the "vehiculos" table
 export interface VehicleRow {
   id: string;
-  tipo: 'car' | 'truck' | 'generator' | 'tractor';
+  tipo: VehicleType;
   patente: string | null;
   model: string;
-  year: number;
-  section: string;
-  status: string;
-  odometer: number;
+  year: number | null;
+  section: string | null;
+  status: VehicleStatus;
+  odometer: number | null;
   manager: string | null;
   assigned_driver: string | null;
 
@@ -37,25 +21,19 @@ export interface VehicleRow {
   insurance_appointment: string | null;
   patente_expiration: string | null;
   patente_appointment: string | null;
+  created_at?: string;
 }
 
-export interface MaintenanceLog {
+export type WorkType = 'Mantenimiento' | 'Reparación';
+
+// Row of the "mantenimientos" table
+export interface WorkRow {
   id: string;
   date: string;
-  vehicleId: string;
-  vehicleName: string;
-  type: 'Mantenimiento' | 'Reparación';
-  description: string;
-  provider: string;
-  cost: number;
-  status: 'Completado' | 'Pendiente';
-}
-
-export interface TeamMember {
-  id: string;
-  name: string;
-  role: string;
-  department: string;
-  avatar: string;
-  status: 'active' | 'inactive';
+  vehicle_id: string;
+  type: WorkType;
+  description: string | null;
+  provider: string | null;
+  cost: number | null;
+  status: string | null;
 }

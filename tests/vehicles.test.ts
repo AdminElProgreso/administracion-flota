@@ -1,0 +1,53 @@
+import { describe, it, expect } from 'vitest';
+import { filterVehicles, countByFilter, sectionOptions, vehicleFromForm, type VehicleForm } from '../lib/vehicles';
+import { vrow } from './fixtures';
+
+const list = [
+  vrow('a', { status: 'Baja', model: 'FIAT 147', assigned_driver: null }),
+  vrow('b', { model: 'RANGER', patente: 'AA236JS', section: 'Agronomía', assigned_driver: 'NICO' }),
+  vrow('c', { status: 'En Taller', model: 'FORD F-4000', assigned_driver: 'JOSÉ' }),
+];
+const ids = (l: { id: string }[]) => l.map(v => v.id);
+
+describe('filterVehicles', () => {
+  it('por estado, con las bajas al final en Todos', () => {
+    expect(ids(filterVehicles(list, 'todos', ''))).toEqual(['b', 'c', 'a']);
+    expect(ids(filterVehicles(list, 'activos', ''))).toEqual(['b']);
+    expect(ids(filterVehicles(list, 'taller', ''))).toEqual(['c']);
+    expect(ids(filterVehicles(list, 'baja', ''))).toEqual(['a']);
+  });
+  it('búsqueda sin mayúsculas, espacios ni acentos', () => {
+    expect(ids(filterVehicles(list, 'todos', 'aa 236'))).toEqual(['b']);
+    expect(ids(filterVehicles(list, 'todos', 'agronomia'))).toEqual(['b']);
+    expect(ids(filterVehicles(list, 'todos', 'nico'))).toEqual(['b']);
+    expect(ids(filterVehicles(list, 'todos', 'xyz'))).toEqual([]);
+  });
+  it('cuenta por filtro', () => {
+    expect(countByFilter(list)).toEqual({ todos: 3, activos: 1, taller: 1, baja: 1 });
+  });
+});
+
+describe('sectionOptions', () => {
+  it('suma las secciones que ya existen, sin vacías ni repetidas', () => {
+    const opts = sectionOptions([vrow('x', { section: 'Agronomia' }), vrow('y', { section: 'Logística' }), vrow('z', { section: null })]);
+    expect(opts).toContain('Agronomia');
+    expect(opts).toContain('Agronomía');
+    expect(opts.filter(s => s === 'Logística')).toHaveLength(1);
+    expect(opts).not.toContain('');
+  });
+});
+
+describe('vehicleFromForm', () => {
+  const base: VehicleForm = { tipo: 'car', patente: ' ab 123 cd ', model: ' hilux srv ', year: '', odometer: '12a', section: 'Cereales', manager: 'rafa', driver: '', status: 'Activo', insurance_expiration: '2027-01-10', vtv_expiration: '', patente_expiration: '' };
+  it('normaliza textos y números', () => {
+    expect(vehicleFromForm(base)).toEqual({
+      tipo: 'car', patente: 'AB123CD', model: 'HILUX SRV', year: null, odometer: null, section: 'Cereales',
+      manager: 'RAFA', assigned_driver: null, status: 'Activo',
+      insurance_expiration: '2027-01-10', vtv_expiration: null, patente_expiration: null,
+    });
+  });
+  it('un generador no lleva patente, chofer ni fechas', () => {
+    const g = vehicleFromForm({ ...base, tipo: 'generator', year: '2006', odometer: '2300', driver: 'JUAN' });
+    expect(g).toMatchObject({ tipo: 'generator', patente: null, assigned_driver: null, year: 2006, odometer: 2300, insurance_expiration: null });
+  });
+});

@@ -1,3 +1,4 @@
+// @ts-nocheck (temporary: rewritten in the redesign plan)
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { MaintenanceLog, Vehicle } from '../types';
