@@ -119,6 +119,7 @@
 .bar small{font:700 11px 'Barlow Condensed';letter-spacing:.08em;color:var(--tinta-4)}
 .taller-tools{margin:16px 16px 0}
 .taller-list{margin:0 16px}
+.taller-list .group,.taller-list .group:first-child,.taller-list>.empty{margin-top:18px}
 
 /* Ajustes */
 .settings-grid{display:grid;gap:14px;margin:16px 16px 0}

@@ -21,3 +21,6 @@ export function monthlySpend(works: { date: string; cost: number | null }[], tod
 }
 
 export const averageSpend = (m: MonthSpend[]): number => (m.length ? m.reduce((a, x) => a + x.total, 0) / m.length : 0);
+
+// Height of a month's bar as a percentage of the most expensive month; never below 4 so an empty month still shows
+export const barPercent = (total: number, max: number): number => Math.max(4, Math.round((total / Math.max(max, 1)) * 100));

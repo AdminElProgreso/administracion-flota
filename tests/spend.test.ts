@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { monthlySpend, averageSpend } from '../lib/spend';
+import { monthlySpend, averageSpend, barPercent } from '../lib/spend';
 
 describe('monthlySpend', () => {
   const works = [
@@ -16,5 +16,14 @@ describe('monthlySpend', () => {
   });
   it('cruza el año', () => {
     expect(monthlySpend([], '2026-02-10', 3).map(x => x.key)).toEqual(['2025-12', '2026-01', '2026-02']);
+  });
+});
+
+describe('barras del gasto', () => {
+  it('alto proporcional al mes más caro, con un mínimo visible', () => {
+    expect(barPercent(50, 100)).toBe(50);
+    expect(barPercent(100, 100)).toBe(100);
+    expect(barPercent(1, 1000)).toBe(4);
+    expect(barPercent(0, 0)).toBe(4);
   });
 });
