@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { DocStatus } from '../supabase/functions/_shared/alerts';
-import type { VehicleStatus } from '../types';
+import type { VehicleStatus, VehicleType } from '../types';
 import { STATE_CLASS, docLabel } from '../lib/docStyles';
 import { plateText } from '../lib/format';
-import { STATUS_INFO } from '../lib/vehicles';
+import { STATUS_INFO, TYPE_INFO } from '../lib/vehicles';
 
 // The cooperative's official logo, shipped and precached with the app (public/logo.svg, see pwa.config.ts)
 export const LOGO_URL = '/logo.svg';
@@ -22,6 +22,12 @@ export function Logo({ className = 'logo' }: { className?: string }) {
 export function Plate({ value, large = false }: { value: string | null | undefined; large?: boolean }) {
   const text = plateText(value);
   return text ? <span className={`plate${large ? ' lg' : ''}`} title="Patente">{text}</span> : <span className="noplate">Sin patente</span>;
+}
+
+// The cooperative's illustration of a kind of vehicle. label: '' when the kind is already written next to it
+export function VehicleArt({ type, label = '' }: { type: VehicleType; label?: string }) {
+  const info = TYPE_INFO[type] ?? TYPE_INFO.car;
+  return <img className="vart" src={info.image} alt={label} width={64} height={64} draggable={false} />;
 }
 
 export function StatusPill({ status }: { status: VehicleStatus }) {

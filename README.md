@@ -33,7 +33,7 @@ Cada push a `main` publica la app en Vercel.
 - `components/`: las piezas compartidas y, en `components/sheets/`, las hojas para renovar documentos, cargar turnos, registrar trabajos y agregar vehículos.
 - `lib/`: las reglas y el acceso a los datos. Sus tests están en `tests/`.
 - `styles/`: el diseño, con los colores y las tipografías de la Cooperativa, sin frameworks de CSS.
-- `public/`: el logo oficial (`logo.svg`), el símbolo (`favicon.svg`) y los íconos de la app instalada, generados desde el PDF del logo. La configuración de la app instalada está en `pwa.config.ts`.
+- `public/`: el logo oficial (`logo.svg`), el símbolo (`favicon.svg`) y los íconos de la app instalada, generados desde el PDF del logo, más las ilustraciones de cada tipo de vehículo (`vehiculos/`), dibujadas con los mismos colores. La configuración de la app instalada está en `pwa.config.ts`.
 - `docs/propuesta/interfaz.html`: el prototipo aprobado del diseño.
 - `docs/superpowers/`: el diseño escrito y los planes de trabajo.
 - `supabase/functions/check-alerts/`: la función que manda los avisos todos los días a las 9, hora de Argentina. Las reglas de los avisos están en `supabase/functions/_shared/` y las usan la app y la función.

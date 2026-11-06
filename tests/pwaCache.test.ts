@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { describe, it, expect } from 'vitest';
 import { pwaOptions, runtimeCaching } from '../pwa.config';
 import { LOGO_URL } from '../components/ui';
+import { TYPE_INFO } from '../lib/vehicles';
 
 // Workbox writes each urlPattern into sw.js as text, away from the variables of pwa.config.ts
 const asInServiceWorker = (pattern: unknown) =>
@@ -31,6 +32,10 @@ describe('service worker y app instalada', () => {
     expect(LOGO_URL).toBe('/logo.svg');
     expect(pwaOptions.includeAssets).toContain('logo.svg');
     expect(existsSync('public/logo.svg')).toBe(true);
+  });
+  it('las ilustraciones de cada tipo de vehículo vienen con la app', () => {
+    for (const info of Object.values(TYPE_INFO)) expect(existsSync(`public${info.image}`)).toBe(true);
+    expect(pwaOptions.includeAssets).toContain('vehiculos/*.svg');
   });
   it('íconos: los comunes y uno con margen para el recorte de Android', () => {
     expect(manifest.icons.filter(i => i.purpose === 'maskable').map(i => i.src)).toEqual(['/pwa-maskable-512x512.png']);

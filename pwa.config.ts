@@ -26,7 +26,7 @@ export const runtimeCaching: RuntimeCaching[] = [
 // logo: public/logo.svg is the full logo, favicon.svg the symbol, and the PNG icons carry margins
 export const pwaOptions: Partial<VitePWAOptions> = {
   registerType: 'autoUpdate',
-  includeAssets: ['favicon.ico', 'favicon.svg', 'apple-touch-icon.png', 'logo.svg'],
+  includeAssets: ['favicon.ico', 'favicon.svg', 'apple-touch-icon.png', 'logo.svg', 'vehiculos/*.svg'],
   manifest: {
     name: 'El Progreso - Gestión de Flota',
     short_name: 'El Progreso',

@@ -26,10 +26,10 @@
 .vcard{display:flex;flex-direction:column;gap:14px;text-align:left;padding:16px;width:100%;transition:border-color .15s,box-shadow .15s}
 .vcard:hover{border-color:var(--verde-200);box-shadow:var(--sh-2)}
 .vc-top{display:flex;align-items:flex-start;gap:12px}
-.vtype{width:46px;height:46px;border-radius:14px;background:var(--verde-50);color:var(--verde-700);display:grid;place-items:center;flex:none}
-.vtype .ms{font-size:26px}
-.vtype.xl{width:72px;height:72px;border-radius:20px}
-.vtype.xl .ms{font-size:40px}
+.vtype{width:58px;height:58px;border-radius:16px;background:var(--verde-50);display:grid;place-items:center;flex:none}
+.vtype .vart{width:50px;height:50px}
+.vtype.xl{width:84px;height:84px;border-radius:22px}
+.vtype.xl .vart{width:74px;height:74px}
 .vc-id{flex:1;min-width:0}
 .vc-name{font-weight:700;font-size:17px;line-height:1.15;overflow-wrap:anywhere}
 .vc-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:7px;font-size:13.5px;color:var(--tinta-3)}

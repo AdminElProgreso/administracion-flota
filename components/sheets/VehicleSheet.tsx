@@ -8,7 +8,7 @@ import {
 } from '../../lib/vehicles';
 import { Sheet } from '../Sheet';
 import { useToast } from '../Toast';
-import { Icon, Plate, Segmented } from '../ui';
+import { Icon, Plate, Segmented, VehicleArt } from '../ui';
 
 const TYPES = Object.entries(TYPE_INFO) as [VehicleType, (typeof TYPE_INFO)[VehicleType]][];
 const STATUS_OPTIONS = (Object.keys(STATUS_INFO) as VehicleStatus[]).map(s => ({ value: s, label: STATUS_INFO[s].label }));
@@ -69,7 +69,7 @@ export function VehicleSheet({ vehicle, onClose }: { vehicle?: VehicleRow; onClo
         <div className="types" role="group" aria-label="Tipo">
           {TYPES.map(([key, t]) => (
             <button key={key} type="button" className="type-opt" aria-pressed={form.tipo === key} onClick={() => setTipo(key)}>
-              <Icon name={t.icon} />{t.label}
+              <VehicleArt type={key} />{t.label}
             </button>
           ))}
         </div>

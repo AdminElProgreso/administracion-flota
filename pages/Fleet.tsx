@@ -3,7 +3,7 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { vehicleDocs, type AlertPrefs } from '../supabase/functions/_shared/alerts';
 import { todayISO } from '../supabase/functions/_shared/dates';
 import { useSheets } from '../components/sheets/SheetsProvider';
-import { Chip, EmptyState, ErrorState, Icon, Loading, PageHead, Plate, StatusPill } from '../components/ui';
+import { Chip, EmptyState, ErrorState, Icon, Loading, PageHead, Plate, StatusPill, VehicleArt } from '../components/ui';
 import { useVehicles } from '../lib/data';
 import { STATE_CLASS, docLabel } from '../lib/docStyles';
 import { num } from '../lib/format';
@@ -42,7 +42,7 @@ function VehicleCard({ v, prefs, today, back }: { v: VehicleRow; prefs: AlertPre
   return (
     <Link className="vcard card" to={`/fleet/${v.id}`} state={{ back }}>
       <div className="vc-top">
-        <span className="vtype"><Icon name={info.icon} /></span>
+        <span className="vtype"><VehicleArt type={v.tipo} label={info.label} /></span>
         <div className="vc-id">
           <div className="vc-name">{v.model}</div>
           <div className="vc-meta">

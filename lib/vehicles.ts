@@ -1,11 +1,12 @@
 import { num, plateText } from './format';
 import type { VehicleRow, VehicleStatus, VehicleType } from '../types';
 
-export const TYPE_INFO: Record<VehicleType, { label: string; icon: string; unit: 'km' | 'h' }> = {
-  car: { label: 'Camioneta / auto', icon: 'directions_car', unit: 'km' },
-  truck: { label: 'Camión', icon: 'local_shipping', unit: 'km' },
-  tractor: { label: 'Tractor', icon: 'agriculture', unit: 'h' },
-  generator: { label: 'Generador', icon: 'bolt', unit: 'h' },
+// image: the cooperative's own illustration of each kind (public/vehiculos, drawn with the logo's colors)
+export const TYPE_INFO: Record<VehicleType, { label: string; image: string; unit: 'km' | 'h' }> = {
+  car: { label: 'Camioneta / auto', image: '/vehiculos/camioneta.svg', unit: 'km' },
+  truck: { label: 'Camión', image: '/vehiculos/camion.svg', unit: 'km' },
+  tractor: { label: 'Tractor', image: '/vehiculos/tractor.svg', unit: 'h' },
+  generator: { label: 'Generador', image: '/vehiculos/generador.svg', unit: 'h' },
 };
 
 // The database keeps 'En Taller'; the screens say "En taller"

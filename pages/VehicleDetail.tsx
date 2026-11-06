@@ -5,7 +5,7 @@ import { todayISO } from '../supabase/functions/_shared/dates';
 import { WorkItem } from '../components/rows';
 import { useSheets } from '../components/sheets/SheetsProvider';
 import { useToast } from '../components/Toast';
-import { DocBadge, EmptyState, ErrorState, Icon, Loading, Plate, SectionHead, StatusPill } from '../components/ui';
+import { DocBadge, EmptyState, ErrorState, Icon, Loading, Plate, SectionHead, StatusPill, VehicleArt } from '../components/ui';
 import { useDeleteVehicle, useUpdateVehicle, useVehicleWorks, useVehicles } from '../lib/data';
 import { docCardText } from '../lib/docCard';
 import { DOC_ICONS, STATE_CLASS } from '../lib/docStyles';
@@ -177,7 +177,7 @@ export default function VehicleDetail() {
       {backLink}
       <div className="vhead card">
         <div className="vh-main">
-          <span className="vtype xl"><Icon name={info.icon} /></span>
+          <span className="vtype xl"><VehicleArt type={v.tipo} label={info.label} /></span>
           <div className="vh-id">
             <p className="eyebrow">{[info.label, v.section].filter(Boolean).join(' · ')}</p>
             <h1 className="display vh-title">{v.model}</h1>
