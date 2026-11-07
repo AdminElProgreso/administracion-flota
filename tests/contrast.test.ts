@@ -31,4 +31,8 @@ describe('contraste legible al sol (WCAG AA, 4,5:1)', () => {
     expect(b, bg).toBeTruthy();
     expect(contrast(f, b)).toBeGreaterThanOrEqual(4.5);
   });
+
+  it('anillo de foco blanco sobre el encabezado de Inicio (3:1)', () => {
+    expect(contrast('#FFFFFF', tokens['verde-800'])).toBeGreaterThanOrEqual(3);
+  });
 });
