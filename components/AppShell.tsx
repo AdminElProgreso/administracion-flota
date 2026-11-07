@@ -5,6 +5,7 @@ import { todayISO } from '../supabase/functions/_shared/dates';
 import { useVehicles } from '../lib/data';
 import { logout } from '../lib/session';
 import { useAlertPrefs } from '../lib/useAlertPrefs';
+import { displayPrefs } from '../lib/display';
 import { ErrorBoundary } from './ErrorBoundary';
 import { useSheets } from './sheets/SheetsProvider';
 import { useToast } from './Toast';
@@ -28,7 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { open } = useSheets();
   const toast = useToast();
   const signOut = () => void logout().then(problem => { if (problem) toast(problem, 'error'); });
-  const count = vehicles ? attentionList(vehicles, prefs, todayISO()).length : 0;
+  const count = vehicles ? attentionList(vehicles, displayPrefs(prefs), todayISO()).length : 0;
 
   // The page scrolls the window: every screen starts at the top
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
