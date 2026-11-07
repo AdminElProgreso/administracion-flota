@@ -9,6 +9,7 @@ import { STATE_CLASS, docLabel } from '../lib/docStyles';
 import { num } from '../lib/format';
 import { loadView } from '../lib/loadView';
 import { useAlertPrefs } from '../lib/useAlertPrefs';
+import { displayPrefs } from '../lib/display';
 import { TYPE_INFO, countByFilter, filterVehicles, type VehicleFilter } from '../lib/vehicles';
 import type { VehicleRow } from '../types';
 
@@ -30,7 +31,7 @@ function VehicleCard({ v, prefs, today, back }: { v: VehicleRow; prefs: AlertPre
   } else {
     docs = (
       <div className="vc-docs">
-        {vehicleDocs(v, prefs, today).map(d => (
+        {vehicleDocs(v, displayPrefs(prefs), today).map(d => (
           <div key={d.type} className={`vdoc ${STATE_CLASS[d.state]}`}>
             <span className="vdoc-name">{d.type}</span>
             <span className="vdoc-state">{docLabel(d)}</span>

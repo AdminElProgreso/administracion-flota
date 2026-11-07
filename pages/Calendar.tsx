@@ -7,6 +7,7 @@ import { useVehicles } from '../lib/data';
 import { MONTHS, cap } from '../lib/format';
 import { loadView } from '../lib/loadView';
 import { useAlertPrefs } from '../lib/useAlertPrefs';
+import { displayPrefs } from '../lib/display';
 
 type AgendaView = 'lista' | 'mes';
 
@@ -45,7 +46,7 @@ export default function Calendar() {
   }
   if (state === 'loading' || !vehicles.data) return <div className="screen">{head}<Loading /></div>;
 
-  const { overdue, upcoming } = agendaEvents(vehicles.data, alertPrefs.prefs, today);
+  const { overdue, upcoming } = agendaEvents(vehicles.data, displayPrefs(alertPrefs.prefs), today);
   const byDay = eventsByDay([...overdue, ...upcoming], year, month);
   const selected = byDay.get(day) ?? [];
   const isCurrentMonth = year === ty && month === tm;

@@ -17,6 +17,12 @@ describe('tarjeta de documento en la ficha', () => {
     expect(docCardText(docStatus('Seguro', '2026-11-10', null, 15, T), prefs).hint).toBe('Te avisamos todos los días hasta que lo renueves');
     expect(docCardText(vtv('2026-11-10'), prefs).hint).toBe('Te avisamos todos los días hasta que la renueves');
   });
+  it('por vencer en la app, pero el aviso todavía no empezó', () => {
+    const doc = docStatus('VTV', '2026-11-13', null, 30, T);
+    const prefs = (n: number) => ({ ...DEFAULT_PREFS, thresholds: { ...DEFAULT_PREFS.thresholds, VTV: n } });
+    expect(docCardText(doc, prefs(1)).hint).toBe('Te empezamos a avisar 1 día antes');
+    expect(docCardText(doc, prefs(15)).hint).toBe('Te avisamos todos los días hasta que la renueves');
+  });
   it('vencido', () => {
     expect(docCardText(docStatus('Patente', '2026-10-01', null, 10, T), prefs))
       .toEqual({ lead: 'Venció el', strong: '01/10/2026', hint: 'Aviso diario hasta que se renueve o cargues un turno' });

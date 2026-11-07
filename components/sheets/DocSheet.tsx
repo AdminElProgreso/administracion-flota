@@ -6,6 +6,7 @@ import { DOC_OF, appointmentNote, appointmentProposal, dateError, renewProposal,
 import { plateText } from '../../lib/format';
 import { appointmentPatch, renewPatch } from '../../lib/patches';
 import { useAlertPrefs } from '../../lib/useAlertPrefs';
+import { DISPLAY_WINDOW_DAYS, displayPrefs } from '../../lib/display';
 import { Sheet } from '../Sheet';
 import { useToast } from '../Toast';
 import { EmptyState, Icon, Loading, Plate, Segmented } from '../ui';
@@ -30,7 +31,7 @@ export function DocSheet({ kind, vehicleId, docType, onClose }: { kind: Kind; ve
     .filter(v => v.tipo !== 'generator' && v.status !== 'Baja')
     .sort((a, b) => a.model.localeCompare(b.model, 'es'));
   // Renewing fits any pending document; an appointment, one that has none yet
-  const urgent = attentionList(options, prefs, today).find(i => renew || i.doc.state !== 'appointment');
+  const urgent = attentionList(options, displayPrefs(prefs), today).find(i => renew || i.doc.state !== 'appointment');
 
   const [selectedId, setSelectedId] = useState(vehicleId ?? urgent?.vehicle.id ?? '');
   const [type, setType] = useState<DocType>(docType ?? urgent?.doc.type ?? 'VTV');
@@ -58,7 +59,7 @@ export function DocSheet({ kind, vehicleId, docType, onClose }: { kind: Kind; ve
   }
 
   const columns = DOC_COLUMNS[type];
-  const doc = docStatus(type, vehicle[columns.expiration], vehicle[columns.appointment], prefs.thresholds[type], today);
+  const doc = docStatus(type, vehicle[columns.expiration], vehicle[columns.appointment], DISPLAY_WINDOW_DAYS, today);
   const value = date ?? (renew ? renewProposal(doc.expiration, today) : appointmentProposal(doc.appointment, today));
   const busy = update.isPending;
   // "Cargar fecha" in the ficha: a document without a date gets its first expiration, not a renewal

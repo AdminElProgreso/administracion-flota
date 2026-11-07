@@ -12,6 +12,7 @@ import { DOC_ICONS, STATE_CLASS } from '../lib/docStyles';
 import { money, num, orDash } from '../lib/format';
 import { loadView } from '../lib/loadView';
 import { useAlertPrefs } from '../lib/useAlertPrefs';
+import { displayPrefs } from '../lib/display';
 import { useConfirmStep } from '../lib/useConfirmStep';
 import { deleteAndLeave } from '../lib/deleteFlow';
 import { TYPE_INFO } from '../lib/vehicles';
@@ -198,7 +199,7 @@ export default function VehicleDetail() {
           <SectionHead title="Documentación" />
           {v.status === 'Baja' && <p className="note warn doc-note"><Icon name="notifications_off" />La unidad está de baja: no recibe avisos de vencimiento.</p>}
           <div className="docs">
-            {vehicleDocs(v, alertPrefs.prefs, today).map(d => <DocCard key={d.type} doc={d} vehicleId={v.id} prefs={alertPrefs.prefs} />)}
+            {vehicleDocs(v, displayPrefs(alertPrefs.prefs), today).map(d => <DocCard key={d.type} doc={d} vehicleId={v.id} prefs={alertPrefs.prefs} />)}
           </div>
         </section>
       )}

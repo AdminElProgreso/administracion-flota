@@ -12,6 +12,7 @@ import { attentionSummary, nextExpiryLabel } from '../lib/home';
 import { loadView } from '../lib/loadView';
 import { monthlySpend } from '../lib/spend';
 import { useAlertPrefs } from '../lib/useAlertPrefs';
+import { displayPrefs } from '../lib/display';
 
 // Accounts that came in with an invitation link have no password of their own until they set one
 function usePasswordMissing(): boolean {
@@ -46,7 +47,7 @@ export default function Dashboard() {
 
   const today = todayISO();
   const list = vehicles.data;
-  const items = attentionList(list, alertPrefs.prefs, today);
+  const items = attentionList(list, displayPrefs(alertPrefs.prefs), today);
   const summary = attentionSummary(items);
   const todays = items.filter(i => i.doc.state === 'appointment' && i.doc.daysToAppointment === 0);
   const next = items.find(i => i.doc.state === 'expiring');
