@@ -9,6 +9,12 @@ export function renewProposal(expiration: string | null, today: string): string 
   return addYears(expiration && expiration > today ? expiration : today, 1);
 }
 
+// What the document said before renewing, so the date typed next to it can be checked at a glance
+export function currentExpiryNote(expiration: string | null, today: string): string | null {
+  if (!expiration) return null;
+  return `${expiration >= today ? 'Vence' : 'Venció'} el ${formatDateLong(expiration)}`;
+}
+
 // The booked appointment while it is still ahead, otherwise today
 export function appointmentProposal(appointment: string | null, today: string): string {
   return appointment && appointment >= today ? appointment : today;

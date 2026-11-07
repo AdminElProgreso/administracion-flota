@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  filterVehicles, countByFilter, sectionOptions, sortByUrgency, vehicleFromForm, formFromVehicle, emptyVehicleForm, vehicleEditPatch, vehicleFormError, isVehicleId,
+  filterVehicles, countByFilter, sectionOptions, sortByUrgency, vehicleFromForm, formFromVehicle, emptyVehicleForm, vehicleEditPatch, vehicleFormError, isVehicleId, vehicleIdFromPath,
   type VehicleForm,
 } from '../lib/vehicles';
 import { DEFAULT_PREFS } from '../supabase/functions/_shared/alerts';
@@ -128,5 +128,15 @@ describe('isVehicleId', () => {
     expect(isVehicleId('1056c1c5-5a6e-4105-a3d6-6437e4daa377')).toBe(true);
     expect(isVehicleId('no-existe')).toBe(false);
     expect(isVehicleId(undefined)).toBe(false);
+  });
+});
+
+describe('vehicleIdFromPath', () => {
+  it('reconoce la ficha abierta', () => {
+    const id = '3f2b1c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
+    expect(vehicleIdFromPath(`/fleet/${id}`)).toBe(id);
+    expect(vehicleIdFromPath('/fleet')).toBeUndefined();
+    expect(vehicleIdFromPath('/fleet/no-existe')).toBeUndefined();
+    expect(vehicleIdFromPath('/')).toBeUndefined();
   });
 });

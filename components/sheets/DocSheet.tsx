@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { DOC_COLUMNS, DOC_TYPES, attentionList, docStatus, type DocType } from '../../supabase/functions/_shared/alerts';
 import { formatDateLong, todayISO } from '../../supabase/functions/_shared/dates';
 import { useUpdateVehicle, useVehicles } from '../../lib/data';
-import { DOC_OF, appointmentNote, appointmentProposal, dateError, renewProposal, renewedMessage } from '../../lib/docForm';
+import { DOC_OF, appointmentNote, appointmentProposal, currentExpiryNote, dateError, renewProposal, renewedMessage } from '../../lib/docForm';
 import { plateText } from '../../lib/format';
 import { appointmentPatch, renewPatch } from '../../lib/patches';
 import { useAlertPrefs } from '../../lib/useAlertPrefs';
@@ -33,13 +33,14 @@ export function DocSheet({ kind, vehicleId, docType, onClose }: { kind: Kind; ve
   // Renewing fits any pending document; an appointment, one that has none yet
   const urgent = attentionList(options, displayPrefs(prefs), today).find(i => renew || i.doc.state !== 'appointment');
 
+  // No unit chosen yet: the select asks for one instead of picking the first of the list
   const [selectedId, setSelectedId] = useState(vehicleId ?? urgent?.vehicle.id ?? '');
   const [type, setType] = useState<DocType>(docType ?? urgent?.doc.type ?? 'VTV');
-  // null keeps the proposed date, which follows the chosen vehicle and document
+  // Empty until typed. Appointments propose a date; a renewal never invents one
   const [date, setDate] = useState<string | null>(null);
 
   const title = fixed ? (renew ? `Renovar ${type}` : `Turno de ${type}`) : renew ? 'Renovar un documento' : 'Cargar un turno';
-  const vehicle = fixed ? vehicles?.find(v => v.id === vehicleId) : options.find(v => v.id === selectedId) ?? options[0];
+  const vehicle = fixed ? vehicles?.find(v => v.id === vehicleId) : options.find(v => v.id === selectedId);
 
   if (!vehicles) {
     return (
@@ -48,7 +49,7 @@ export function DocSheet({ kind, vehicleId, docType, onClose }: { kind: Kind; ve
       </Sheet>
     );
   }
-  if (!vehicle) {
+  if (fixed ? !vehicle : options.length === 0) {
     return (
       <Sheet open onClose={onClose} title={title}>
         {fixed
@@ -59,20 +60,21 @@ export function DocSheet({ kind, vehicleId, docType, onClose }: { kind: Kind; ve
   }
 
   const columns = DOC_COLUMNS[type];
-  const doc = docStatus(type, vehicle[columns.expiration], vehicle[columns.appointment], DISPLAY_WINDOW_DAYS, today);
-  const value = date ?? (renew ? renewProposal(doc.expiration, today) : appointmentProposal(doc.appointment, today));
+  const doc = vehicle ? docStatus(type, vehicle[columns.expiration], vehicle[columns.appointment], DISPLAY_WINDOW_DAYS, today) : null;
+  const value = date ?? (renew || !doc ? '' : appointmentProposal(doc.appointment, today));
   const busy = update.isPending;
   // "Cargar fecha" in the ficha: a document without a date gets its first expiration, not a renewal
-  const firstTime = renew && !doc.expiration;
+  const firstTime = renew && !doc?.expiration;
   const sheetTitle = fixed && firstTime ? `Vencimiento ${DOC_OF[type]}` : title;
 
   const save = (patch: Record<string, string | null>, message: string) =>
-    update.mutate({ id: vehicle.id, patch }, {
+    vehicle && update.mutate({ id: vehicle.id, patch }, {
       onSuccess: () => { toast(message); onClose(); },
       onError: e => toast(e.message, 'error'),
     });
 
   const submit = () => {
+    if (!vehicle) return;
     const problem = dateError(kind, value, today);
     if (problem) { toast(problem, 'error'); return; }
     if (renew) save(renewPatch(type, value), renewedMessage(type, value, !firstTime));
@@ -85,16 +87,18 @@ export function DocSheet({ kind, vehicleId, docType, onClose }: { kind: Kind; ve
     setDate(null);
   };
 
+  const note = renew && doc ? currentExpiryNote(doc.expiration, today) : null;
+
   return (
     <Sheet
       open
       onClose={onClose}
       busy={busy}
       title={sheetTitle}
-      subtitle={fixed && <>{vehicle.model} <Plate value={vehicle.patente} /> · {type}</>}
+      subtitle={fixed && vehicle && <>{vehicle.model} <Plate value={vehicle.patente} /> · {type}</>}
       footer={<>
         <button type="button" className="btn btn-ghost" disabled={busy} onClick={onClose}>Cancelar</button>
-        <button type="button" className="btn btn-primary" disabled={busy} onClick={submit}>
+        <button type="button" className="btn btn-primary" disabled={busy || !vehicle || !value} onClick={submit}>
           {busy ? 'Guardando…' : renew ? 'Guardar' : 'Guardar turno'}
         </button>
       </>}
@@ -102,7 +106,8 @@ export function DocSheet({ kind, vehicleId, docType, onClose }: { kind: Kind; ve
       {!fixed && <>
         <label className="field">
           <span>Vehículo</span>
-          <select className="input" value={vehicle.id} onChange={e => pick({ id: e.target.value })}>
+          <select className="input" value={vehicle?.id ?? ''} onChange={e => pick({ id: e.target.value })}>
+            {!vehicle && <option value="" disabled>Elegí un vehículo</option>}
             {options.map(v => (
               <option key={v.id} value={v.id}>{v.model}{v.patente ? ` · ${plateText(v.patente)}` : ''}</option>
             ))}
@@ -114,27 +119,38 @@ export function DocSheet({ kind, vehicleId, docType, onClose }: { kind: Kind; ve
         </div>
       </>}
 
-      <label className="field">
-        <span>{renew ? (firstTime ? 'Fecha de vencimiento' : 'Nueva fecha de vencimiento') : 'Fecha del turno'}</span>
-        <input className="input" type="date" value={value} min={renew ? undefined : today} onChange={e => setDate(e.target.value)} />
-      </label>
+      {vehicle && doc && <>
+        <label className="field">
+          <span>{renew ? (firstTime ? 'Fecha de vencimiento' : 'Nueva fecha de vencimiento') : 'Fecha del turno'}</span>
+          <input className="input" type="date" value={value} min={renew ? undefined : today} onChange={e => setDate(e.target.value)} />
+        </label>
 
-      {renew
-        ? doc.appointment && <p className="note"><Icon name="info" />Al guardar se borra el turno del {formatDateLong(doc.appointment)}.</p>
-        : <p className="note"><Icon name="notifications" />{appointmentNote(prefs.thresholds.appointments, prefs.enabled.appointments)}</p>}
+        {note && (
+          <div className="sheet-more">
+            <p className="note"><Icon name="event" />{note}</p>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDate(renewProposal(doc.expiration, today))}>
+              <Icon name="add" />+1 año
+            </button>
+          </div>
+        )}
 
-      {!renew && doc.appointment && (
-        <div className="sheet-more">
-          <button
-            type="button"
-            className="btn btn-danger btn-sm"
-            disabled={busy}
-            onClick={() => save(appointmentPatch(type, null), 'Turno quitado: vuelven los avisos de vencimiento')}
-          >
-            <Icon name="event_busy" />Quitar el turno del {formatDateLong(doc.appointment)}
-          </button>
-        </div>
-      )}
+        {renew
+          ? doc.appointment && <p className="note"><Icon name="info" />Al guardar se borra el turno del {formatDateLong(doc.appointment)}.</p>
+          : <p className="note"><Icon name="notifications" />{appointmentNote(prefs.thresholds.appointments, prefs.enabled.appointments)}</p>}
+
+        {!renew && doc.appointment && (
+          <div className="sheet-more">
+            <button
+              type="button"
+              className="btn btn-danger btn-sm"
+              disabled={busy}
+              onClick={() => save(appointmentPatch(type, null), 'Turno quitado: vuelven los avisos de vencimiento')}
+            >
+              <Icon name="event_busy" />Quitar el turno del {formatDateLong(doc.appointment)}
+            </button>
+          </div>
+        )}
+      </>}
     </Sheet>
   );
 }

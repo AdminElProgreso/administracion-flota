@@ -182,3 +182,9 @@ export function vehicleFormError(f: VehicleForm, vehicles: VehicleRow[], editing
 // Vehicle ids are UUIDs; an address like /#/fleet/no-existe is not worth asking the database about
 export const isVehicleId = (id: string | undefined): id is string =>
   Boolean(id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+
+// The vehicle whose ficha is open (/fleet/:id), so the quick actions start on it
+export function vehicleIdFromPath(pathname: string): string | undefined {
+  const id = /^\/fleet\/([^/]+)\/?$/.exec(pathname)?.[1];
+  return isVehicleId(id) ? id : undefined;
+}

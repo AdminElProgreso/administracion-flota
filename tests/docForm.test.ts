@@ -1,7 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { appointmentNote, appointmentProposal, dateError, renewProposal, renewedMessage } from '../lib/docForm';
+import { currentExpiryNote, appointmentNote, appointmentProposal, dateError, renewProposal, renewedMessage } from '../lib/docForm';
+
+import { T } from './fixtures';
 
 describe('hoja de documentos', () => {
+  it('muestra la fecha que tenía el documento', () => {
+    expect(currentExpiryNote(null, T)).toBeNull();
+    expect(currentExpiryNote('2026-12-01', T)).toBe('Vence el 01/12/2026');
+    expect(currentExpiryNote('2026-10-01', T)).toBe('Venció el 01/10/2026');
+  });
   it('propone renovar un año desde el vencimiento, o desde hoy si ya venció', () => {
     expect(renewProposal('2026-12-10', '2026-11-04')).toBe('2027-12-10');
     expect(renewProposal('2026-10-01', '2026-11-04')).toBe('2027-11-04');

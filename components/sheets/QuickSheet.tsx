@@ -1,3 +1,5 @@
+import { useLocation } from 'react-router-dom';
+import { vehicleIdFromPath } from '../../lib/vehicles';
 import { Sheet } from '../Sheet';
 import { Icon } from '../ui';
 import { useSheets, type SheetRequest } from './context';
@@ -11,11 +13,14 @@ const OPTIONS: { icon: string; title: string; sub: string; request: SheetRequest
 
 export function QuickSheet({ onClose }: { onClose: () => void }) {
   const { open } = useSheets();
+  const vehicleId = vehicleIdFromPath(useLocation().pathname);
+  // On a ficha, the actions start on that unit; elsewhere they ask for one
+  const start = (r: SheetRequest): SheetRequest => (vehicleId && r.kind !== 'vehicle' && r.kind !== 'quick' ? { ...r, vehicleId } : r);
   return (
     <Sheet open onClose={onClose} title="¿Qué querés hacer?">
       <div className="quick">
         {OPTIONS.map(o => (
-          <button key={o.title} type="button" className="qa" onClick={() => open(o.request)}>
+          <button key={o.title} type="button" className="qa" onClick={() => open(start(o.request))}>
             <span className="row-icon"><Icon name={o.icon} /></span>
             <span><b>{o.title}</b><small>{o.sub}</small></span>
           </button>
