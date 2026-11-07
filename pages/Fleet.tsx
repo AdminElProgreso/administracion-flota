@@ -10,13 +10,14 @@ import { num } from '../lib/format';
 import { loadView } from '../lib/loadView';
 import { useAlertPrefs } from '../lib/useAlertPrefs';
 import { displayPrefs } from '../lib/display';
-import { TYPE_INFO, countByFilter, filterVehicles, type VehicleFilter } from '../lib/vehicles';
+import { TYPE_INFO, countByFilter, filterVehicles, sortByUrgency, type VehicleFilter } from '../lib/vehicles';
 import type { VehicleRow } from '../types';
 
 const FILTERS: { value: VehicleFilter; label: string }[] = [
   { value: 'todos', label: 'Todos' },
   { value: 'activos', label: 'Activos' },
   { value: 'taller', label: 'En taller' },
+  { value: 'sinfecha', label: 'Sin fecha' },
   { value: 'baja', label: 'De baja' },
 ];
 
@@ -106,9 +107,9 @@ export default function Fleet() {
   if (view === 'loading' || !vehicles.data) return <div className="screen">{head}<Loading /></div>;
 
   const list = vehicles.data;
-  const counts = countByFilter(list);
-  const found = filterVehicles(list, filter, query);
   const today = todayISO();
+  const counts = countByFilter(list, today);
+  const found = sortByUrgency(filterVehicles(list, filter, query, today), displayPrefs(alertPrefs.prefs), today);
 
   let body;
   if (!list.length) {

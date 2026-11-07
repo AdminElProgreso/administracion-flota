@@ -8,7 +8,7 @@ import { useSheets } from '../components/sheets/SheetsProvider';
 import { EmptyState, ErrorState, Icon, Kpi, Loading, Plate, SectionHead } from '../components/ui';
 import { useVehicles, useWorks } from '../lib/data';
 import { MONTHS, greeting, longDate, money } from '../lib/format';
-import { attentionSummary, nextExpiryLabel } from '../lib/home';
+import { attentionSummary, missingDates, nextExpiryLabel, statusLink } from '../lib/home';
 import { loadView } from '../lib/loadView';
 import { monthlySpend } from '../lib/spend';
 import { useAlertPrefs } from '../lib/useAlertPrefs';
@@ -48,7 +48,8 @@ export default function Dashboard() {
   const today = todayISO();
   const list = vehicles.data;
   const items = attentionList(list, displayPrefs(alertPrefs.prefs), today);
-  const summary = attentionSummary(items);
+  const missing = missingDates(list, today);
+  const summary = attentionSummary(items, missing);
   const todays = items.filter(i => i.doc.state === 'appointment' && i.doc.daysToAppointment === 0);
   const next = items.find(i => i.doc.state === 'expiring');
   const inFleet = list.filter(v => v.status !== 'Baja').length;
@@ -65,8 +66,8 @@ export default function Dashboard() {
       <div className="hero">
         <p className="hero-date">{longDate(today)}</p>
         <h1 className="display hero-title">{greeting(new Date())}</h1>
-        <Link className="hero-status" to="/calendar">
-          <span className="hs-icon"><Icon name={items.length ? 'notifications_active' : 'verified'} fill /></span>
+        <Link className="hero-status" to={statusLink(items.length, missing)}>
+          <span className="hs-icon"><Icon name={items.length ? 'notifications_active' : missing ? 'edit_calendar' : 'verified'} fill /></span>
           <span className="hs-text"><strong>{summary.title}</strong><small>{summary.detail}</small></span>
           <Icon name="chevron_right" />
         </Link>
@@ -119,7 +120,13 @@ export default function Dashboard() {
             </SectionHead>
             {items.length
               ? <div className="card list">{items.map(item => <AttentionRow key={docKey(item)} item={item} />)}</div>
-              : <EmptyState icon="check_circle" title="Todo en orden" text="No hay documentos vencidos, por vencer ni turnos." />}
+              : missing
+                ? (
+                  <EmptyState icon="edit_calendar" title="Faltan fechas" text={`${missing} ${missing === 1 ? 'documento no tiene' : 'documentos no tienen'} fecha de vencimiento y no generan avisos.`}>
+                    <Link className="btn btn-ghost btn-sm" to="/fleet?filtro=sinfecha"><Icon name="edit_calendar" />Cargar fechas</Link>
+                  </EmptyState>
+                )
+                : <EmptyState icon="check_circle" title="Todo en orden" text="No hay documentos vencidos, por vencer ni turnos." />}
           </section>
         </div>
 

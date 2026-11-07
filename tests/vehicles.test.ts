@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
-  filterVehicles, countByFilter, sectionOptions, vehicleFromForm, formFromVehicle, emptyVehicleForm, vehicleEditPatch, vehicleFormError, isVehicleId,
+  filterVehicles, countByFilter, sectionOptions, sortByUrgency, vehicleFromForm, formFromVehicle, emptyVehicleForm, vehicleEditPatch, vehicleFormError, isVehicleId,
   type VehicleForm,
 } from '../lib/vehicles';
-import { vrow } from './fixtures';
+import { DEFAULT_PREFS } from '../supabase/functions/_shared/alerts';
+import { displayPrefs } from '../lib/display';
+import { T, vrow } from './fixtures';
 
 const list = [
   vrow('a', { status: 'Baja', model: 'FIAT 147', assigned_driver: null }),
@@ -14,19 +16,31 @@ const ids = (l: { id: string }[]) => l.map(v => v.id);
 
 describe('filterVehicles', () => {
   it('por estado, con las bajas al final en Todos', () => {
-    expect(ids(filterVehicles(list, 'todos', ''))).toEqual(['b', 'c', 'a']);
-    expect(ids(filterVehicles(list, 'activos', ''))).toEqual(['b']);
-    expect(ids(filterVehicles(list, 'taller', ''))).toEqual(['c']);
-    expect(ids(filterVehicles(list, 'baja', ''))).toEqual(['a']);
+    expect(ids(filterVehicles(list, 'todos', '', T))).toEqual(['b', 'c', 'a']);
+    expect(ids(filterVehicles(list, 'activos', '', T))).toEqual(['b']);
+    expect(ids(filterVehicles(list, 'taller', '', T))).toEqual(['c']);
+    expect(ids(filterVehicles(list, 'baja', '', T))).toEqual(['a']);
+  });
+  it('filtro sin fecha: solo unidades activas o en taller con algún documento sin fecha', () => {
+    const l = [vrow('a'), vrow('b', { status: 'Baja' }), vrow('c', { tipo: 'generator' }),
+      vrow('d', { vtv_expiration: '2027-01-10', insurance_expiration: '2027-01-10', patente_expiration: '2027-01-10' })];
+    expect(ids(filterVehicles(l, 'sinfecha', '', T))).toEqual(['a']);
+    expect(countByFilter(l, T).sinfecha).toBe(1);
+  });
+  it('ordena por urgencia y deja las bajas al final', () => {
+    const l = [vrow('ok', { vtv_expiration: '2027-06-01', insurance_expiration: '2027-06-01', patente_expiration: '2027-06-01' }),
+      vrow('sin'), vrow('baja', { status: 'Baja', vtv_expiration: '2026-10-01' }), vrow('gen', { tipo: 'generator' }),
+      vrow('vence', { vtv_expiration: '2026-11-20' }), vrow('vencida', { vtv_expiration: '2026-10-01' })];
+    expect(ids(sortByUrgency(l, displayPrefs(DEFAULT_PREFS), T))).toEqual(['vencida', 'vence', 'sin', 'ok', 'gen', 'baja']);
   });
   it('búsqueda sin mayúsculas, espacios ni acentos', () => {
-    expect(ids(filterVehicles(list, 'todos', 'aa 236'))).toEqual(['b']);
-    expect(ids(filterVehicles(list, 'todos', 'agronomia'))).toEqual(['b']);
-    expect(ids(filterVehicles(list, 'todos', 'nico'))).toEqual(['b']);
-    expect(ids(filterVehicles(list, 'todos', 'xyz'))).toEqual([]);
+    expect(ids(filterVehicles(list, 'todos', 'aa 236', T))).toEqual(['b']);
+    expect(ids(filterVehicles(list, 'todos', 'agronomia', T))).toEqual(['b']);
+    expect(ids(filterVehicles(list, 'todos', 'nico', T))).toEqual(['b']);
+    expect(ids(filterVehicles(list, 'todos', 'xyz', T))).toEqual([]);
   });
   it('cuenta por filtro', () => {
-    expect(countByFilter(list)).toEqual({ todos: 3, activos: 1, taller: 1, baja: 1 });
+    expect(countByFilter(list, T)).toEqual({ todos: 3, activos: 1, taller: 1, sinfecha: 2, baja: 1 });
   });
 });
 

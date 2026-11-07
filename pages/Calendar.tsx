@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { todayISO } from '../supabase/functions/_shared/dates';
 import { EventRow } from '../components/rows';
+import { missingDates } from '../lib/home';
 import { EmptyState, ErrorState, Icon, Loading, PageHead, Segmented } from '../components/ui';
 import { agendaEvents, eventTone, eventsByDay, groupByMonth, monthCells, type AgendaEvent } from '../lib/agenda';
 import { useVehicles } from '../lib/data';
@@ -59,6 +61,7 @@ export default function Calendar() {
     setDay(y === ty && m === tm ? td : 1);
   };
 
+  const missing = missingDates(vehicles.data, today);
   const list = overdue.length || upcoming.length ? <>
     {overdue.length > 0 && (
       <div className="group">
@@ -72,7 +75,13 @@ export default function Calendar() {
         {rows(g.items)}
       </div>
     ))}
-  </> : <EmptyState icon="event_available" title="Nada en la agenda" text="Cargá las fechas de vencimiento de cada vehículo." />;
+  </> : missing
+    ? (
+      <EmptyState icon="edit_calendar" title="Faltan fechas" text={`${missing} ${missing === 1 ? 'documento no tiene' : 'documentos no tienen'} fecha de vencimiento: cuando las cargues, aparecen acá.`}>
+        <Link className="btn btn-ghost btn-sm" to="/fleet?filtro=sinfecha"><Icon name="edit_calendar" />Cargar fechas</Link>
+      </EmptyState>
+    )
+    : <EmptyState icon="event_available" title="Nada en la agenda" text="Cargá las fechas de vencimiento de cada vehículo." />;
 
   return (
     <div className="screen">

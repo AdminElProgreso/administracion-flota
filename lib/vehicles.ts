@@ -1,4 +1,6 @@
 import { num, plateText } from './format';
+import { DEFAULT_PREFS, vehicleDocs, type AlertPrefs, type DocStatus } from '../supabase/functions/_shared/alerts';
+import { URGENCY } from './display';
 import type { VehicleRow, VehicleStatus, VehicleType } from '../types';
 
 // image: the cooperative's own illustration of each kind (public/vehiculos, drawn with the logo's colors)
@@ -16,34 +18,59 @@ export const STATUS_INFO: Record<VehicleStatus, { label: string; cls: string }> 
   'Baja': { label: 'De baja', cls: 's-off' },
 };
 
-export type VehicleFilter = 'todos' | 'activos' | 'taller' | 'baja';
+export type VehicleFilter = 'todos' | 'activos' | 'taller' | 'sinfecha' | 'baja';
 
-const MATCH: Record<VehicleFilter, (v: VehicleRow) => boolean> = {
+// A unit with a document still without date; the state does not depend on the threshold
+const missingDate = (v: VehicleRow, today: string) =>
+  v.tipo !== 'generator' && v.status !== 'Baja' && vehicleDocs(v, DEFAULT_PREFS, today).some(d => d.state === 'no-date');
+
+const MATCH: Record<VehicleFilter, (v: VehicleRow, today: string) => boolean> = {
   todos: () => true,
   activos: v => v.status === 'Activo',
   taller: v => v.status === 'En Taller',
+  sinfecha: missingDate,
   baja: v => v.status === 'Baja',
 };
 
 // Search ignores case, spaces and accents ("agronomia" finds "Agronomía", "aa 236" finds "AA236JS")
 const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, '');
 
-export function filterVehicles<T extends VehicleRow>(list: T[], filter: VehicleFilter, query: string): T[] {
+export function filterVehicles<T extends VehicleRow>(list: T[], filter: VehicleFilter, query: string, today: string): T[] {
   const q = fold(query);
   const found = list
-    .filter(MATCH[filter])
+    .filter(v => MATCH[filter](v, today))
     .filter(v => !q || [v.model, v.patente, v.assigned_driver, v.manager, v.section].some(x => x && fold(x).includes(q)));
   // With everything shown, units in Baja go last
   return filter === 'todos' ? [...found.filter(v => v.status !== 'Baja'), ...found.filter(v => v.status === 'Baja')] : found;
 }
 
-export function countByFilter(list: VehicleRow[]): Record<VehicleFilter, number> {
+export function countByFilter(list: VehicleRow[], today: string): Record<VehicleFilter, number> {
   return {
     todos: list.length,
-    activos: list.filter(MATCH.activos).length,
-    taller: list.filter(MATCH.taller).length,
-    baja: list.filter(MATCH.baja).length,
+    activos: list.filter(v => MATCH.activos(v, today)).length,
+    taller: list.filter(v => MATCH.taller(v, today)).length,
+    sinfecha: list.filter(v => MATCH.sinfecha(v, today)).length,
+    baja: list.filter(v => MATCH.baja(v, today)).length,
   };
+}
+
+const eventDays = (d: DocStatus) => (d.state === 'appointment' ? d.daysToAppointment : d.daysToExpiration) ?? Infinity;
+
+// Most urgent first. Generators carry no documents, so they follow every unit that has them; units de baja go last.
+// Ties go to the nearest event; the sort is stable, so the rest keeps its order.
+export function sortByUrgency<T extends VehicleRow>(list: T[], prefs: AlertPrefs, today: string): T[] {
+  const key = (v: T) => {
+    const group = v.status === 'Baja' ? 2 : v.tipo === 'generator' ? 1 : 0;
+    if (group) return { group, urgency: 0, days: 0 };
+    const docs = vehicleDocs(v, prefs, today);
+    const urgency = Math.min(...docs.map(d => URGENCY[d.state]));
+    const days = Math.min(...docs.filter(d => URGENCY[d.state] === urgency).map(eventDays));
+    return { group, urgency, days };
+  };
+  return list
+    .map(v => ({ v, k: key(v) }))
+    .sort((a, b) => a.k.group - b.k.group || a.k.urgency - b.k.urgency || (a.k.days === b.k.days ? 0 : a.k.days < b.k.days ? -1 : 1))
+    .map(x => x.v);
 }
 
 export const DEFAULT_SECTIONS = ['Administración', 'Agronomía', 'Balanceado', 'Cereales', 'Estación de Servicio', 'Ferreteria', 'Hacienda', 'Logística', 'Miel', 'Supermercado', 'Veterinaria'];

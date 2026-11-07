@@ -38,7 +38,7 @@
 .st-warn{color:var(--warn);background:var(--warn-bg)}
 .st-bad{color:var(--bad);background:var(--bad-bg)}
 .st-appt{color:var(--appt);background:var(--appt-bg)}
-.st-none{color:var(--none);background:var(--none-bg)}
+.st-none{color:var(--naranja-700);background:var(--naranja-100)}
 .st-warn.badge::before{background:var(--warn-dot)}
 .pill{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-weight:700;font-size:12.5px;white-space:nowrap}
 .pill.s-active{color:var(--ok);background:var(--ok-bg)}
