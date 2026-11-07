@@ -3,7 +3,6 @@
 /* Inicio */
 .hero{position:relative;overflow:hidden;color:#fff;padding:20px 20px 78px;border-radius:0 0 30px 30px;
   background:var(--verde-800)}
-.hero>*{position:relative;z-index:1}
 .hero-date{margin:2px 0 0;font-weight:600;font-size:14.5px;color:#fff}
 .hero-title{margin:6px 0 18px;font-size:46px}
 .hero-status{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.12);backdrop-filter:blur(6px);color:#fff;border-radius:18px;padding:14px 12px 14px 14px}
@@ -57,10 +56,8 @@
 .vh-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
 .vh-actions .btn{flex:1}
 .docs{display:grid;gap:12px}
-.doc{padding:16px;border-left:5px solid transparent}
+.doc{padding:16px;scroll-margin-block:24px;transition:box-shadow .35s ease-out}
 .doc.st-ok,.doc.st-warn,.doc.st-bad,.doc.st-appt,.doc.st-none{background:#fff;color:var(--carbon)}
-.doc.st-ok{border-left-color:var(--ok)}.doc.st-warn{border-left-color:var(--warn-dot)}.doc.st-bad{border-left-color:var(--bad-dot)}.doc.st-appt{border-left-color:var(--appt-dot)}.doc.st-none{border-left-color:var(--linea)}
-.doc{scroll-margin-block:24px;transition:box-shadow .35s ease-out}
 .doc.is-target{box-shadow:0 0 0 3px var(--verde-600),0 8px 24px rgba(0,163,81,.22)}
 .doc-head{display:flex;align-items:center;gap:10px}
 .doc-head h3{margin:0;flex:1;font-size:18px;font-weight:700}
@@ -107,7 +104,7 @@
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .legend i{width:8px;height:8px;border-radius:50%}
 .day-list{margin-top:14px}
-.day-list h3{margin:0 4px 8px;font-size:15px}
+.day-list h2{margin:0 4px 8px;font-size:15px}
 
 /* Taller */
 .spend{margin:16px 16px 0;padding:18px;display:flex;gap:18px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap}
@@ -161,7 +158,6 @@
 .login-card .btn{margin-top:20px}
 .login-foot{margin:auto 24px 22px;text-align:center;font-size:12.5px;line-height:1.4;color:var(--tinta-4)}
 
-/* Tablet: the phone layout, using the extra width */
 /* Phone: a tighter header so the first document card shows without scrolling */
 @media (max-width:899px){
   .vhead{padding:14px}
@@ -174,6 +170,10 @@
   .facts div{padding:8px 11px}
   .vh-actions{margin-top:12px;gap:8px;flex-wrap:nowrap}
   .vh-actions .btn{flex:1 1 auto;padding:0 12px;gap:6px}
+}
+
+@media (max-width:379px){
+  .vh-actions{flex-wrap:wrap}
 }
 
 @media (min-width:720px){

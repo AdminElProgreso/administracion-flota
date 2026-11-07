@@ -19,6 +19,8 @@
 *{box-sizing:border-box}
 html,body{margin:0}
 body{font-family:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15px;color:var(--carbon);background:var(--papel);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+p,li,small{text-wrap:pretty}
+h1,h2,h3{text-wrap:balance}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 button:disabled{cursor:not-allowed}

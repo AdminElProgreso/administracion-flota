@@ -112,7 +112,7 @@ export default function Calendar() {
             <div className="legend">{LEGEND.map(([cls, text]) => <span key={cls}><i className={cls} />{text}</span>)}</div>
           </div>
           <div className="day-list">
-            <h3>{day} de {MONTHS[month - 1]}</h3>
+            <h2>{day} de {MONTHS[month - 1]}</h2>
             {selected.length ? rows(selected) : (
               <div className="card empty"><Icon name="event_available" /><p>Sin vencimientos ni turnos este día.</p></div>
             )}
