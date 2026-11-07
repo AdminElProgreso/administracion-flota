@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { vehicleDocs, type AlertPrefs, type DocStatus } from '../supabase/functions/_shared/alerts';
 import { todayISO } from '../supabase/functions/_shared/dates';
 import { WorkItem } from '../components/rows';
@@ -13,6 +13,7 @@ import { money, num, orDash } from '../lib/format';
 import { loadView } from '../lib/loadView';
 import { useAlertPrefs } from '../lib/useAlertPrefs';
 import { displayPrefs } from '../lib/display';
+import { docFromSearch, hasUrgentDoc, orderDocs } from '../lib/ficha';
 import { useConfirmStep } from '../lib/useConfirmStep';
 import { deleteAndLeave } from '../lib/deleteFlow';
 import { TYPE_INFO } from '../lib/vehicles';
@@ -24,7 +25,7 @@ function DocCard({ doc, vehicleId, prefs }: { doc: DocStatus; vehicleId: string;
   const urgent = doc.state === 'expired' || doc.state === 'expiring' || (doc.state === 'appointment' && doc.daysToAppointment === 0);
   const noDate = doc.state === 'no-date';
   return (
-    <article className={`doc card ${STATE_CLASS[doc.state]}`}>
+    <article id={`doc-${doc.type}`} className={`doc card ${STATE_CLASS[doc.state]}`}>
       <header className="doc-head">
         <span className="doc-icon"><Icon name={DOC_ICONS[doc.type]} /></span>
         <h3>{doc.type}</h3>
@@ -132,8 +133,22 @@ export default function VehicleDetail() {
   const alertPrefs = useAlertPrefs();
   const { open } = useSheets();
   const navigate = useNavigate();
+  const [search] = useSearchParams();
+  const target = docFromSearch(`?${search}`);
+  const shown = Boolean(vehicles.data?.some(x => x.id === id) && works.data);
   // Set while the unit is being deleted, so the screen doesn't flash "no encontrado" before leaving
   const [leaving, setLeaving] = useState(false);
+
+  // A notification or a row can point at one document: bring its card to the middle of the screen and mark it for a moment
+  useEffect(() => {
+    const card = target && shown ? document.getElementById(`doc-${target}`) : null;
+    if (!card) return;
+    const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    card.scrollIntoView({ block: 'center', behavior: calm ? 'auto' : 'smooth' });
+    card.classList.add('is-target');
+    const timer = window.setTimeout(() => card.classList.remove('is-target'), 2400);
+    return () => { window.clearTimeout(timer); card.classList.remove('is-target'); };
+  }, [target, shown, id]);
 
   // Coming from the list, going back keeps its filter and search
   const back = (location.state as { back?: string } | null)?.back ?? '/fleet';
@@ -166,6 +181,7 @@ export default function VehicleDetail() {
   const year = today.slice(0, 4);
   const history = works.data;
   const yearTotal = history.filter(w => w.date.startsWith(year)).reduce((a, w) => a + (w.cost ?? 0), 0);
+  const docs = orderDocs(vehicleDocs(v, displayPrefs(alertPrefs.prefs), today));
   const facts: [string, string][] = [
     ['Año', orDash(v.year)],
     [info.unit === 'km' ? 'Kilometraje' : 'Horas de uso', v.odometer === null ? '—' : `${num(v.odometer)} ${info.unit}`],
@@ -189,7 +205,7 @@ export default function VehicleDetail() {
           {facts.map(([k, val]) => <div key={k}><dt>{k}</dt><dd>{val}</dd></div>)}
         </dl>
         <div className="vh-actions">
-          <button type="button" className="btn btn-primary" onClick={() => open({ kind: 'work', vehicleId: v.id })}><Icon name="add" />Registrar trabajo</button>
+          <button type="button" className={`btn ${hasUrgentDoc(docs) ? 'btn-ghost' : 'btn-primary'}`} onClick={() => open({ kind: 'work', vehicleId: v.id })}><Icon name="add" />Registrar trabajo</button>
           <button type="button" className="btn btn-ghost" onClick={() => open({ kind: 'vehicle', vehicle: v })}><Icon name="edit" />Editar datos</button>
         </div>
       </div>
@@ -199,7 +215,7 @@ export default function VehicleDetail() {
           <SectionHead title="Documentación" />
           {v.status === 'Baja' && <p className="note warn doc-note"><Icon name="notifications_off" />La unidad está de baja: no recibe avisos de vencimiento.</p>}
           <div className="docs">
-            {vehicleDocs(v, displayPrefs(alertPrefs.prefs), today).map(d => <DocCard key={d.type} doc={d} vehicleId={v.id} prefs={alertPrefs.prefs} />)}
+            {docs.map(d => <DocCard key={d.type} doc={d} vehicleId={v.id} prefs={alertPrefs.prefs} />)}
           </div>
         </section>
       )}

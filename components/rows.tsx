@@ -10,7 +10,7 @@ import { DocBadge, Icon, Plate } from './ui';
 export function AttentionRow({ item }: { item: AttentionItem }) {
   const { vehicle, doc } = item;
   return (
-    <Link className="row" to={`/fleet/${vehicle.id}`}>
+    <Link className="row" to={`/fleet/${vehicle.id}?doc=${doc.type}`}>
       <span className={`row-icon ${STATE_CLASS[doc.state]}`}><Icon name={DOC_ICONS[doc.type]} /></span>
       <span className="row-main">
         <span className="row-title">{docTitle(doc)}</span>
@@ -40,7 +40,7 @@ export function EventRow({ event }: { event: AgendaEvent }) {
   const tone = eventTone(event);
   const [, month, day] = event.date.split('-').map(Number);
   return (
-    <Link className="row" to={`/fleet/${event.vehicle.id}`}>
+    <Link className="row" to={`/fleet/${event.vehicle.id}?doc=${event.doc.type}`}>
       <span className={`ev-date ${tone}`}><b className="display">{day}</b><span>{MONTHS_SHORT[month - 1]}</span></span>
       <span className="row-main">
         <span className="row-title">{eventTitle(event)}</span>

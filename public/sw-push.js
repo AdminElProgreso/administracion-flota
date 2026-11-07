@@ -4,7 +4,7 @@
 self.addEventListener('push', (event) => {
     let data = {
         title: 'Gestión El Progreso',
-        body: 'Tienes una nueva alerta de flota.',
+        body: 'Tenés un aviso nuevo de la flota.',
         url: '/#/fleet', // Corregido para HashRouter
         tag: 'fleet-alert'
     };
@@ -19,6 +19,12 @@ self.addEventListener('push', (event) => {
         } catch (e) {
             data.body = event.data.text();
         }
+    }
+
+    // A document's alert opens that document's card: the tag ends in -Seguro, -VTV or -Patente
+    const docType = /-(Seguro|VTV|Patente)$/.exec(data.tag);
+    if (docType && data.url.includes('#/fleet/') && !data.url.includes('?')) {
+        data.url += '?doc=' + docType[1];
     }
 
     const options = {

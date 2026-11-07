@@ -61,6 +61,8 @@
 .doc{padding:16px;border-left:5px solid transparent}
 .doc.st-ok,.doc.st-warn,.doc.st-bad,.doc.st-appt,.doc.st-none{background:#fff;color:var(--carbon)}
 .doc.st-ok{border-left-color:var(--ok)}.doc.st-warn{border-left-color:var(--warn-dot)}.doc.st-bad{border-left-color:var(--bad-dot)}.doc.st-appt{border-left-color:var(--appt-dot)}.doc.st-none{border-left-color:var(--linea)}
+.doc{scroll-margin-block:24px;transition:box-shadow .35s ease-out}
+.doc.is-target{box-shadow:0 0 0 3px var(--verde-600),0 8px 24px rgba(0,163,81,.22)}
 .doc-head{display:flex;align-items:center;gap:10px}
 .doc-head h3{margin:0;flex:1;font-size:18px;font-weight:700}
 .doc-icon{width:36px;height:36px;border-radius:11px;background:var(--papel);display:grid;place-items:center;color:var(--tinta-2)}
@@ -161,6 +163,19 @@
 .login-foot{margin:auto 24px 22px;text-align:center;font-size:12.5px;line-height:1.4;color:var(--tinta-4)}
 
 /* Tablet: the phone layout, using the extra width */
+/* Phone: a tighter header so the first document card shows without scrolling */
+@media (max-width:899px){
+  .vhead{padding:14px}
+  .vh-main{gap:12px}
+  .vtype.xl{width:64px;height:64px;border-radius:18px}
+  .vtype.xl .vart{width:56px;height:56px}
+  .vh-title{margin:4px 0 8px;font-size:32px;line-height:1}
+  .facts{gap:8px;margin-top:12px}
+  .facts div{padding:8px 11px}
+  .vh-actions{margin-top:12px;gap:8px;flex-wrap:nowrap}
+  .vh-actions .btn{flex:1 1 auto;padding:0 12px;gap:6px}
+}
+
 @media (min-width:720px){
   .kpis{grid-template-columns:repeat(4,1fr)}
   .vgrid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
