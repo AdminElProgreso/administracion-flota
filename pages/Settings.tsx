@@ -317,7 +317,7 @@ export default function Settings() {
 
   return (
     <div className="screen">
-      <PageHead eyebrow="Tu cuenta y tus avisos" title="Ajustes" />
+      <PageHead title="Ajustes" />
       <div className="settings-grid">
         {sections}
         <InstallCard />

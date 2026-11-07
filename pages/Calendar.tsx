@@ -35,7 +35,6 @@ export default function Calendar() {
 
   const head = (
     <PageHead
-      eyebrow="Vencimientos y turnos"
       title="Agenda"
       action={<Segmented<AgendaView> className="seg-sm agenda-switch" value={view} options={VIEW_OPTIONS} onChange={setView} />}
     />

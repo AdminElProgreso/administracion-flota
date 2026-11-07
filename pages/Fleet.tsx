@@ -97,7 +97,7 @@ export default function Fleet() {
   };
 
   const add = <button type="button" className="btn btn-primary btn-sm" onClick={() => open({ kind: 'vehicle' })}><Icon name="add" />Agregar</button>;
-  const head = <PageHead eyebrow="Flota de la Cooperativa" title="Vehículos" action={add} />;
+  const head = <PageHead title="Vehículos" action={add} />;
 
   const view = loadView(vehicles, { data: alertPrefs.loadState === 'ready' ? alertPrefs.prefs : undefined, error: alertPrefs.error });
   if (view === 'error') {

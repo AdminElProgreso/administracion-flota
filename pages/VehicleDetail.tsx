@@ -196,8 +196,8 @@ export default function VehicleDetail() {
         <div className="vh-main">
           <span className="vtype xl"><VehicleArt type={v.tipo} label={info.label} /></span>
           <div className="vh-id">
-            <p className="eyebrow">{[info.label, v.section].filter(Boolean).join(' · ')}</p>
             <h1 className="display vh-title">{v.model}</h1>
+            <p className="vh-meta">{[info.label, v.section].filter(Boolean).join(' · ')}</p>
             <div className="vh-tags"><Plate value={v.patente} large /><StatusPill status={v.status} /></div>
           </div>
         </div>

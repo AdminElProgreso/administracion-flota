@@ -28,7 +28,7 @@ export default function Maintenance() {
   const [filter, setFilter] = useState<WorkFilter>('todos');
 
   const register = <button type="button" className="btn btn-primary btn-sm" onClick={() => open({ kind: 'work' })}><Icon name="add" />Registrar</button>;
-  const head = <PageHead eyebrow="Mantenimiento y reparaciones" title="Taller" action={register} />;
+  const head = <PageHead title="Taller" action={register} />;
 
   const view = loadView(works, vehicles);
   if (view === 'error') {

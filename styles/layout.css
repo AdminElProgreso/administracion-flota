@@ -35,7 +35,7 @@
 .sb-coop{margin:12px 10px 0;font-size:12px;line-height:1.35;color:var(--tinta-4)}
 
 .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:22px 16px 0}
-.page-title{margin:4px 0 0;font-size:44px}
+.page-title{margin:0;font-size:44px}
 .tools{margin:16px 16px 0;display:flex;flex-direction:column;gap:12px}
 .sec{margin:26px 16px 0}
 .sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 4px 10px}
