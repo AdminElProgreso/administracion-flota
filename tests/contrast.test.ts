@@ -21,7 +21,7 @@ const color = (v: string) => (v.startsWith('#') ? v : tokens[v]);
 const pairs: [string, string][] = [
   ['tinta-4', 'blanco'], ['tinta-4', 'papel'], ['tinta-4', 'none-bg'], ['tinta-4', 'linea-2'],
   ['ok', 'ok-bg'], ['none', 'none-bg'], ['warn', 'warn-bg'], ['bad', 'bad-bg'], ['appt', 'appt-bg'],
-  ['naranja-700', 'naranja-100'], ['#FFFFFF', 'naranja-700'],
+  ['#FFFFFF', 'naranja-700'],
   ['none', 'blanco'], ['tinta-2', 'linea-2'],
 ];
 

@@ -37,6 +37,14 @@ export function attentionSummary(items: AttentionItem[], missing = 0): { title: 
   return { title: `${n} ${n === 1 ? 'documento necesita' : 'documentos necesitan'} atención`, detail };
 }
 
+// What the attention section says when it has nothing to list. Missing dates are already announced
+// by the header, so here they only explain why there is nothing to show; never "Todo en orden" while dates are missing.
+export function attentionEmpty(missing: number): { icon: string; title: string; text: string } {
+  return missing
+    ? { icon: 'event_available', title: 'Nada vencido ni por vencer', text: 'Cuando cargues las fechas, acá vas a ver lo que se acerca a su vencimiento.' }
+    : { icon: 'check_circle', title: 'Todo en orden', text: 'No hay documentos vencidos, por vencer ni turnos.' };
+}
+
 export function nextExpiryLabel(days: number | null): string {
   if (days === null) return '—';
   if (days === 0) return 'Hoy';
@@ -53,7 +61,7 @@ export function statusAction(items: number, missing: number): { label: string; t
   return { label: !items ? 'Cargar fechas' : 'Ver la agenda', to: statusLink(items, missing) };
 }
 
-export type HomeKpi = { icon: string; label: string; value: string; sub: string; to: string; words: boolean };
+export type HomeKpi = { label: string; value: string; sub: string; to: string; words: boolean };
 
 // An empty indicator says so in words instead of showing a zero or a dash
 export function homeKpis(i: {
@@ -61,15 +69,15 @@ export function homeKpis(i: {
   next: { days: number; type: string; model: string } | null;
 }): HomeKpi[] {
   return [
-    { icon: 'directions_car', label: 'Operativos', value: String(i.operating), sub: `de ${i.inFleet} en la flota`, to: '/fleet?filtro=activos', words: false },
+    { label: 'Operativos', value: String(i.operating), sub: `de ${i.inFleet} en la flota`, to: '/fleet?filtro=activos', words: false },
     i.inShop.length
-      ? { icon: 'build', label: 'En taller', value: String(i.inShop.length), sub: i.inShop.join(', '), to: '/fleet?filtro=taller', words: false }
-      : { icon: 'build', label: 'En taller', value: 'Ninguno', sub: 'Toda la flota trabajando', to: '/fleet?filtro=taller', words: true },
+      ? { label: 'En taller', value: String(i.inShop.length), sub: i.inShop.join(', '), to: '/fleet?filtro=taller', words: false }
+      : { label: 'En taller', value: 'Ninguno', sub: 'Toda la flota trabajando', to: '/fleet?filtro=taller', words: true },
     i.monthCount
-      ? { icon: 'payments', label: `Gasto de ${i.monthName}`, value: money(i.monthTotal), sub: `${i.monthCount} ${i.monthCount === 1 ? 'trabajo' : 'trabajos'}`, to: '/maintenance', words: false }
-      : { icon: 'payments', label: `Gasto de ${i.monthName}`, value: 'Sin gastos', sub: 'Ningún trabajo cargado', to: '/maintenance', words: true },
+      ? { label: `Gasto de ${i.monthName}`, value: money(i.monthTotal), sub: `${i.monthCount} ${i.monthCount === 1 ? 'trabajo' : 'trabajos'}`, to: '/maintenance', words: false }
+      : { label: `Gasto de ${i.monthName}`, value: 'Sin gastos', sub: 'Ningún trabajo cargado', to: '/maintenance', words: true },
     i.next
-      ? { icon: 'event_upcoming', label: 'Próximo vencimiento', value: nextExpiryLabel(i.next.days), sub: `${i.next.type} · ${i.next.model}`, to: '/calendar', words: false }
-      : { icon: 'event_upcoming', label: 'Próximo vencimiento', value: 'Nada', sub: `en los próximos ${DISPLAY_WINDOW_DAYS} días`, to: '/calendar', words: true },
+      ? { label: 'Próximo vencimiento', value: nextExpiryLabel(i.next.days), sub: `${i.next.type} · ${i.next.model}`, to: '/calendar', words: false }
+      : { label: 'Próximo vencimiento', value: 'Nada', sub: `en los próximos ${DISPLAY_WINDOW_DAYS} días`, to: '/calendar', words: true },
   ];
 }

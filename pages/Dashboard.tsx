@@ -8,7 +8,7 @@ import { useSheets } from '../components/sheets/SheetsProvider';
 import { EmptyState, ErrorState, Icon, Kpi, Loading, Plate, SectionHead } from '../components/ui';
 import { useVehicles, useWorks } from '../lib/data';
 import { MONTHS } from '../lib/format';
-import { attentionSummary, greetingLine, homeKpis, missingDates, statusAction } from '../lib/home';
+import { attentionEmpty, attentionSummary, greetingLine, homeKpis, missingDates, statusAction } from '../lib/home';
 import { loadView } from '../lib/loadView';
 import { monthlySpend } from '../lib/spend';
 import { useAlertPrefs } from '../lib/useAlertPrefs';
@@ -62,6 +62,7 @@ export default function Dashboard() {
     operating, inFleet, inShop: inShop.map(v => v.model), monthName, monthTotal: month.total, monthCount: month.count,
     next: next && next.doc.daysToExpiration !== null ? { days: next.doc.daysToExpiration, type: next.doc.type, model: next.vehicle.model } : null,
   });
+  const kpiCards = kpis.map(k => <Kpi key={k.label} {...k} />);
   const docKey = (i: (typeof items)[number]) => `${i.vehicle.id}-${i.doc.type}`;
 
   return (
@@ -80,6 +81,10 @@ export default function Dashboard() {
           <Link className="btn btn-primary btn-sm" to="/settings">Configurar</Link>
         </div>
       )}
+
+      {/* The strip is drawn twice and one copy is hidden per width, so Tab follows what the eye sees:
+          above the columns on desktop, between attention and recent work on the phone. */}
+      <div className="kpis kpis-wide">{kpiCards}</div>
 
       <div className="home-grid">
         <div className="home-main">
@@ -103,23 +108,15 @@ export default function Dashboard() {
 
           <section className="sec">
             <SectionHead title="Necesitan atención">
-              <Link className="link" to="/calendar">Ver agenda<Icon name="chevron_right" /></Link>
+              <Link className="link" to="/calendar">Ver la agenda<Icon name="chevron_right" /></Link>
             </SectionHead>
             {items.length
               ? <div className="card list">{items.map(item => <AttentionRow key={docKey(item)} item={item} />)}</div>
-              : missing
-                ? (
-                  <EmptyState icon="edit_calendar" title="Faltan fechas" text={`${missing} ${missing === 1 ? 'documento no tiene' : 'documentos no tienen'} fecha de vencimiento y no generan avisos.`}>
-                    <Link className="btn btn-ghost btn-sm" to="/fleet?filtro=sinfecha"><Icon name="edit_calendar" />Cargar fechas</Link>
-                  </EmptyState>
-                )
-                : <EmptyState icon="check_circle" title="Todo en orden" text="No hay documentos vencidos, por vencer ni turnos." />}
+              : <EmptyState {...attentionEmpty(missing)} />}
           </section>
         </div>
 
-        <div className="kpis">
-          {kpis.map(k => <Kpi key={k.label} {...k} />)}
-        </div>
+        <div className="kpis kpis-narrow">{kpiCards}</div>
 
         <div className="home-recent">
           <section className="sec">

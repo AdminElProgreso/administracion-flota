@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_PREFS, attentionList } from '../supabase/functions/_shared/alerts';
-import { attentionSummary, greetingLine, homeKpis, missingDates, nextExpiryLabel, statusAction, statusLink } from '../lib/home';
+import { attentionEmpty, attentionSummary, greetingLine, homeKpis, missingDates, nextExpiryLabel, statusAction, statusLink } from '../lib/home';
 import { money } from '../lib/format';
 import { T, vehicle, vrow } from './fixtures';
 
@@ -36,6 +36,7 @@ describe('inicio', () => {
       vehicle('b', { patente_expiration: '2026-11-05' }),
       vehicle('c', { vtv_expiration: '2026-10-01', vtv_appointment: '2026-11-10' }),
     ], DEFAULT_PREFS, T);
+    expect(attentionSummary(items, 3).title).toBe('4 documentos necesitan atención');
     expect(attentionSummary(items, 3).detail).toBe('2 vencidos · 1 por vencer · 1 con turno · 3 sin fecha');
   });
   it('la tarjeta de estado lleva a lo que hay que hacer', () => {
@@ -60,6 +61,14 @@ describe('inicio', () => {
     expect(statusAction(3, 0)).toEqual({ label: 'Ver la agenda', to: '/calendar' });
     expect(statusAction(0, 0)).toBeNull();
   });
+  it('la sección de atención vacía no repite al encabezado', () => {
+    expect(attentionEmpty(48)).toEqual({
+      icon: 'event_available',
+      title: 'Nada vencido ni por vencer',
+      text: 'Cuando cargues las fechas, acá vas a ver lo que se acerca a su vencimiento.',
+    });
+    expect(attentionEmpty(0)).toEqual({ icon: 'check_circle', title: 'Todo en orden', text: 'No hay documentos vencidos, por vencer ni turnos.' });
+  });
   it('indicadores vacíos en palabras', () => {
     const k = homeKpis({ operating: 17, inFleet: 17, inShop: [], monthName: 'noviembre', monthTotal: 0, monthCount: 0, next: null });
     expect(k.map(x => [x.label, x.value, x.sub, x.words])).toEqual([
@@ -68,6 +77,7 @@ describe('inicio', () => {
       ['Gasto de noviembre', 'Sin gastos', 'Ningún trabajo cargado', true],
       ['Próximo vencimiento', 'Nada', 'en los próximos 30 días', true],
     ]);
+    expect(k.map(x => x.to)).toEqual(['/fleet?filtro=activos', '/fleet?filtro=taller', '/maintenance', '/calendar']);
   });
   it('indicadores con valores', () => {
     const k = homeKpis({ operating: 15, inFleet: 17, inShop: ['HILUX', 'F-700'], monthName: 'noviembre', monthTotal: 125000, monthCount: 2,
@@ -75,5 +85,6 @@ describe('inicio', () => {
     expect(k.map(x => [x.value, x.sub, x.words])).toEqual([
       ['15', 'de 17 en la flota', false], ['2', 'HILUX, F-700', false], [money(125000), '2 trabajos', false], ['3 días', 'VTV · SAVEIRO', false],
     ]);
+    expect(k.map(x => x.to)).toEqual(['/fleet?filtro=activos', '/fleet?filtro=taller', '/maintenance', '/calendar']);
   });
 });

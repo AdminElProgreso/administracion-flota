@@ -9,6 +9,7 @@
 .hero-action{margin-top:16px;min-height:48px}
 .home-grid{display:flex;flex-direction:column}
 .kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 16px 0}
+.kpis-wide{display:none}
 .banner{display:flex;align-items:center;gap:12px;margin:16px 16px 0;padding:14px;border-radius:var(--r-lg);background:var(--sol-100);border:1px solid #F1E08A;color:#5B4A00}
 .banner .ms{font-size:26px}
 .banner div{flex:1;min-width:0}
@@ -184,8 +185,9 @@
   .hero-title{font-size:52px}
   .kpis{grid-template-columns:repeat(4,1fr);gap:14px;margin:0}
   .banner{margin:20px 0 0}
-  .home-grid{display:grid;grid-template-columns:1.3fr 1fr;grid-template-areas:'kpis kpis' 'main recent';gap:0 28px;align-items:start}
-  .home-grid .kpis{grid-area:kpis;margin:20px 0 0}
+  .home-grid{display:grid;grid-template-columns:1.3fr 1fr;grid-template-areas:'main recent';gap:0 28px;align-items:start}
+  .kpis-wide{display:grid;margin:20px 0 0}
+  .kpis-narrow{display:none}
   .home-main{grid-area:main}
   .home-recent{grid-area:recent}
   .vgrid,.vhead,.agenda-grid,.spend,.taller-tools,.taller-list,.settings-grid{margin-left:0;margin-right:0}
