@@ -92,9 +92,8 @@ select.input{background-image:linear-gradient(45deg,transparent 50%,var(--tinta-
 .note{display:flex;gap:8px;align-items:flex-start;margin:14px 0 0;padding:11px 12px;border-radius:12px;background:var(--appt-bg);color:#1B3E9E;font-size:14px;line-height:1.35}
 .note .ms{font-size:19px;margin-top:1px}
 .note.warn{background:var(--warn-bg);color:var(--warn)}
-.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
-.chips::-webkit-scrollbar{display:none}
-.chip{flex:none;display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:999px;border:1.5px solid var(--linea);background:#fff;font-weight:700;font-size:14px;color:var(--tinta-2)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{flex:none;display:inline-flex;align-items:center;gap:7px;height:44px;padding:0 14px;border-radius:999px;border:1.5px solid var(--linea);background:#fff;font-weight:700;font-size:14px;color:var(--tinta-2)}
 .chip small{font-weight:700;font-size:12px;color:var(--tinta-4)}
 .chip[aria-pressed="true"]{background:var(--verde-800);border-color:var(--verde-800);color:#fff}
 .chip[aria-pressed="true"] small{color:rgba(255,255,255,.75)}
@@ -120,6 +119,7 @@ select.input{background-image:linear-gradient(45deg,transparent 50%,var(--tinta-
 .kpi-value{font-size:24px;line-height:24px;color:var(--carbon);white-space:nowrap}
 .kpi-words{font-family:'Barlow',sans-serif;font-weight:700;font-size:19px}
 .kpi-sub{font-size:12.5px;line-height:16px;color:var(--tinta-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+@media (max-width:359px){.kpi-label,.kpi-sub{white-space:normal;overflow:visible;text-overflow:clip}}
 
 /* Hojas: desde abajo en el celular, diálogo centrado en escritorio */
 .scrim{position:fixed;inset:0;background:rgba(8,24,12,.42);z-index:40;animation:scrim-in .2s ease}
@@ -151,6 +151,7 @@ select.input{background-image:linear-gradient(45deg,transparent 50%,var(--tinta-
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
 @media (min-width:900px){
+  .chip{height:38px}
   .sheet{left:50%;right:auto;bottom:auto;top:50%;width:540px;max-height:86dvh;border-radius:22px;padding:24px 26px 26px;transform:translate(-50%,-50%);animation:dialog-in .22s cubic-bezier(.2,.8,.2,1)}
   .grab{display:none}
   .toast{bottom:30px}
