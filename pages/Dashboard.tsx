@@ -7,8 +7,8 @@ import { AttentionRow, WorkItem } from '../components/rows';
 import { useSheets } from '../components/sheets/SheetsProvider';
 import { EmptyState, ErrorState, Icon, Kpi, Loading, Plate, SectionHead } from '../components/ui';
 import { useVehicles, useWorks } from '../lib/data';
-import { MONTHS, greeting, longDate, money } from '../lib/format';
-import { attentionSummary, missingDates, nextExpiryLabel, statusLink } from '../lib/home';
+import { MONTHS } from '../lib/format';
+import { attentionSummary, greetingLine, homeKpis, missingDates, statusAction } from '../lib/home';
 import { loadView } from '../lib/loadView';
 import { monthlySpend } from '../lib/spend';
 import { useAlertPrefs } from '../lib/useAlertPrefs';
@@ -26,8 +26,6 @@ function usePasswordMissing(): boolean {
   }, []);
   return missing;
 }
-
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export default function Dashboard() {
   const vehicles = useVehicles();
@@ -59,31 +57,20 @@ export default function Dashboard() {
   const monthName = MONTHS[Number(today.slice(5, 7)) - 1];
   const byId = new Map(list.map(v => [v.id, v]));
   const recent = works.data.slice(0, 4);
+  const action = statusAction(items.length, missing);
+  const kpis = homeKpis({
+    operating, inFleet, inShop: inShop.map(v => v.model), monthName, monthTotal: month.total, monthCount: month.count,
+    next: next && next.doc.daysToExpiration !== null ? { days: next.doc.daysToExpiration, type: next.doc.type, model: next.vehicle.model } : null,
+  });
   const docKey = (i: (typeof items)[number]) => `${i.vehicle.id}-${i.doc.type}`;
 
   return (
     <div className="screen">
       <div className="hero">
-        <p className="hero-date">{longDate(today)}</p>
-        <h1 className="display hero-title">{greeting(new Date())}</h1>
-        <Link className="hero-status" to={statusLink(items.length, missing)}>
-          <span className="hs-icon"><Icon name={items.length ? 'notifications_active' : missing ? 'edit_calendar' : 'verified'} fill /></span>
-          <span className="hs-text"><strong>{summary.title}</strong><small>{summary.detail}</small></span>
-          <Icon name="chevron_right" />
-        </Link>
-      </div>
-
-      <div className="kpis">
-        <Kpi icon="directions_car" label="Operativos" value={operating} sub={`de ${inFleet} en la flota`} to="/fleet?filtro=activos" />
-        <Kpi icon="build" label="En taller" value={inShop.length} sub={inShop.map(v => v.model).join(', ') || 'Ninguno'} to="/fleet?filtro=taller" />
-        <Kpi icon="payments" label={`Gasto de ${monthName}`} value={money(month.total)} sub={plural(month.count, 'trabajo', 'trabajos')} to="/maintenance" />
-        <Kpi
-          icon="event_upcoming"
-          label="Próximo vencimiento"
-          value={nextExpiryLabel(next?.doc.daysToExpiration ?? null)}
-          sub={next ? `${next.doc.type} · ${next.vehicle.model}` : 'Nada en el plazo'}
-          to="/calendar"
-        />
+        <p className="hero-date">{greetingLine(new Date(), today)}</p>
+        <h1 className="display hero-title">{summary.title}</h1>
+        <p className="hero-detail">{summary.detail}</p>
+        {action && <Link className="btn btn-light hero-action" to={action.to}>{action.label}</Link>}
       </div>
 
       {passwordMissing && (
@@ -95,7 +82,7 @@ export default function Dashboard() {
       )}
 
       <div className="home-grid">
-        <div>
+        <div className="home-main">
           {todays.length > 0 && (
             <section className="sec">
               <SectionHead title="Para hoy" />
@@ -130,7 +117,11 @@ export default function Dashboard() {
           </section>
         </div>
 
-        <div>
+        <div className="kpis">
+          {kpis.map(k => <Kpi key={k.label} {...k} />)}
+        </div>
+
+        <div className="home-recent">
           <section className="sec">
             <SectionHead title="Últimos trabajos">
               <Link className="link" to="/maintenance">Ver todos<Icon name="chevron_right" /></Link>

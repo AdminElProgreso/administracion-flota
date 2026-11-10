@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_PREFS, attentionList } from '../supabase/functions/_shared/alerts';
-import { attentionSummary, missingDates, nextExpiryLabel, statusLink } from '../lib/home';
+import { attentionSummary, greetingLine, homeKpis, missingDates, nextExpiryLabel, statusAction, statusLink } from '../lib/home';
+import { money } from '../lib/format';
 import { T, vehicle, vrow } from './fixtures';
 
 describe('inicio', () => {
@@ -47,5 +48,32 @@ describe('inicio', () => {
     expect(nextExpiryLabel(1)).toBe('Mañana');
     expect(nextExpiryLabel(12)).toBe('12 días');
     expect(nextExpiryLabel(null)).toBe('—');
+  });
+  it('saludo y fecha en una línea', () => {
+    expect(greetingLine(new Date(2026, 10, 10, 9), '2026-11-10')).toBe('Buen día · martes 10 de noviembre');
+    expect(greetingLine(new Date(2026, 10, 10, 15), '2026-11-10')).toBe('Buenas tardes · martes 10 de noviembre');
+    expect(greetingLine(new Date(2026, 10, 10, 22), '2026-11-10')).toBe('Buenas noches · martes 10 de noviembre');
+  });
+  it('la acción del encabezado', () => {
+    expect(statusAction(0, 48)).toEqual({ label: 'Cargar fechas', to: '/fleet?filtro=sinfecha' });
+    expect(statusAction(3, 48)).toEqual({ label: 'Ver la agenda', to: '/calendar' });
+    expect(statusAction(3, 0)).toEqual({ label: 'Ver la agenda', to: '/calendar' });
+    expect(statusAction(0, 0)).toBeNull();
+  });
+  it('indicadores vacíos en palabras', () => {
+    const k = homeKpis({ operating: 17, inFleet: 17, inShop: [], monthName: 'noviembre', monthTotal: 0, monthCount: 0, next: null });
+    expect(k.map(x => [x.label, x.value, x.sub, x.words])).toEqual([
+      ['Operativos', '17', 'de 17 en la flota', false],
+      ['En taller', 'Ninguno', 'Toda la flota trabajando', true],
+      ['Gasto de noviembre', 'Sin gastos', 'Ningún trabajo cargado', true],
+      ['Próximo vencimiento', 'Nada', 'en los próximos 30 días', true],
+    ]);
+  });
+  it('indicadores con valores', () => {
+    const k = homeKpis({ operating: 15, inFleet: 17, inShop: ['HILUX', 'F-700'], monthName: 'noviembre', monthTotal: 125000, monthCount: 2,
+      next: { days: 3, type: 'VTV', model: 'SAVEIRO' } });
+    expect(k.map(x => [x.value, x.sub, x.words])).toEqual([
+      ['15', 'de 17 en la flota', false], ['2', 'HILUX, F-700', false], [money(125000), '2 trabajos', false], ['3 días', 'VTV · SAVEIRO', false],
+    ]);
   });
 });

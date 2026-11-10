@@ -1,17 +1,14 @@
 /* Pantallas (ver docs/propuesta/interfaz.html) */
 
 /* Inicio */
-.hero{position:relative;overflow:hidden;color:#fff;padding:20px 20px 78px;border-radius:0 0 30px 30px;
+.hero{position:relative;overflow:hidden;color:#fff;padding:18px 20px 22px;border-radius:0 0 30px 30px;
   background:var(--verde-800)}
-.hero-date{margin:2px 0 0;font-weight:600;font-size:14.5px;color:#fff}
-.hero-title{margin:6px 0 18px;font-size:46px}
-.hero-status{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.12);backdrop-filter:blur(6px);color:#fff;border-radius:18px;padding:14px 12px 14px 14px}
-.hero-status:hover{background:rgba(255,255,255,.18)}
-.hs-icon{width:42px;height:42px;border-radius:13px;background:var(--sol-500);color:var(--verde-900);display:grid;place-items:center;flex:none}
-.hs-text{flex:1;min-width:0}
-.hs-text strong{display:block;font-size:17px;font-weight:700;line-height:1.2}
-.hs-text small{display:block;margin-top:3px;font-size:13.5px;color:#fff}
-.kpis{position:relative;z-index:2;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:-56px 16px 0}
+.hero-date{margin:0;font-weight:600;font-size:14.5px;color:#fff}
+.hero-title{margin:8px 0 0;font-size:40px;line-height:1}
+.hero-detail{margin:6px 0 0;font-size:15px;color:#fff;max-width:46ch}
+.hero-action{margin-top:16px;min-height:48px}
+.home-grid{display:flex;flex-direction:column}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 16px 0}
 .banner{display:flex;align-items:center;gap:12px;margin:16px 16px 0;padding:14px;border-radius:var(--r-lg);background:var(--sol-100);border:1px solid #F1E08A;color:#5B4A00}
 .banner .ms{font-size:26px}
 .banner div{flex:1;min-width:0}
@@ -183,12 +180,14 @@
 }
 
 @media (min-width:900px){
-  .hero{border-radius:26px;margin:0;padding:30px 34px 92px}
-  .hero-title{font-size:56px}
-  .hero-status{max-width:560px}
-  .kpis{grid-template-columns:repeat(4,1fr);gap:14px;margin:-62px 24px 0}
+  .hero{border-radius:26px;margin:0;padding:28px 34px 30px}
+  .hero-title{font-size:52px}
+  .kpis{grid-template-columns:repeat(4,1fr);gap:14px;margin:0}
   .banner{margin:20px 0 0}
-  .home-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:28px;align-items:start}
+  .home-grid{display:grid;grid-template-columns:1.3fr 1fr;grid-template-areas:'kpis kpis' 'main recent';gap:0 28px;align-items:start}
+  .home-grid .kpis{grid-area:kpis;margin:20px 0 0}
+  .home-main{grid-area:main}
+  .home-recent{grid-area:recent}
   .vgrid,.vhead,.agenda-grid,.spend,.taller-tools,.taller-list,.settings-grid{margin-left:0;margin-right:0}
   .vgrid{grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
   .back{margin-left:-10px;margin-top:0}

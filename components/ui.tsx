@@ -65,13 +65,12 @@ export function Loading() {
   return <div className="loading" role="status">Cargando…</div>;
 }
 
-export function Kpi({ icon, label, value, sub, to }: { icon: string; label: string; value: ReactNode; sub: string; to: string }) {
+export function Kpi({ label, value, sub, to, words = false }: { label: string; value: ReactNode; sub: string; to: string; words?: boolean }) {
   return (
     <Link className="kpi" to={to}>
-      <span className="kpi-icon"><Icon name={icon} /></span>
-      {/* Long amounts ('$ 10.000.000') get a smaller size so they fit a half-width card on the phone */}
-      <span className={`kpi-value display num${typeof value === 'string' && value.length >= 12 ? ' long' : ''}`}>{value}</span>
       <span className="kpi-label">{label}</span>
+      {/* An empty value said in words ('Ninguno') is body text, not a number in the display face */}
+      <span className={words ? 'kpi-value kpi-words' : 'kpi-value display num'}>{value}</span>
       <span className="kpi-sub">{sub}</span>
     </Link>
   );

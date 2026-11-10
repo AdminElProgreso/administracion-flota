@@ -1,5 +1,7 @@
 import { DEFAULT_PREFS, vehicleDocs, type AttentionItem } from '../supabase/functions/_shared/alerts';
 import type { VehicleRow } from '../types';
+import { DISPLAY_WINDOW_DAYS } from './display';
+import { greeting, longDate, money } from './format';
 import { hasMissingDate } from './vehicles';
 
 // Texts of the Inicio screen (pages/Dashboard.tsx)
@@ -40,4 +42,34 @@ export function nextExpiryLabel(days: number | null): string {
   if (days === 0) return 'Hoy';
   if (days === 1) return 'Mañana';
   return `${days} días`;
+}
+
+// Greeting and date share one small line: "Buen día · martes 10 de noviembre"
+export const greetingLine = (now: Date, today: string): string => `${greeting(now)} · ${longDate(today).toLowerCase()}`;
+
+// The one button of the header; nothing to do means no button
+export function statusAction(items: number, missing: number): { label: string; to: string } | null {
+  if (!items && !missing) return null;
+  return { label: !items ? 'Cargar fechas' : 'Ver la agenda', to: statusLink(items, missing) };
+}
+
+export type HomeKpi = { icon: string; label: string; value: string; sub: string; to: string; words: boolean };
+
+// An empty indicator says so in words instead of showing a zero or a dash
+export function homeKpis(i: {
+  operating: number; inFleet: number; inShop: string[]; monthName: string; monthTotal: number; monthCount: number;
+  next: { days: number; type: string; model: string } | null;
+}): HomeKpi[] {
+  return [
+    { icon: 'directions_car', label: 'Operativos', value: String(i.operating), sub: `de ${i.inFleet} en la flota`, to: '/fleet?filtro=activos', words: false },
+    i.inShop.length
+      ? { icon: 'build', label: 'En taller', value: String(i.inShop.length), sub: i.inShop.join(', '), to: '/fleet?filtro=taller', words: false }
+      : { icon: 'build', label: 'En taller', value: 'Ninguno', sub: 'Toda la flota trabajando', to: '/fleet?filtro=taller', words: true },
+    i.monthCount
+      ? { icon: 'payments', label: `Gasto de ${i.monthName}`, value: money(i.monthTotal), sub: `${i.monthCount} ${i.monthCount === 1 ? 'trabajo' : 'trabajos'}`, to: '/maintenance', words: false }
+      : { icon: 'payments', label: `Gasto de ${i.monthName}`, value: 'Sin gastos', sub: 'Ningún trabajo cargado', to: '/maintenance', words: true },
+    i.next
+      ? { icon: 'event_upcoming', label: 'Próximo vencimiento', value: nextExpiryLabel(i.next.days), sub: `${i.next.type} · ${i.next.model}`, to: '/calendar', words: false }
+      : { icon: 'event_upcoming', label: 'Próximo vencimiento', value: 'Nada', sub: `en los próximos ${DISPLAY_WINDOW_DAYS} días`, to: '/calendar', words: true },
+  ];
 }
