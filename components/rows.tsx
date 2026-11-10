@@ -26,7 +26,7 @@ export function WorkItem({ work, vehicle, showVehicle = true, onClick }: { work:
   const sub = [showVehicle ? (vehicle?.model ?? 'Unidad eliminada') : null, shortDate(work.date, todayISO()), work.provider].filter(Boolean).join(' · ');
   return (
     <button type="button" className="row" onClick={onClick}>
-      <span className={`row-icon ${repair ? 'tone-orange' : 'tone-green'}`}><Icon name={repair ? 'car_repair' : 'handyman'} /></span>
+      <span className={`row-icon ${repair ? 'tone-neutral' : 'tone-green'}`}><Icon name={repair ? 'car_repair' : 'handyman'} /></span>
       <span className="row-main">
         <span className="row-title">{work.description || work.type}</span>
         <span className="row-sub">{sub}</span>

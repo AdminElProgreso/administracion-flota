@@ -21,7 +21,7 @@
 .row.today:hover{background:#fff}
 .row.today .btn{margin-left:auto}
 .tone-green{background:var(--verde-50);color:var(--verde-700)}
-.tone-orange{background:var(--naranja-100);color:var(--naranja-700)}
+.tone-neutral{background:var(--linea-2);color:var(--tinta-2)}
 .empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:28px 20px;color:var(--tinta-3)}
 .empty .ms{font-size:38px;color:var(--verde-600)}
 .empty b{color:var(--carbon);font-size:16px}
@@ -32,17 +32,18 @@
 .loading::before{content:"";width:32px;height:32px;border-radius:50%;border:3px solid var(--verde-100);border-top-color:var(--verde-700);animation:spin .8s linear infinite}
 
 /* Estados */
-.badge{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-weight:700;font-size:12.5px;white-space:nowrap;flex:none}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:3.5px 8.5px;border:1.5px solid transparent;border-radius:999px;font-weight:700;font-size:12.5px;white-space:nowrap;flex:none}
 .badge::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
 .st-ok{color:var(--ok);background:var(--ok-bg)}
 .st-warn{color:var(--warn);background:var(--warn-bg)}
 .st-bad{color:var(--bad);background:var(--bad-bg)}
 .st-appt{color:var(--appt);background:var(--appt-bg)}
-.st-none{color:var(--naranja-700);background:var(--naranja-100)}
+.st-none{color:var(--none);background:transparent}
+.badge.st-none,.vdoc.st-none{border:1.5px dashed var(--tinta-4)}
 .st-warn.badge::before{background:var(--warn-dot)}
 .pill{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-weight:700;font-size:12.5px;white-space:nowrap}
 .pill.s-active{color:var(--ok);background:var(--ok-bg)}
-.pill.s-shop{color:var(--naranja-700);background:var(--naranja-100)}
+.pill.s-shop{color:var(--warn);background:var(--warn-bg)}
 .pill.s-off{color:var(--none);background:var(--none-bg)}
 
 /* Patente estilo Mercosur */

@@ -28,7 +28,7 @@
 .vc-name{font-weight:700;font-size:17px;line-height:1.15;overflow-wrap:anywhere}
 .vc-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:7px;font-size:13.5px;color:var(--tinta-3)}
 .vc-docs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.vdoc{display:flex;flex-direction:column;gap:3px;padding:9px 10px;border-radius:12px;min-width:0}
+.vdoc{display:flex;flex-direction:column;gap:3px;padding:7.5px 8.5px;border:1.5px solid transparent;border-radius:12px;min-width:0}
 .vdoc-name{font:700 11.5px 'Barlow Condensed';letter-spacing:.1em;text-transform:uppercase}
 .vdoc-state{font-weight:700;font-size:13px;line-height:1.15}
 .vc-nodocs{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:var(--none-bg);color:var(--tinta-3);font-size:13.5px;font-weight:600}

@@ -22,6 +22,7 @@ const pairs: [string, string][] = [
   ['tinta-4', 'blanco'], ['tinta-4', 'papel'], ['tinta-4', 'none-bg'], ['tinta-4', 'linea-2'],
   ['ok', 'ok-bg'], ['none', 'none-bg'], ['warn', 'warn-bg'], ['bad', 'bad-bg'], ['appt', 'appt-bg'],
   ['naranja-700', 'naranja-100'], ['#FFFFFF', 'naranja-700'],
+  ['none', 'blanco'], ['tinta-2', 'linea-2'],
 ];
 
 describe('contraste legible al sol (WCAG AA, 4,5:1)', () => {
@@ -30,6 +31,10 @@ describe('contraste legible al sol (WCAG AA, 4,5:1)', () => {
     expect(f, fg).toBeTruthy();
     expect(b, bg).toBeTruthy();
     expect(contrast(f, b)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('borde punteado de "Sin fecha" (tinta-4 sobre blanco, 3:1)', () => {
+    expect(contrast(tokens['tinta-4'], tokens['blanco'])).toBeGreaterThanOrEqual(3);
   });
 
   it('anillo de foco blanco sobre el encabezado de Inicio (3:1)', () => {
