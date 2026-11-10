@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { DOC_COLUMNS, DOC_TYPES, attentionList, docStatus, type DocType } from '../../supabase/functions/_shared/alerts';
+import { DOC_COLUMNS, DOC_TYPES, docStatus, type DocType } from '../../supabase/functions/_shared/alerts';
 import { formatDateLong, todayISO } from '../../supabase/functions/_shared/dates';
 import { useUpdateVehicle, useVehicles } from '../../lib/data';
-import { DOC_OF, appointmentNote, appointmentProposal, currentExpiryNote, dateError, renewProposal, renewedMessage } from '../../lib/docForm';
+import { DOC_OF, appointmentNote, appointmentProposal, currentExpiryNote, dateError, initialDocPick, renewProposal, renewedMessage } from '../../lib/docForm';
 import { plateText } from '../../lib/format';
 import { appointmentPatch, renewPatch } from '../../lib/patches';
 import { useAlertPrefs } from '../../lib/useAlertPrefs';
@@ -30,12 +30,10 @@ export function DocSheet({ kind, vehicleId, docType, onClose }: { kind: Kind; ve
   const options = (vehicles ?? [])
     .filter(v => v.tipo !== 'generator' && v.status !== 'Baja')
     .sort((a, b) => a.model.localeCompare(b.model, 'es'));
-  // Renewing fits any pending document; an appointment, one that has none yet
-  const urgent = attentionList(options, displayPrefs(prefs), today).find(i => renew || i.doc.state !== 'appointment');
-
   // No unit chosen yet: the select asks for one instead of picking the first of the list
-  const [selectedId, setSelectedId] = useState(vehicleId ?? urgent?.vehicle.id ?? '');
-  const [type, setType] = useState<DocType>(docType ?? urgent?.doc.type ?? 'VTV');
+  const [start] = useState(() => initialDocPick(options, displayPrefs(prefs), today, kind, vehicleId, docType));
+  const [selectedId, setSelectedId] = useState(start.vehicleId);
+  const [type, setType] = useState<DocType>(start.type);
   // Empty until typed. Appointments propose a date; a renewal never invents one
   const [date, setDate] = useState<string | null>(null);
 
@@ -128,7 +126,7 @@ export function DocSheet({ kind, vehicleId, docType, onClose }: { kind: Kind; ve
         {note && (
           <div className="sheet-more">
             <p className="note"><Icon name="event" />{note}</p>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDate(renewProposal(doc.expiration, today))}>
+            <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => setDate(renewProposal(doc.expiration, today))}>
               <Icon name="add" />+1 año
             </button>
           </div>

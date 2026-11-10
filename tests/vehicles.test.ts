@@ -33,6 +33,18 @@ describe('filterVehicles', () => {
       vrow('vence', { vtv_expiration: '2026-11-20' }), vrow('vencida', { vtv_expiration: '2026-10-01' })];
     expect(ids(sortByUrgency(l, displayPrefs(DEFAULT_PREFS), T))).toEqual(['vencida', 'vence', 'sin', 'ok', 'gen', 'baja']);
   });
+  it('en un empate de urgencia gana el evento más cercano', () => {
+    const prefs = displayPrefs(DEFAULT_PREFS);
+    const expiring = [vrow('lejos', { vtv_expiration: '2026-11-25' }), vrow('cerca', { vtv_expiration: '2026-11-08' })];
+    expect(ids(sortByUrgency(expiring, prefs, T))).toEqual(['cerca', 'lejos']);
+    // Overdue: fewer days left (more negative) means the oldest one first
+    const expired = [vrow('vencio', { vtv_expiration: '2026-10-01' }), vrow('vencio-antes', { vtv_expiration: '2026-09-01' })];
+    expect(ids(sortByUrgency(expired, prefs, T))).toEqual(['vencio-antes', 'vencio']);
+  });
+  it('una unidad con turno y sin vencimientos va antes que una que solo tiene fechas sin cargar', () => {
+    const l = [vrow('sin'), vrow('turno', { vtv_appointment: '2026-11-20' })];
+    expect(ids(sortByUrgency(l, displayPrefs(DEFAULT_PREFS), T))).toEqual(['turno', 'sin']);
+  });
   it('búsqueda sin mayúsculas, espacios ni acentos', () => {
     expect(ids(filterVehicles(list, 'todos', 'aa 236', T))).toEqual(['b']);
     expect(ids(filterVehicles(list, 'todos', 'agronomia', T))).toEqual(['b']);

@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useLayoutEffect, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { attentionList } from '../supabase/functions/_shared/alerts';
 import { todayISO } from '../supabase/functions/_shared/dates';
@@ -31,8 +31,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const signOut = () => void logout().then(problem => { if (problem) toast(problem, 'error'); });
   const count = vehicles ? attentionList(vehicles, displayPrefs(prefs), todayISO()).length : 0;
 
-  // The page scrolls the window: every screen starts at the top
-  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  // The page scrolls the window: every screen starts at the top. A layout effect runs before the passive effects of
+  // the screen, so a ficha that scrolls itself to a document is not sent back to the top afterwards
+  useLayoutEffect(() => { window.scrollTo(0, 0); }, [pathname]);
 
   const [home, fleet, agenda, shop] = SECTIONS;
   const tab = (s: (typeof SECTIONS)[number]) => (

@@ -20,15 +20,16 @@ export const STATUS_INFO: Record<VehicleStatus, { label: string; cls: string }> 
 
 export type VehicleFilter = 'todos' | 'activos' | 'taller' | 'sinfecha' | 'baja';
 
-// A unit with a document still without date; the state does not depend on the threshold
-const missingDate = (v: VehicleRow, today: string) =>
+// A unit with a document still without date: documents with no expiration send no notices. The state does not
+// depend on the threshold. Generators carry no documents and units de baja get no notices.
+export const hasMissingDate = (v: VehicleRow, today: string): boolean =>
   v.tipo !== 'generator' && v.status !== 'Baja' && vehicleDocs(v, DEFAULT_PREFS, today).some(d => d.state === 'no-date');
 
 const MATCH: Record<VehicleFilter, (v: VehicleRow, today: string) => boolean> = {
   todos: () => true,
   activos: v => v.status === 'Activo',
   taller: v => v.status === 'En Taller',
-  sinfecha: missingDate,
+  sinfecha: hasMissingDate,
   baja: v => v.status === 'Baja',
 };
 

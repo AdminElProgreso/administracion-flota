@@ -6,6 +6,7 @@ import { useToast } from '../components/Toast';
 import { Icon, PageHead, Stepper, Switch } from '../components/ui';
 import { initials, passwordProblem, passwordUpdateMessage, pushSupportNote } from '../lib/account';
 import { createAutosave } from '../lib/autosave';
+import { DISPLAY_WINDOW_DAYS } from '../lib/display';
 import { isDeviceSubscribed, pushSupport, showTestNotification, subscribeDevice, unsubscribeDevice } from '../lib/push';
 import { logout } from '../lib/session';
 import { ALERT_PREFS_KEY, saveAlertPrefs, useAlertPrefs } from '../lib/useAlertPrefs';
@@ -269,7 +270,7 @@ export default function Settings() {
 
   const alerts = (
     <Section key="alerts" icon="notifications_active" title="Avisos de vencimiento">
-      <p className="set-help">Desde cuántos días antes te avisamos. Desde ese día te llega un aviso diario hasta que el documento se renueve. Si cargás un turno, solo te recordamos el turno. En la app, lo que vence en los próximos 30 días se ve como «Por vencer», igual para todos.</p>
+      <p className="set-help">Desde cuántos días antes te avisamos. Desde ese día te llega un aviso diario hasta que el documento se renueve. Si cargás un turno, solo te recordamos el turno. En la app, lo que vence en los próximos {DISPLAY_WINDOW_DAYS} días se ve como «Por vencer», igual para todos.</p>
       {STEPS.map(s => {
         const value = prefs.thresholds[s.key];
         return (

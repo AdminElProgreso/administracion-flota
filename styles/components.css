@@ -112,6 +112,8 @@ select.input{background-image:linear-gradient(45deg,transparent 50%,var(--tinta-
 /* Indicadores */
 .kpi{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;background:#fff;border:1px solid var(--linea-2);border-radius:18px;box-shadow:var(--sh-2);padding:14px 14px 13px;min-width:0}
 .kpi:hover{border-color:var(--verde-200)}
+/* The cards overlap the green header: draw the ring inside, on the white card */
+.kpi:focus-visible{outline-offset:-3px}
 .kpi-icon{width:34px;height:34px;border-radius:11px;background:var(--verde-50);color:var(--verde-700);display:grid;place-items:center;margin-bottom:8px}
 .kpi-icon .ms{font-size:20px}
 .kpi-value{font-size:31px;color:var(--carbon);white-space:nowrap}

@@ -1,6 +1,7 @@
-import type { DocType } from '../supabase/functions/_shared/alerts';
+import { attentionList, type AlertPrefs, type DocType } from '../supabase/functions/_shared/alerts';
 import { formatDateLong } from '../supabase/functions/_shared/dates';
 import { addYears } from './format';
+import type { VehicleRow } from '../types';
 
 // Rules of the sheet that renews a document or books its appointment (components/sheets/DocSheet.tsx)
 
@@ -39,4 +40,15 @@ export function dateError(kind: 'renew' | 'appointment', date: string, today: st
 export function appointmentNote(days: number, enabled: boolean): string {
   const base = 'Mientras el turno esté cargado no llegan avisos de vencimiento';
   return enabled ? `${base}: te recordamos el turno ${days} ${days === 1 ? 'día' : 'días'} antes.` : `${base}.`;
+}
+
+// Where the sheet starts. Renewing fits any pending document; an appointment, one that has none yet.
+// With a unit fixed (the "+" from its ficha) only that unit's documents count, so the unit never opens
+// on another unit's document. No urgent document: no unit chosen yet and the VTV.
+export function initialDocPick(
+  options: VehicleRow[], prefs: AlertPrefs, today: string, kind: 'renew' | 'appointment', vehicleId?: string, docType?: DocType,
+): { vehicleId: string; type: DocType } {
+  const pool = vehicleId ? options.filter(v => v.id === vehicleId) : options;
+  const urgent = attentionList(pool, prefs, today).find(i => kind === 'renew' || i.doc.state !== 'appointment');
+  return { vehicleId: vehicleId ?? urgent?.vehicle.id ?? '', type: docType ?? urgent?.doc.type ?? 'VTV' };
 }

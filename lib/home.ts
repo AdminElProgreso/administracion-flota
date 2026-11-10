@@ -1,13 +1,14 @@
 import { DEFAULT_PREFS, vehicleDocs, type AttentionItem } from '../supabase/functions/_shared/alerts';
 import type { VehicleRow } from '../types';
+import { hasMissingDate } from './vehicles';
 
 // Texts of the Inicio screen (pages/Dashboard.tsx)
 
 // Documents with no expiration date send no notices; the office has to see how many are still to load.
-// The state does not depend on the threshold. Generators carry no documents and units de baja get no notices.
+// Which units count is decided by hasMissingDate (lib/vehicles.ts), the same rule as the "Sin fecha" filter.
 export function missingDates(vehicles: VehicleRow[], today: string): number {
   return vehicles
-    .filter(v => v.tipo !== 'generator' && v.status !== 'Baja')
+    .filter(v => hasMissingDate(v, today))
     .reduce((n, v) => n + vehicleDocs(v, DEFAULT_PREFS, today).filter(d => d.state === 'no-date').length, 0);
 }
 

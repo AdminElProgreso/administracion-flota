@@ -26,7 +26,7 @@ Está hecha para la flota y las reglas de la Cooperativa:
 
 ## Operating Context
 
-- Los avisos llegan como notificación push todos los días a las 9, hora de Argentina. Tocar el aviso abre la ficha de la unidad (`/#/fleet/{id}`).
+- Los avisos llegan como notificación push todos los días a las 9, hora de Argentina. Tocar el aviso abre la ficha de la unidad en ese documento (`/#/fleet/{id}?doc=…`).
 - Las unidades son camionetas y autos, camiones, tractores y generadores. Las primeras dos se miden en kilómetros y las otras dos en horas de uso.
 - Cada unidad tiene sección, encargado y chofer, y patente con formato Mercosur.
 - Los trabajos de taller pueden ser mantenimientos o reparaciones, con costo y proveedor.

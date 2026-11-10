@@ -10,4 +10,8 @@ export function docFromSearch(search: string): DocType | null {
 // Most urgent first; Array.sort is stable, so ties keep the usual Seguro, VTV, Patente order
 export const orderDocs = (docs: DocStatus[]): DocStatus[] => [...docs].sort((a, b) => URGENCY[a.state] - URGENCY[b.state]);
 
-export const hasUrgentDoc = (docs: DocStatus[]): boolean => docs.some(d => d.state === 'expired' || d.state === 'expiring');
+// Needs action today: expired, about to expire, or an appointment that is today
+export const isUrgentDoc = (d: DocStatus): boolean =>
+  d.state === 'expired' || d.state === 'expiring' || (d.state === 'appointment' && d.daysToAppointment === 0);
+
+export const hasUrgentDoc = (docs: DocStatus[]): boolean => docs.some(isUrgentDoc);

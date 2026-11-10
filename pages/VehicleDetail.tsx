@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { vehicleDocs, type AlertPrefs, type DocStatus } from '../supabase/functions/_shared/alerts';
 import { todayISO } from '../supabase/functions/_shared/dates';
@@ -13,19 +13,35 @@ import { money, num, orDash } from '../lib/format';
 import { loadView } from '../lib/loadView';
 import { useAlertPrefs } from '../lib/useAlertPrefs';
 import { displayPrefs } from '../lib/display';
-import { docFromSearch, hasUrgentDoc, orderDocs } from '../lib/ficha';
+import { docFromSearch, hasUrgentDoc, isUrgentDoc, orderDocs } from '../lib/ficha';
 import { useConfirmStep } from '../lib/useConfirmStep';
 import { deleteAndLeave } from '../lib/deleteFlow';
 import { TYPE_INFO } from '../lib/vehicles';
 import type { VehicleRow, VehicleStatus } from '../types';
 
-function DocCard({ doc, vehicleId, prefs }: { doc: DocStatus; vehicleId: string; prefs: AlertPrefs }) {
+function DocCard({ doc, vehicleId, prefs, isTarget }: { doc: DocStatus; vehicleId: string; prefs: AlertPrefs; isTarget: boolean }) {
   const { open } = useSheets();
   const text = docCardText(doc, prefs);
-  const urgent = doc.state === 'expired' || doc.state === 'expiring' || (doc.state === 'appointment' && doc.daysToAppointment === 0);
+  const urgent = isUrgentDoc(doc);
   const noDate = doc.state === 'no-date';
+  const ref = useRef<HTMLElement>(null);
+  const [marked, setMarked] = useState(false);
+
+  // A notification or a row can point at this document. The card exists only once the screen is complete, so it
+  // brings itself to the middle of the screen, takes focus (for keyboard and screen readers) and is marked for a moment
+  useEffect(() => {
+    const card = ref.current;
+    if (!isTarget || !card) return;
+    const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    card.scrollIntoView({ block: 'center', behavior: calm ? 'auto' : 'smooth' });
+    card.focus({ preventScroll: true });
+    setMarked(true);
+    const timer = window.setTimeout(() => setMarked(false), 2400);
+    return () => { window.clearTimeout(timer); setMarked(false); };
+  }, [isTarget]);
+
   return (
-    <article id={`doc-${doc.type}`} className={`doc card ${STATE_CLASS[doc.state]}`}>
+    <article ref={ref} id={`doc-${doc.type}`} tabIndex={isTarget ? -1 : undefined} className={`doc card ${STATE_CLASS[doc.state]}${marked ? ' is-target' : ''}`}>
       <header className="doc-head">
         <span className="doc-icon"><Icon name={DOC_ICONS[doc.type]} /></span>
         <h3>{doc.type}</h3>
@@ -135,20 +151,8 @@ export default function VehicleDetail() {
   const navigate = useNavigate();
   const [search] = useSearchParams();
   const target = docFromSearch(`?${search}`);
-  const shown = Boolean(vehicles.data?.some(x => x.id === id) && works.data);
   // Set while the unit is being deleted, so the screen doesn't flash "no encontrado" before leaving
   const [leaving, setLeaving] = useState(false);
-
-  // A notification or a row can point at one document: bring its card to the middle of the screen and mark it for a moment
-  useEffect(() => {
-    const card = target && shown ? document.getElementById(`doc-${target}`) : null;
-    if (!card) return;
-    const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    card.scrollIntoView({ block: 'center', behavior: calm ? 'auto' : 'smooth' });
-    card.classList.add('is-target');
-    const timer = window.setTimeout(() => card.classList.remove('is-target'), 2400);
-    return () => { window.clearTimeout(timer); card.classList.remove('is-target'); };
-  }, [target, shown, id]);
 
   // Coming from the list, going back keeps its filter and search
   const back = (location.state as { back?: string } | null)?.back ?? '/fleet';
@@ -215,7 +219,7 @@ export default function VehicleDetail() {
           <SectionHead title="Documentación" />
           {v.status === 'Baja' && <p className="note warn doc-note"><Icon name="notifications_off" />La unidad está de baja: no recibe avisos de vencimiento.</p>}
           <div className="docs">
-            {docs.map(d => <DocCard key={d.type} doc={d} vehicleId={v.id} prefs={alertPrefs.prefs} />)}
+            {docs.map(d => <DocCard key={d.type} doc={d} vehicleId={v.id} prefs={alertPrefs.prefs} isTarget={d.type === target} />)}
           </div>
         </section>
       )}

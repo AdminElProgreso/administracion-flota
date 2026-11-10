@@ -14,7 +14,7 @@ function load() {
     location: { origin: 'https://flota.test' },
     registration: { showNotification: (_title: string, options: Shown) => { shown = options; return Promise.resolve(); } },
   };
-  runInNewContext(readFileSync('public/sw-push.js', 'utf8'), { self, URL, clients: { matchAll: () => Promise.resolve([]) } });
+  runInNewContext(readFileSync(new URL('../public/sw-push.js', import.meta.url), 'utf8'), { self, URL, clients: { matchAll: () => Promise.resolve([]) } });
   return (json: unknown): Shown => {
     shown = null;
     handlers.push({ data: json === null ? null : { json: () => json, text: () => '' }, waitUntil: () => {} });

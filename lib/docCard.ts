@@ -33,10 +33,9 @@ export function docCardText(doc: DocStatus, prefs: AlertPrefs): DocCardText {
   if (!prefs.enabled[doc.type]) hint = `Los avisos de ${doc.type} están apagados en Ajustes`;
   else if (doc.pastAppointment && doc.appointment) {
     hint = `El turno del ${formatDateLong(doc.appointment)} ya pasó: registrá la renovación o cargá otro turno`;
-  } else if (doc.state === 'ok') hint = `Te empezamos a avisar ${days(prefs.thresholds[doc.type])} antes`;
-  else if (doc.state === 'expiring' && (doc.daysToExpiration ?? 0) > prefs.thresholds[doc.type]) {
+  } else if ((doc.state === 'ok' || doc.state === 'expiring') && (doc.daysToExpiration ?? 0) > prefs.thresholds[doc.type]) {
     hint = `Te empezamos a avisar ${days(prefs.thresholds[doc.type])} antes`;
-  } else if (doc.state === 'expiring') hint = `Te avisamos todos los días hasta que ${doc.type === 'Seguro' ? 'lo' : 'la'} renueves`;
+  } else if (doc.state === 'expiring' || doc.state === 'ok') hint = `Te avisamos todos los días hasta que ${doc.type === 'Seguro' ? 'lo' : 'la'} renueves`;
   else hint = 'Aviso diario hasta que se renueve o cargues un turno';
 
   return { lead: expiry, strong: formatDateLong(doc.expiration), hint };
